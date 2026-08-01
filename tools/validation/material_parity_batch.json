@@ -1,0 +1,12 @@
+{
+  "schema": "b2u-material-parity-batch-1.0",
+  "materials": [
+    { "key": "Wood1", "blend": "材质库/木头/木头1.blend", "object": "木头1", "expectBake": true, "expectRelief": true },
+    { "key": "Wood6", "blend": "材质库/木头/木头1.blend", "object": "木头6", "expectBake": true, "expectRelief": true },
+    { "key": "Stone1", "blend": "材质库/石头/凹凸石/凹凸石.blend", "object": "凹凸石1", "expectBake": true, "expectRelief": true },
+    { "key": "Stone5", "blend": "材质库/石头/凹凸石/凹凸石.blend", "object": "凹凸石5", "expectBake": true, "expectRelief": true },
+    { "key": "Granite6", "blend": "材质库/石头/花斑岩/花斑岩1.blend", "object": "花斑岩6", "expectBake": true, "expectRelief": false },
+    { "key": "Copper1", "blend": "材质库/金属/铜/铜3.blend", "object": "铜1", "expectBake": false, "expectRelief": false },
+    { "key": "RustedCopper3", "blend": "材质库/金属/铜/铜3.blend", "object": "锈铜3", "expectBake": true, "expectRelief": true }
+  ]
+}

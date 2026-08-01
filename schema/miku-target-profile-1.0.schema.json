@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:miku:schema:target-profile:1.0",
+  "title": "Miku Target Profile 1.0",
+  "type": "object",
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "toolVersion",
+    "id",
+    "canonicalHash",
+    "target",
+    "unity",
+    "urp",
+    "shaderGraph",
+    "colorSpace",
+    "graphicsApi",
+    "capabilities",
+    "surfaceGenerators",
+    "closureBudget",
+    "implementationHashes"
+  ],
+  "properties": {
+    "documentKind": {"const": "miku-target-profile-1.0"},
+    "schemaVersion": {"const": "1.0"},
+    "toolVersion": {"type": "string", "minLength": 1},
+    "id": {"type": "string", "minLength": 1},
+    "canonicalHash": {"$ref": "#/$defs/sha256"},
+    "target": {"const": "Unity6-URP-ShaderGraph"},
+    "unity": {"type": "string", "minLength": 1},
+    "urp": {"type": "string", "minLength": 1},
+    "shaderGraph": {"type": "string", "minLength": 1},
+    "colorSpace": {"enum": ["Linear", "Gamma"]},
+    "graphicsApi": {"type": "string", "minLength": 1},
+    "capabilities": {"type": "object", "additionalProperties": {"type": "boolean"}},
+    "surfaceGenerators": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "OpaquePBR",
+          "CutoutPBR",
+          "TransparentLit",
+          "TransparentEmission",
+          "RefractiveGlass",
+          "CustomMultiLobe"
+        ]
+      }
+    },
+    "closureBudget": {"$ref": "#/$defs/closureBudget"},
+    "implementationHashes": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/sha256"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "closureBudget": {
+      "type": "object",
+      "required": [
+        "maxLobes",
+        "maxSpecularLobes",
+        "maxTransmissionLobes",
+        "maxRefractionSamples",
+        "maxDistinctNormals",
+        "maxDynamicWeights",
+        "maxEstimatedAlu",
+        "maxTextureSamples"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "maxLobes": {"type": "integer", "minimum": 1},
+        "maxSpecularLobes": {"type": "integer", "minimum": 0},
+        "maxTransmissionLobes": {"type": "integer", "minimum": 0},
+        "maxRefractionSamples": {"type": "integer", "minimum": 0},
+        "maxDistinctNormals": {"type": "integer", "minimum": 1},
+        "maxDynamicWeights": {"type": "integer", "minimum": 0},
+        "maxEstimatedAlu": {"type": "integer", "minimum": 1},
+        "maxTextureSamples": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

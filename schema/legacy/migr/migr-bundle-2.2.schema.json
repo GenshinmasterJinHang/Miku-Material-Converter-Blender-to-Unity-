@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://migr.dev/schema/migr-bundle-2.2.schema.json",
+  "title": "MiGR Bundle 2.2",
+  "type": "object",
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "toolVersion",
+    "id",
+    "canonicalHash",
+    "materialKey",
+    "sourceName",
+    "persistentSourceId",
+    "persistentMaterialId",
+    "targetProfileHash",
+    "ir",
+    "plan",
+    "manifest",
+    "sourceMap",
+    "resources",
+    "sealedDigest"
+  ],
+  "properties": {
+    "documentKind": {"const": "migr-bundle-2.2"},
+    "schemaVersion": {"const": "2.2"},
+    "toolVersion": {"type": "string", "minLength": 1},
+    "id": {"type": "string", "minLength": 1},
+    "canonicalHash": {"$ref": "#/$defs/sha256"},
+    "materialKey": {"type": "string", "minLength": 1},
+    "sourceName": {"type": "string", "minLength": 1},
+    "persistentSourceId": {"type": "string", "minLength": 1},
+    "persistentMaterialId": {"type": "string", "minLength": 1},
+    "targetProfileHash": {"$ref": "#/$defs/sha256"},
+    "ir": {"$ref": "#/$defs/documentRef"},
+    "plan": {"$ref": "#/$defs/documentRef"},
+    "manifest": {"$ref": "#/$defs/documentRef"},
+    "sourceMap": {"$ref": "#/$defs/documentRef"},
+    "resources": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/textureRef"},
+          {"$ref": "#/$defs/sourceMeshRef"}
+        ]
+      }
+    },
+    "sealedDigest": {"$ref": "#/$defs/sha256"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+    },
+    "documentRef": {
+      "type": "object",
+      "required": ["relativePath", "sha256", "byteLength", "mediaType"],
+      "properties": {
+        "relativePath": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteLength": {"type": "integer", "minimum": 1, "maximum": 268435456},
+        "mediaType": {"const": "application/json"},
+        "editorOnly": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "textureRef": {
+      "type": "object",
+      "required": [
+        "id",
+        "relativePath",
+        "sha256",
+        "byteLength",
+        "mediaType",
+        "semantic",
+        "channel",
+        "colorSpace",
+        "width",
+        "height",
+        "channelCount",
+        "componentBytes"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "relativePath": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteLength": {"type": "integer", "minimum": 1, "maximum": 268435456},
+        "mediaType": {"enum": ["image/png", "image/jpeg", "image/x-exr"]},
+        "semantic": {
+          "enum": [
+            "BaseColor",
+            "Metalness",
+            "Roughness",
+            "Normal",
+            "Height",
+            "Emission",
+            "EmissionMask",
+            "Alpha",
+            "AmbientOcclusion",
+            "ExpressionIsland"
+          ]
+        },
+        "channel": {"enum": ["R", "G", "B", "A", "RGB"]},
+        "channelBindings": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 24,
+          "items": {"$ref": "#/$defs/channelBinding"}
+        },
+        "colorSpace": {"enum": ["sRGB", "Linear"]},
+        "normalConvention": {
+          "enum": [
+            "TangentOpenGLPositiveY",
+            "TangentDirectXNegativeY"
+          ]
+        },
+        "bindingKey": {"type": "string", "minLength": 1},
+        "expressionId": {"type": "string", "minLength": 1},
+        "usage": {"enum": ["Color", "Scalar", "Normal"]},
+        "width": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "height": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "channelCount": {"type": "integer", "minimum": 1, "maximum": 4},
+        "componentBytes": {"type": "integer", "enum": [1, 2, 4]},
+        "uvSet": {"const": "UV0"},
+        "projection": {"const": "FLAT"},
+        "interpolation": {"enum": ["LINEAR", "CLOSEST"]},
+        "extension": {"enum": ["REPEAT", "EXTEND"]},
+        "meshBinding": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "channelBinding": {
+      "type": "object",
+      "required": ["semantic", "channel"],
+      "properties": {
+        "semantic": {
+          "enum": [
+            "Metalness",
+            "Roughness",
+            "AmbientOcclusion",
+            "Height",
+            "Alpha",
+            "EmissionMask"
+          ]
+        },
+        "channel": {"enum": ["R", "G", "B", "A"]}
+      },
+      "additionalProperties": false
+    },
+    "sourceMeshRef": {
+      "type": "object",
+      "required": [
+        "id",
+        "relativePath",
+        "sha256",
+        "byteLength",
+        "mediaType",
+        "kind",
+        "semantic",
+        "meshBinding",
+        "rendererBindings",
+        "meshCount",
+        "vertexCount",
+        "indexCount",
+        "hasUv0"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "relativePath": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteLength": {"type": "integer", "minimum": 1, "maximum": 268435456},
+        "mediaType": {"const": "model/gltf-binary"},
+        "kind": {"const": "SourceMesh"},
+        "semantic": {"const": "SourceMesh"},
+        "meshBinding": {"type": "object"},
+        "rendererBindings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "rendererPath",
+              "sourceObject",
+              "meshIndex",
+              "materialSlots",
+              "meshFingerprint",
+              "exportedVertices",
+              "exportedIndices",
+              "hasUv0"
+            ],
+            "properties": {
+              "rendererPath": {"type": "string", "minLength": 1},
+              "sourceObject": {"type": "string", "minLength": 1},
+              "meshIndex": {"type": "integer", "minimum": 0},
+              "materialSlots": {
+                "type": "array",
+                "items": {"type": "integer", "minimum": 0}
+              },
+              "meshFingerprint": {"$ref": "#/$defs/sha256"},
+              "sourceVertices": {"type": "integer", "minimum": 0},
+              "sourcePolygons": {"type": "integer", "minimum": 0},
+              "sourceUv": {"type": "string"},
+              "exportedVertices": {"type": "integer", "minimum": 1},
+              "exportedIndices": {"type": "integer", "minimum": 3},
+              "hasUv0": {"const": true}
+            },
+            "additionalProperties": false
+          }
+        },
+        "meshCount": {"type": "integer", "minimum": 1},
+        "vertexCount": {"type": "integer", "minimum": 1},
+        "indexCount": {"type": "integer", "minimum": 3},
+        "hasUv0": {"const": true}
+      },
+      "additionalProperties": false
+    }
+  }
+}

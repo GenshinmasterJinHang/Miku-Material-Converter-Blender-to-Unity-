@@ -1,0 +1,533 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.example/b2u/mgir-1.0.schema.json",
+  "title": "MaterialGraph IR 1.0 (historical)",
+  "type": "object",
+  "required": ["version", "material", "nodes", "edges", "resources", "entry", "diagnostics"],
+  "properties": {
+    "version": { "const": "mgir-1.0" },
+    "schema": { "const": "mgir-preset-1.0" },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "exportName": { "type": "string" },
+        "mgirFileName": { "type": "string" },
+        "sourceMaterialName": { "type": "string" },
+        "exportedAt": { "type": "string" },
+        "pluginVersion": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "material": {
+      "type": "object",
+      "required": ["name"],
+      "properties": { "name": { "type": "string" } },
+      "additionalProperties": true
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "links": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": { "type": "object" }
+    },
+    "entry": {
+      "type": "object",
+      "properties": {
+        "surface": { "$ref": "#/$defs/socketRef" },
+        "alpha": { "$ref": "#/$defs/socketRef" },
+        "displacement": { "$ref": "#/$defs/socketRef" }
+      },
+      "additionalProperties": false
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "standardPbrSemantic": {
+      "$ref": "#/$defs/standardPbrSemantic"
+    },
+    "toonSemantic": {
+      "$ref": "#/$defs/genericToonSemantic"
+    },
+    "automaticBake": {
+      "$ref": "#/$defs/automaticBake"
+    },
+    "compilePolicy": {
+      "$ref": "#/$defs/compilePolicy"
+    },
+    "capabilityReport": {
+      "$ref": "#/$defs/capabilityReport"
+    },
+    "dynamicEffects": {
+      "$ref": "mgir-dynamic-effects-1.0.schema.json"
+    },
+    "preset": {
+      "type": "object",
+      "required": ["id", "displayName", "version"],
+      "additionalProperties": true
+    },
+    "materials": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "globalTextures": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "genshinToonPreset": {
+      "$ref": "#/$defs/toonPreset"
+    },
+    "wuwaToonPreset": {
+      "$ref": "#/$defs/toonPreset"
+    },
+    "endfieldToonPreset": {
+      "$ref": "#/$defs/toonPreset"
+    },
+    "hsrToonPreset": {
+      "$ref": "#/$defs/hsrToonPreset"
+    }
+  },
+  "$defs": {
+    "compilePolicy": {
+      "type": "object",
+      "required": ["schema", "requestedMode", "qualityProfile", "selectedBackend", "fallbackOrder", "reason"],
+      "properties": {
+        "schema": { "const": "b2u-hybrid-plan-1.0" },
+        "requestedMode": { "enum": ["AUTO_HYBRID", "NODE_GRAPH", "STANDARD_PBR", "GENERIC_TOON", "GAME_PRESET"] },
+        "qualityProfile": { "const": "PC_HIGH" },
+        "selectedBackend": { "enum": ["NODE_GRAPH", "SEMANTIC_PBR", "HYBRID_PBR", "BAKED_PBR", "GENERIC_TOON", "GAME_PRESET", "SOURCE_MATERIAL"] },
+        "fallbackOrder": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "capabilityReport": {
+      "type": "object",
+      "required": ["schema", "qualityProfile", "requestedMode", "selectedBackend", "reason", "liveNodeCount", "edgeCount", "textureSampleEstimate", "closureLobeEstimate", "supportedCoverage", "supportedOps", "conditionalOps", "unsupportedOps", "blockingDiagnosticCodes", "requirements", "budgets"],
+      "properties": {
+        "schema": { "const": "b2u-hybrid-plan-1.0" },
+        "qualityProfile": { "const": "PC_HIGH" },
+        "requestedMode": { "type": "string" },
+        "selectedBackend": { "type": "string" },
+        "reason": { "type": "string" },
+        "liveNodeCount": { "type": "integer", "minimum": 0 },
+        "edgeCount": { "type": "integer", "minimum": 0 },
+        "textureSampleEstimate": { "type": "integer", "minimum": 0 },
+        "closureLobeEstimate": { "type": "integer", "minimum": 0 },
+        "supportedCoverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "supportedOps": { "type": "array", "items": { "type": "string" } },
+        "conditionalOps": { "type": "array", "items": { "type": "string" } },
+        "unsupportedOps": { "type": "array", "items": { "type": "string" } },
+        "blockingDiagnosticCodes": { "type": "array", "items": { "type": "string" } },
+        "requirements": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "budgets": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "automaticBake": {
+      "type": "object",
+      "required": ["schema", "status", "cacheKey", "resolution", "samples", "margin", "engine", "channels", "failures", "sourceGraph"],
+      "properties": {
+        "schema": { "const": "b2u-bake-1.0" },
+        "algorithmRevision": { "type": "integer", "minimum": 1 },
+        "parityStrategy": { "enum": ["SemanticPbrChannels", "AppearanceSnapshot"] },
+        "defaultSurfaceMode": { "enum": ["Hybrid", "BakedParity", "NativeProcedural"] },
+        "closureApproximations": { "type": "array", "items": { "type": "string" } },
+        "nonBakeableDependencies": { "type": "array", "items": { "type": "string" } },
+        "status": { "enum": ["completed", "reused", "failed"] },
+        "cacheKey": { "type": "string", "minLength": 1 },
+        "resolution": { "type": "integer", "minimum": 1 },
+        "samples": { "type": "integer", "minimum": 1 },
+        "margin": { "type": "integer", "minimum": 0 },
+        "engine": { "const": "CYCLES" },
+        "channels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["file", "relativePath", "channel", "colorSpace", "bytes"],
+            "properties": {
+              "file": { "type": "string", "minLength": 1 },
+              "relativePath": { "type": "string", "minLength": 1 },
+              "channel": { "type": "string" },
+              "colorSpace": { "enum": ["sRGB", "Linear"] },
+              "bytes": { "type": "integer", "minimum": 1 },
+              "neutralFallback": { "type": "boolean" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "failures": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "principledBranchApproximation": { "type": "boolean" },
+        "appearanceApproximation": { "type": "boolean" },
+        "alphaMode": { "enum": ["Opaque", "Cutout", "Transparent", "Premultiply"] },
+        "alphaCutoff": { "type": "number", "minimum": 0, "maximum": 1 },
+        "dependencies": { "type": "object" },
+        "autoGeneratedUvObjects": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdUnixTime": { "type": "integer", "minimum": 0 },
+        "sourceGraph": {
+          "type": "object",
+          "required": ["nodeCount", "edgeCount", "diagnostics"],
+          "properties": {
+            "nodeCount": { "type": "integer", "minimum": 0 },
+            "edgeCount": { "type": "integer", "minimum": 0 },
+            "diagnostics": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/diagnostic" }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "toonPreset": {
+      "type": "object",
+      "required": ["workflow", "materialKind", "slots", "controls", "diagnostics"],
+      "properties": {
+        "workflow": { "type": "string" },
+        "source": { "type": "object", "additionalProperties": true },
+        "materialKind": { "type": "string" },
+        "slots": { "type": "object", "additionalProperties": { "type": "object" } },
+        "controls": { "type": "object", "additionalProperties": true },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diagnostic" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "hsrToonPreset": {
+      "type": "object",
+      "required": ["workflow", "materialKind", "slots", "controls", "diagnostics"],
+      "properties": {
+        "workflow": { "const": "HSRToon" },
+        "source": {
+          "type": "object",
+          "properties": {
+            "blenderMaterial": { "type": "string" },
+            "confidence": { "type": "number" }
+          },
+          "additionalProperties": true
+        },
+        "materialKind": {
+          "enum": ["UpperBody", "LowerBody", "Hair", "Face", "FaceDetail", "Stocking", "Generic"]
+        },
+        "slots": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        },
+        "controls": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diagnostic" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "standardPbrSemantic": {
+      "type": "object",
+      "required": ["workflow", "source", "slots", "packedTextures", "diagnostics"],
+      "properties": {
+        "workflow": { "enum": ["Auto", "Metallic", "Specular"] },
+        "source": {
+          "type": "object",
+          "properties": {
+            "shader": { "enum": ["PrincipledBSDF", "MixedBSDF", "SemanticMaps", "BakedPrincipledBSDF"] },
+            "blenderMaterial": { "type": "string" },
+            "confidence": { "type": "number" }
+          },
+          "additionalProperties": true
+        },
+        "slots": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        },
+        "packedTextures": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diagnostic" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "genericToonSemantic": {
+      "type": "object",
+      "required": [
+        "schema",
+        "workflow",
+        "source",
+        "slots",
+        "controls",
+        "surface",
+        "bakedBranches",
+        "requirements",
+        "diagnostics"
+      ],
+      "properties": {
+        "schema": { "const": "generic-toon-1.0" },
+        "workflow": { "const": "GenericToon" },
+        "source": {
+          "type": "object",
+          "required": ["blenderMaterial", "shader", "confidence"],
+          "properties": {
+            "blenderMaterial": { "type": "string" },
+            "shader": { "type": "string" },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "additionalProperties": true
+        },
+        "slots": {
+          "type": "object",
+          "required": ["BaseColor"],
+          "properties": {
+            "BaseColor": { "$ref": "#/$defs/genericToonSlot" },
+            "Normal": { "$ref": "#/$defs/genericToonSlot" },
+            "Occlusion": { "$ref": "#/$defs/genericToonSlot" },
+            "Ramp": { "$ref": "#/$defs/genericToonSlot" },
+            "SpecularMask": { "$ref": "#/$defs/genericToonSlot" },
+            "Emission": { "$ref": "#/$defs/genericToonSlot" },
+            "Alpha": { "$ref": "#/$defs/genericToonSlot" }
+          },
+          "additionalProperties": false
+        },
+        "controls": { "$ref": "#/$defs/genericToonControls" },
+        "surface": { "$ref": "#/$defs/genericToonSurface" },
+        "bakedBranches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/genericToonBakedBranch" }
+        },
+        "requirements": {
+          "type": "object",
+          "required": ["smoothNormalsUV7"],
+          "properties": {
+            "requiresUv0": { "type": "boolean" },
+            "generatedUv": { "type": "boolean" },
+            "smoothNormalsUV7": { "type": "boolean" },
+            "outlineSmoothNormalsUv": { "type": ["integer", "null"], "minimum": 0 },
+            "meshUvSignature": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diagnostic" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "genericToonSlot": {
+      "type": "object",
+      "properties": {
+        "resource": { "type": "string", "minLength": 1 },
+        "texture": { "type": "string", "minLength": 1 },
+        "value": {
+          "oneOf": [
+            { "type": "number" },
+            {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 1,
+              "maxItems": 4
+            }
+          ]
+        },
+        "source": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "uvSet": { "type": "integer", "minimum": 0 },
+        "channel": { "type": "string" },
+        "strength": { "type": "number" },
+        "space": { "type": "string" },
+        "colorSpace": { "enum": ["sRGB", "Linear", "Non-Color", ""] }
+      },
+      "anyOf": [
+        { "required": ["resource"] },
+        { "required": ["texture"] },
+        { "required": ["value"] }
+      ],
+      "additionalProperties": true
+    },
+    "genericToonControls": {
+      "type": "object",
+      "required": [
+        "baseColorTint",
+        "shadowColor",
+        "shadowThreshold",
+        "shadowSoftness",
+        "rampStrength",
+        "normalStrength",
+        "occlusionStrength",
+        "specularColor",
+        "specularStrength",
+        "specularPower",
+        "rimColor",
+        "rimStrength",
+        "rimPower",
+        "emissionColor",
+        "emissionStrength",
+        "outlineEnabled",
+        "outlineColor",
+        "outlineWidth"
+      ],
+      "properties": {
+        "baseColorTint": { "$ref": "#/$defs/genericToonColor" },
+        "shadowColor": { "$ref": "#/$defs/genericToonColor" },
+        "shadowThreshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "shadowSoftness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rampStrength": { "type": "number", "minimum": 0 },
+        "normalStrength": { "type": "number", "minimum": 0 },
+        "occlusionStrength": { "type": "number", "minimum": 0 },
+        "specularColor": { "$ref": "#/$defs/genericToonColor" },
+        "specularStrength": { "type": "number", "minimum": 0 },
+        "specularPower": { "type": "number", "minimum": 1 },
+        "rimColor": { "$ref": "#/$defs/genericToonColor" },
+        "rimStrength": { "type": "number", "minimum": 0 },
+        "rimPower": { "type": "number", "minimum": 0 },
+        "emissionColor": { "$ref": "#/$defs/genericToonColor" },
+        "emissionStrength": { "type": "number", "minimum": 0 },
+        "outlineEnabled": { "type": "boolean" },
+        "outlineColor": { "$ref": "#/$defs/genericToonColor" },
+        "outlineWidth": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "genericToonSurface": {
+      "type": "object",
+      "required": ["mode", "cull", "alphaClip", "cutoff", "zWrite"],
+      "properties": {
+        "mode": { "enum": ["Opaque", "Cutout", "Transparent"] },
+        "cull": { "enum": ["Back", "Front", "Off"] },
+        "alphaClip": { "type": "boolean" },
+        "cutoff": { "type": "number", "minimum": 0, "maximum": 1 },
+        "zWrite": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "genericToonBakedBranch": {
+      "type": "object",
+      "required": ["semantic", "sourceNode", "sourceSocket", "resource", "cacheKey", "resolution", "status"],
+      "properties": {
+        "semantic": {
+          "enum": ["BaseColor", "Normal", "Occlusion", "Ramp", "SpecularMask", "Emission", "Alpha"]
+        },
+        "sourceNode": { "type": "string", "minLength": 1 },
+        "sourceSocket": { "type": "string", "minLength": 1 },
+        "resource": { "type": "string", "minLength": 1 },
+        "cacheKey": { "type": "string", "minLength": 1 },
+        "resolution": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "status": { "enum": ["completed", "reused"] }
+      },
+      "additionalProperties": true
+    },
+    "genericToonColor": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "socketRef": {
+      "type": "object",
+      "required": ["node", "socket"],
+      "properties": {
+        "node": { "type": "string" },
+        "socket": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "socket": {
+      "type": "object",
+      "required": ["id", "name", "dir", "valueType", "semantic", "space"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "dir": { "enum": ["in", "out"] },
+        "valueType": { "type": "string" },
+        "semantic": { "type": "string" },
+        "space": { "type": "string" },
+        "defaultValue": {}
+      },
+      "additionalProperties": true
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "op", "params", "inputs", "outputs", "source"],
+      "properties": {
+        "id": { "type": "string" },
+        "op": { "type": "string" },
+        "params": { "type": "object" },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/socket" }
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/socket" }
+        },
+        "source": {
+          "type": "object",
+          "required": ["blenderNodeName", "blenderNodeType", "groupPath"],
+          "properties": {
+            "blenderNodeName": { "type": "string" },
+            "blenderNodeType": { "type": "string" },
+            "groupPath": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "$ref": "#/$defs/socketRef" },
+        "to": { "$ref": "#/$defs/socketRef" }
+      },
+      "additionalProperties": false
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["severity", "code", "message"],
+      "properties": {
+        "severity": { "enum": ["info", "warning", "error"] },
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "node": { "type": "string" },
+        "blenderNodeType": { "type": "string" },
+        "groupPath": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

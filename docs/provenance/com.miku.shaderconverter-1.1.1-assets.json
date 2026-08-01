@@ -1,0 +1,489 @@
+{
+  "assets": [
+    {
+      "contentSha256": "b13bd5ac9023b754390b928c3c5b2b8a7fc232fc7c2e040e545060452ecc125f",
+      "guid": "373ba2e3f1125c24fa9413f3ee20a183",
+      "metaPath": "CHANGELOG.md.meta",
+      "path": "CHANGELOG.md",
+      "role": "Documentation"
+    },
+    {
+      "guid": "2acff3e6816a483ab7ad73b8e1ae4309",
+      "metaPath": "Editor.meta",
+      "path": "Editor",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "08c1adce7ab4925e0ced0f20119a2a3e5f4cd967e0504f139262c7e43b6cc0ae",
+      "guid": "07c5f4172c43c1a4782f54cd6d3c2695",
+      "metaPath": "Editor/AssemblyInfo.cs.meta",
+      "path": "Editor/AssemblyInfo.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "7d0e602825af9125146040ae8dd67dc3076c3e1ba96d5f1ba1f78cda2321a2ff",
+      "guid": "d9b48e8cbbe643688233ba543856d848",
+      "metaPath": "Editor/Miku.ShaderConverter.Editor.asmdef.meta",
+      "path": "Editor/Miku.ShaderConverter.Editor.asmdef",
+      "role": "AssemblyDefinition"
+    },
+    {
+      "contentSha256": "31cf417ba654c0709f92eb52bd966663efab762b9e4f942329eb1b291368f0e4",
+      "guid": "30e97ec1212f806c043c9ffef980e716",
+      "metaPath": "Editor/MikuAtomicAssetWriter.cs.meta",
+      "path": "Editor/MikuAtomicAssetWriter.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "082172d22772c58e4b740cdb4219de1b286e3bff137dd7d15296da02147a1404",
+      "guid": "66a2334879cd991b0951ab02d91b162f",
+      "metaPath": "Editor/MikuBundleAsset.cs.meta",
+      "path": "Editor/MikuBundleAsset.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "250ec47cf4fbe4c6631622b96c470e7e5ffa0425da35ef61da763765a3125878",
+      "guid": "052af08bb7bd32547a2ef798fe0457d7",
+      "metaPath": "Editor/MikuBundleImporter.cs.meta",
+      "path": "Editor/MikuBundleImporter.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "546af6e972505d31e654bc6a2c8babce679e72567984e10add0ef95fe08a15b4",
+      "guid": "198228af216ca759b577bb31a212d848",
+      "metaPath": "Editor/MikuBundleScriptedImporter.cs.meta",
+      "path": "Editor/MikuBundleScriptedImporter.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "c5c9ab8214614c1e5fa8f2e557c9a6780aa32db4d5c5ad319c1a409251a2e972",
+      "guid": "ab3702abded1289aa539ee66490c58f4",
+      "metaPath": "Editor/MikuLegacyMgirImporter.cs.meta",
+      "path": "Editor/MikuLegacyMgirImporter.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "0cf36e47482aac78c93dc389ee661fc4decfab1adff13b01bc4e64a48f351767",
+      "guid": "cee8dc49d1056a2893f59cd411928bf9",
+      "metaPath": "Editor/MikuManualTextureShaderGUI.cs.meta",
+      "path": "Editor/MikuManualTextureShaderGUI.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "113ba4e433acaaf3c24dd5af4d5f75c30cee5941f23c1446ef837822dd7c59e0",
+      "guid": "5ac193e20bfb92f4a862a42dabcd03de",
+      "metaPath": "Editor/MikuMetalCorpusMenu.cs.meta",
+      "path": "Editor/MikuMetalCorpusMenu.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "46b3e9b431bc5b59c4224459b81a9f2ee0fe52892b4c17fca49402aa8b96549e",
+      "guid": "7d8f1bb25d43dea44af5367f3f98ad1a",
+      "metaPath": "Editor/MikuRebakeCoordinator.cs.meta",
+      "path": "Editor/MikuRebakeCoordinator.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "1b420314c1bb1b772187b4b911a8178b2ea17042bf43758af017d03f2b6acc8d",
+      "guid": "2dc5b04675694e58be04f4acfbf95455",
+      "metaPath": "Editor/MikuShaderGraph17RuntimeBackend.cs.meta",
+      "path": "Editor/MikuShaderGraph17RuntimeBackend.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "44d899123bea02cfbb6b39817d26f5e3a3f9f56fca3b49d5a92135d3bfe28d50",
+      "guid": "51aee6bfbc73e35d5b3ab5c5ecde677c",
+      "metaPath": "Editor/MikuWorkflowBackends.cs.meta",
+      "path": "Editor/MikuWorkflowBackends.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "8af7e0675ec4fb7c0e559cd8a6763c878d168c2505ca745d3bda38727bc5c8a4",
+      "guid": "a5d8b398d097aab4995b9b924f648dcf",
+      "metaPath": "LICENSE.md.meta",
+      "path": "LICENSE.md",
+      "role": "Documentation"
+    },
+    {
+      "contentSha256": "b22e0a027fcf57030d180ffa9a6ba63fd3d6dbe6b3259d9a9881f546b45ed012",
+      "guid": "9624d6292afa4432b49ad6a32334cbf1",
+      "metaPath": "package.json.meta",
+      "path": "package.json",
+      "role": "Json"
+    },
+    {
+      "contentSha256": "b82c62372131ad1e6b90c6328fca0c367784a02a99dbcff2951828602a5c7af5",
+      "guid": "7fcfbb738c6246c48a756fe61b42d0fe",
+      "metaPath": "README.md.meta",
+      "path": "README.md",
+      "role": "Documentation"
+    },
+    {
+      "guid": "c3cd483ba2b4478b9eae43ad36d06c40",
+      "metaPath": "Runtime.meta",
+      "path": "Runtime",
+      "role": "Folder"
+    },
+    {
+      "guid": "3ff8e531b8b448e5b7a4c56820929487",
+      "metaPath": "Runtime/Color.meta",
+      "path": "Runtime/Color",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "cb8b254ef865474c2ef02cf6bfbf066edf9c016d5ca7aec8d7ec766f0421a420",
+      "guid": "c20089ff0599431a937ae6066b83144b",
+      "metaPath": "Runtime/Color/MikuBlenderColorRamp.hlsl.meta",
+      "path": "Runtime/Color/MikuBlenderColorRamp.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "guid": "f09ee2bf7e0343b4b417e46bb91ec419",
+      "metaPath": "Runtime/GenericToon.meta",
+      "path": "Runtime/GenericToon",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "2000e723169ea7df04216e483881ffdc7e47554aac66d7ac1dfc1c66f30fddee",
+      "guid": "1c20fccb31ff4bb3b45c6391295f6816",
+      "metaPath": "Runtime/GenericToon/MIKU_GenericToon_Lit.shader.meta",
+      "path": "Runtime/GenericToon/MIKU_GenericToon_Lit.shader",
+      "role": "Shader"
+    },
+    {
+      "guid": "45b62b8d5e6340cf9ff3b852f237ee16",
+      "metaPath": "Runtime/Genshin.meta",
+      "path": "Runtime/Genshin",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "03391d205b037db5e9fe66f169c7053b1c37aa0ddc8101f8e34d997f28b40c52",
+      "guid": "79d1182f9cbb48c2bf5ce1730a26d1af",
+      "metaPath": "Runtime/Genshin/Genshin_Body.shader.meta",
+      "path": "Runtime/Genshin/Genshin_Body.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "22d7b0d3c733a9ee1d5ec7f302f143696c5381df2a6f65986588f3946e3bd659",
+      "guid": "9fd627f371d84192a345c5c9b120e3c1",
+      "metaPath": "Runtime/Genshin/Genshin_Eye.shader.meta",
+      "path": "Runtime/Genshin/Genshin_Eye.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "20d9e490312eba9c5c2eb44f3e4f250efe69984ada7e00a961b63f33a2459b48",
+      "guid": "9833ba6271bc411e85bf5440b681d13d",
+      "metaPath": "Runtime/Genshin/Genshin_Face.shader.meta",
+      "path": "Runtime/Genshin/Genshin_Face.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "8407898d45d62d9da56f64a4303830f4eb1a9babfc086a2a0f7c4013433f1e01",
+      "guid": "2e14637eb6d1479cb1e5b4bfc1b61d66",
+      "metaPath": "Runtime/Genshin/Genshin_Hair.shader.meta",
+      "path": "Runtime/Genshin/Genshin_Hair.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "7297727e8e144806f085b3eef33cae01ca0055413d63531516d76f31ee20b1ab",
+      "guid": "86f97db884ae449ea9026ce15b94e3a0",
+      "metaPath": "Runtime/Genshin/GenshinCommon.hlsl.meta",
+      "path": "Runtime/Genshin/GenshinCommon.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "guid": "8d9a80689485467691c2f9a883f06b29",
+      "metaPath": "Runtime/HSR.meta",
+      "path": "Runtime/HSR",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "6038f5d61c0e1e2bf74fd7896c53702c48575a771dca517774caee1cc4bffc8a",
+      "guid": "3b76efcfd9f54d0884c2bb187bc0b001",
+      "metaPath": "Runtime/HSR/HSR_Body.shader.meta",
+      "path": "Runtime/HSR/HSR_Body.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "146ea85209c51582519cdd101e8f3a060a5e0d88db4b73ab2c8b0e6ce4cd2851",
+      "guid": "a75de383cda546d1976d6f90c1cdb001",
+      "metaPath": "Runtime/HSR/HSR_Eye.shader.meta",
+      "path": "Runtime/HSR/HSR_Eye.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "e309770bf50bd66fc4027f91741d03ebb294ac397e8bf3ef0d254f8305319bbb",
+      "guid": "772940e80a6844d8b0d2c3314be8f001",
+      "metaPath": "Runtime/HSR/HSR_Face.shader.meta",
+      "path": "Runtime/HSR/HSR_Face.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "5a30c55a8a41836b92fcfc543ff41ba53880f0279364cd20ff22c7005c43f64c",
+      "guid": "d430a5be5808422b8475a2d78e3dd001",
+      "metaPath": "Runtime/HSR/HSR_Hair.shader.meta",
+      "path": "Runtime/HSR/HSR_Hair.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "4a2b06b909852302fdce46042e593f32d26e113377b694f3bf966a897ef0e874",
+      "guid": "58c9e81d1b3a4f7a945c2248d71ac001",
+      "metaPath": "Runtime/HSR/HSRCommon.hlsl.meta",
+      "path": "Runtime/HSR/HSRCommon.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "guid": "7221ecdb159b4abdb2ea59bd827b044e",
+      "metaPath": "Runtime/Math.meta",
+      "path": "Runtime/Math",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "f198614834ba16327576343a79a740c442b953e5db68e9978b743bf7e95a2e18",
+      "guid": "8f2a7103f6d742129ead77e26b8328c1",
+      "metaPath": "Runtime/Math/MikuBlenderMath.hlsl.meta",
+      "path": "Runtime/Math/MikuBlenderMath.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "2c6fdea6b15dac4495f0c323e0134c1954b601739d986eac8fe636b27e032b63",
+      "guid": "9e3b0464f1a343deaa6be71324cb3d46",
+      "metaPath": "Runtime/Miku.ShaderConverter.Runtime.asmdef.meta",
+      "path": "Runtime/Miku.ShaderConverter.Runtime.asmdef",
+      "role": "AssemblyDefinition"
+    },
+    {
+      "contentSha256": "03b25e615e6f29b27d07f29084123490bef563657a667495abbe3cfd78aedd90",
+      "guid": "22fe81280d7ec4e44b3a7ab6bbce8107",
+      "metaPath": "Runtime/MikuMaterialBinding.cs.meta",
+      "path": "Runtime/MikuMaterialBinding.cs",
+      "role": "CSharp"
+    },
+    {
+      "guid": "8f116c29207d15945aa9a9f2723a0a96",
+      "metaPath": "Runtime/NPR.meta",
+      "path": "Runtime/NPR",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "1a47d3640bb3efc103bfd88bff5f669432aae1e0dda67a09bd9b3e3cb32405c0",
+      "guid": "5b86f526ef96d0b4b80ee6e9a82b8d6f",
+      "metaPath": "Runtime/NPR/MikuFaceSdfHeadBinder.cs.meta",
+      "path": "Runtime/NPR/MikuFaceSdfHeadBinder.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "8180c1108a78547e5c761e40b4341251dc6f1b5d0b17f667918fd83c844ad2f6",
+      "guid": "b5adacb89af869242b35a97f8f8fd22e",
+      "metaPath": "Runtime/NPR/NPR_FaceSDF.hlsl.meta",
+      "path": "Runtime/NPR/NPR_FaceSDF.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "guid": "31e85f79339849d78ee6d9e389877720",
+      "metaPath": "Runtime/StandardPBR.meta",
+      "path": "Runtime/StandardPBR",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "5f7758f6403f2e257cd88afdabfcc571126eaf9d4cff2811265fbca10f0aec6f",
+      "guid": "10e4314ce3554d94a3d70d965890cbbc",
+      "metaPath": "Runtime/StandardPBR/MIKU_StandardPBR_SemanticLit.shader.meta",
+      "path": "Runtime/StandardPBR/MIKU_StandardPBR_SemanticLit.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "b9a7d7c677846d675c01799e2e65300ae62d3ce83475ff6b06ebca4c99fa87aa",
+      "guid": "4b6734aaceb34a79aa647610936c288d",
+      "metaPath": "Runtime/StandardPBR/MIKUStandardPBRAlphaClip.hlsl.meta",
+      "path": "Runtime/StandardPBR/MIKUStandardPBRAlphaClip.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "5bf1d7f897b4a3f37ea73d265eaad41256a7ae39aa51ce2eab814eed05facb9c",
+      "guid": "6bb37f467dd04917a99a02e70beaa6cb",
+      "metaPath": "Runtime/StandardPBR/MIKUStandardPBRCommon.hlsl.meta",
+      "path": "Runtime/StandardPBR/MIKUStandardPBRCommon.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "guid": "a18e4eab49fb458eb19380538673a338",
+      "metaPath": "Runtime/Textures.meta",
+      "path": "Runtime/Textures",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "ce3668da836597c70543b653f9d3d6f3115f8cb1a0f66e4d1fb9e00c8567aaa2",
+      "guid": "91f8e8df4c624ec5a1b034d1cf4b32ad",
+      "metaPath": "Runtime/Textures/MikuBlenderBrick.hlsl.meta",
+      "path": "Runtime/Textures/MikuBlenderBrick.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "846df54cdada4012ec3e36376e426aa5a9713fd80d5187932c1e5509e6e24cc9",
+      "guid": "3a4fc22a6c1e48ee99361ed2f0f284ba",
+      "metaPath": "Runtime/Textures/MikuBlenderGabor.hlsl.meta",
+      "path": "Runtime/Textures/MikuBlenderGabor.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "ba22468edf69b49c41e35f57de439753f1580f5a8d824ce0a0af2acd64a8e7c0",
+      "guid": "d2f5d0cc1d1c4631bc7a9bc9bf9a2a44",
+      "metaPath": "Runtime/Textures/MikuBlenderMagic.hlsl.meta",
+      "path": "Runtime/Textures/MikuBlenderMagic.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "c4477f170652dca9f76ea469bbd105017e5053543ea6bd77502b87a7214d70d2",
+      "guid": "9575c9a31f694f23952aa6e758fbb75e",
+      "metaPath": "Runtime/Textures/MikuBlenderNoise.hlsl.meta",
+      "path": "Runtime/Textures/MikuBlenderNoise.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "3f8304ef5f7cfa0bd99c201c6d843cc8ce8d0d6d07a619b10621e273ade61f76",
+      "guid": "97ff32edc9aa44e4a06e0d6850dc8644",
+      "metaPath": "Runtime/Textures/MikuBlenderVoronoi.hlsl.meta",
+      "path": "Runtime/Textures/MikuBlenderVoronoi.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "f60b56c0fb3564a02d182f7dfc6c7ba0ad64c4d2b430bc15b3bcf973c793a584",
+      "guid": "05a0b6f122e14be1839aa7cdeb6a6122",
+      "metaPath": "Runtime/Textures/MikuBlenderWave.hlsl.meta",
+      "path": "Runtime/Textures/MikuBlenderWave.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "05e7518854d67501b478d4f0daa0b2e77cf19aab8a4834a3f5a5cbf9839fcddb",
+      "guid": "8c4f4f5d2ddc4d9b9f8c11bcb7688d61",
+      "metaPath": "Runtime/Textures/MikuBlenderWhiteNoise.hlsl.meta",
+      "path": "Runtime/Textures/MikuBlenderWhiteNoise.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "guid": "3060eedb9ef84e15a7f62343b91977bc",
+      "metaPath": "Runtime/Vector.meta",
+      "path": "Runtime/Vector",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "1df5c9237dc7622a04ab8086dde84e3320a15bff038e6b289aa6f83685733b43",
+      "guid": "d999cc40b72042d8a7088e0708197fcd",
+      "metaPath": "Runtime/Vector/MikuBlenderVectorMath.hlsl.meta",
+      "path": "Runtime/Vector/MikuBlenderVectorMath.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "guid": "04170dd40bfd4204bd99863f75e704b7",
+      "metaPath": "Runtime/Wuwa.meta",
+      "path": "Runtime/Wuwa",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "e20835b5fe6707401fd080e17605b08f5a1a63bb2226d22391f59d281743bb5e",
+      "guid": "4c58c9586644414280a00f9c9e642612",
+      "metaPath": "Runtime/Wuwa/MikuWuwaHairShadowRendererFeature.cs.meta",
+      "path": "Runtime/Wuwa/MikuWuwaHairShadowRendererFeature.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "c5f2ea84208c2ad58f8917e75721646ae14b3d196179ab6480b100711c533eb7",
+      "guid": "018960d4608f4600b9157796a272fe9d",
+      "metaPath": "Runtime/Wuwa/Wuwa_Body.shader.meta",
+      "path": "Runtime/Wuwa/Wuwa_Body.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "ff34f026a83c1b1dae04058ad7c0a5ceca0122e388f60682406ab491912e9141",
+      "guid": "8d3f6a2c9b7e4f18a0d5c6e1b2f34970",
+      "metaPath": "Runtime/Wuwa/Wuwa_Effect.shader.meta",
+      "path": "Runtime/Wuwa/Wuwa_Effect.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "6121e465487b5012cdddd856f741e2e42e4ab5bc8e9b446624f4351a16de942c",
+      "guid": "3b47f0d273cf4ca284f9f9c68cd199c6",
+      "metaPath": "Runtime/Wuwa/Wuwa_Eye.shader.meta",
+      "path": "Runtime/Wuwa/Wuwa_Eye.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "bfe1ea8f26b3eabf9ee5cf48ed4bd1d37cd41b0f613916ebd38a522524d154d9",
+      "guid": "e8b6d35f80384792bd5522f74650479a",
+      "metaPath": "Runtime/Wuwa/Wuwa_Face.shader.meta",
+      "path": "Runtime/Wuwa/Wuwa_Face.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "9985715e3b2f06b6d511cbe72ba36d878be047c8d46d95462b960be0fe747a40",
+      "guid": "cd0a97c31b1047a4a41f8a51e58f05d8",
+      "metaPath": "Runtime/Wuwa/Wuwa_Hair.shader.meta",
+      "path": "Runtime/Wuwa/Wuwa_Hair.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "43919586b602b82032bd65e4d68582d54ab4c4e54d59f43d379e2073939c9c14",
+      "guid": "67d8b1212f0142ccbba8e61f3d8afcd5",
+      "metaPath": "Runtime/Wuwa/WuwaCommon.hlsl.meta",
+      "path": "Runtime/Wuwa/WuwaCommon.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "guid": "919a4109c9e25be6b0783e48b85ceaa3",
+      "metaPath": "Templates.meta",
+      "path": "Templates",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "430427de4cac421dd16ccc5a273339f17f500a2e368e6cb98f2277bce8023780",
+      "guid": "7ebbf410fe3ca5e4e6e353db68e9f52c",
+      "metaPath": "Templates/MikuGenericToonTemplate.shadergraph.meta",
+      "path": "Templates/MikuGenericToonTemplate.shadergraph",
+      "role": "ShaderGraph"
+    },
+    {
+      "contentSha256": "af28776210ca64bac9fb5a82e8da3b9fd15e175c9c8b8addf74802f0c6fc92cb",
+      "guid": "4c8adeb0338dff2498fc4a5852e3d131",
+      "metaPath": "Templates/MikuStandardTemplate.generated.shadersubgraph.meta",
+      "path": "Templates/MikuStandardTemplate.generated.shadersubgraph",
+      "role": "ShaderSubGraph"
+    },
+    {
+      "contentSha256": "88ca621a082ecab466302b90b7ccafe48660240d7100d3022f4cc08786d71974",
+      "guid": "4bd5a1c7147e334428fa8cd34a7c569b",
+      "metaPath": "Templates/MikuStandardTemplate.shadergraph.meta",
+      "path": "Templates/MikuStandardTemplate.shadergraph",
+      "role": "ShaderGraph"
+    },
+    {
+      "guid": "1e5d741d5395d8e459ea07c0fb652f0e",
+      "metaPath": "Tests.meta",
+      "path": "Tests",
+      "role": "Folder"
+    },
+    {
+      "guid": "291ff7703378ef8418040209cfcf5f49",
+      "metaPath": "Tests/Editor.meta",
+      "path": "Tests/Editor",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "29efbefb8b4c15433ba709593bf82098a1ff44c10e4c7dd92608d995fdf35ce3",
+      "guid": "8d7662f2063cc034a94fe352e6d09a02",
+      "metaPath": "Tests/Editor/Miku.ShaderConverter.Editor.Tests.asmdef.meta",
+      "path": "Tests/Editor/Miku.ShaderConverter.Editor.Tests.asmdef",
+      "role": "AssemblyDefinition"
+    },
+    {
+      "contentSha256": "a776b65a3d67492854cb2424645260a79cd2bf838b75ed4a36ae0bd4ee0691f7",
+      "guid": "e39817a7271b4a3db2107fc9f49d8813",
+      "metaPath": "Tests/Editor/MikuBundleImporterTests.cs.meta",
+      "path": "Tests/Editor/MikuBundleImporterTests.cs",
+      "role": "CSharp"
+    }
+  ],
+  "canonicalHash": "4e031b6b010d606fa6e265751b5d6ee65f67d2ef7925c792c87c0c5111d4dbee",
+  "package": "com.miku.shaderconverter",
+  "schema": "miku-package-asset-identity-1.0"
+}

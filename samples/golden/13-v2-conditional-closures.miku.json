@@ -1,0 +1,37 @@
+{
+  "version": "miku-3.0",
+  "material": { "name": "V2ConditionalClosures" },
+  "nodes": [
+    { "id": "node_000_tint", "op": "Input.RGB", "params": { "value": [0.8, 0.35, 0.1, 1] }, "inputs": [], "outputs": [
+      { "id": "Color", "name": "Color", "dir": "out", "valueType": "color4", "semantic": "material_color", "space": "none" }
+    ], "source": { "blenderNodeName": "Tint", "blenderNodeType": "ShaderNodeRGB", "groupPath": ["Root"] } },
+    { "id": "node_001_toon", "op": "Shader.ToonBSDF", "params": { "approximation": "surface_ir_limited" }, "inputs": [
+      { "id": "Color", "name": "Color", "dir": "in", "valueType": "color4", "semantic": "none", "space": "none" }
+    ], "outputs": [
+      { "id": "BSDF", "name": "BSDF", "dir": "out", "valueType": "closure_bsdf", "semantic": "none", "space": "none" }
+    ], "source": { "blenderNodeName": "Toon", "blenderNodeType": "ShaderNodeBsdfToon", "groupPath": ["Root"] } },
+    { "id": "node_002_transparent", "op": "Shader.TransparentBSDF", "params": {}, "inputs": [
+      { "id": "Color", "name": "Color", "dir": "in", "valueType": "color4", "semantic": "none", "space": "none", "defaultValue": [1, 1, 1, 0.25] }
+    ], "outputs": [
+      { "id": "BSDF", "name": "BSDF", "dir": "out", "valueType": "closure_bsdf", "semantic": "none", "space": "none" }
+    ], "source": { "blenderNodeName": "Transparent", "blenderNodeType": "ShaderNodeBsdfTransparent", "groupPath": ["Root"] } },
+    { "id": "node_003_mix", "op": "Shader.Mix", "params": { "approximation": "surface_ir_limited" }, "inputs": [
+      { "id": "Fac", "name": "Fac", "dir": "in", "valueType": "float", "semantic": "none", "space": "none", "defaultValue": 0.2 },
+      { "id": "Shader", "name": "Shader", "dir": "in", "valueType": "closure_bsdf", "semantic": "none", "space": "none" },
+      { "id": "Shader_001", "name": "Shader_001", "dir": "in", "valueType": "closure_bsdf", "semantic": "none", "space": "none" }
+    ], "outputs": [
+      { "id": "Shader", "name": "Shader", "dir": "out", "valueType": "closure_bsdf", "semantic": "none", "space": "none" }
+    ], "source": { "blenderNodeName": "Mix Shader", "blenderNodeType": "ShaderNodeMixShader", "groupPath": ["Root"] } }
+  ],
+  "edges": [
+    { "from": { "node": "node_000_tint", "socket": "Color" }, "to": { "node": "node_001_toon", "socket": "Color" } },
+    { "from": { "node": "node_001_toon", "socket": "BSDF" }, "to": { "node": "node_003_mix", "socket": "Shader" } },
+    { "from": { "node": "node_002_transparent", "socket": "BSDF" }, "to": { "node": "node_003_mix", "socket": "Shader_001" } }
+  ],
+  "resources": {},
+  "entry": { "surface": { "node": "node_003_mix", "socket": "Shader" } },
+  "diagnostics": [
+    { "severity": "warning", "code": "conditional_node", "node": "Toon", "blenderNodeType": "ShaderNodeBsdfToon", "groupPath": ["Root"], "message": "Toon BSDF is exported as a limited SurfaceIR approximation." },
+    { "severity": "warning", "code": "conditional_node", "node": "Mix Shader", "blenderNodeType": "ShaderNodeMixShader", "groupPath": ["Root"], "message": "Shader closure mixing is limited to simple transparent/emission/principled approximations." }
+  ]
+}

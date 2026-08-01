@@ -1,0 +1,5 @@
+# Release validation intentionally fails while either value is UNCONFIGURED.
+# Replace with real, verified project-owned channels before public release.
+owners: UNCONFIGURED
+private_security_contact: UNCONFIGURED
+third_party_rights_review: INCOMPLETE

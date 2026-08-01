@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://migr.dev/schema/migr-blender-source-map-1.0.schema.json",
+  "type": "object",
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "toolVersion",
+    "id",
+    "canonicalHash",
+    "source",
+    "sourceMapHash",
+    "regionBindings",
+    "parameterBindings"
+  ],
+  "properties": {
+    "documentKind": {"const": "migr-blender-source-map-1.0"},
+    "schemaVersion": {"const": "1.0"},
+    "sourceMapHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "expressionBindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["expressionId", "nodeId", "socketId"],
+        "properties": {
+          "expressionId": {"type": "string", "minLength": 1},
+          "nodeId": {"type": "string"},
+          "socketId": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true
+}

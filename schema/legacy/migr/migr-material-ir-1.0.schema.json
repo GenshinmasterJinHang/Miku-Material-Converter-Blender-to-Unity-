@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://migr.dev/schema/migr-material-ir-1.0.schema.json",
+  "title": "MiGR MaterialIR 1.0",
+  "type": "object",
+  "required": ["documentKind", "schemaVersion", "toolVersion", "id", "canonicalHash", "materialKey", "workflow", "regions", "channels", "parameters"],
+  "properties": {
+    "documentKind": {"const": "migr-material-ir-1.0"},
+    "schemaVersion": {"const": "1.0"},
+    "toolVersion": {"type": "string", "minLength": 1},
+    "id": {"type": "string", "minLength": 1},
+    "canonicalHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "materialKey": {"type": "string", "minLength": 1},
+    "workflow": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "standard_pbr",
+            "generic_toon",
+            "genshin_toon",
+            "wuwa_toon",
+            "hsr_toon"
+          ]
+        },
+        "part": {
+          "enum": ["Body", "Hair", "Face", "Eye", "Effect"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "surfaceContract": {
+      "type": "object",
+      "required": [
+        "schema",
+        "model",
+        "renderMethod",
+        "renderFace",
+        "coverageChannel"
+      ],
+      "properties": {
+        "schema": {"const": "migr-surface-1.0"},
+        "model": {
+          "enum": ["StandardLit", "DielectricScreenRefraction"]
+        },
+        "renderMethod": {
+          "enum": ["Opaque", "AlphaBlend", "Dithered"]
+        },
+        "renderFace": {
+          "enum": ["Front", "Back", "Both"]
+        },
+        "coverageChannel": {"type": "string", "minLength": 1},
+        "transmissionColorChannel": {"type": "string", "minLength": 1},
+        "transmissionWeightChannel": {"type": "string", "minLength": 1},
+        "iorChannel": {"type": "string", "minLength": 1},
+        "thicknessChannel": {"type": "string", "minLength": 1},
+        "roughnessChannel": {"type": "string", "minLength": 1},
+        "normalChannel": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "regions": {"type": "array"},
+    "expressions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "op", "valueType", "space", "stage", "uniformity", "inputs", "params"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "op": {"type": "string", "minLength": 1},
+          "valueType": {
+            "enum": ["Scalar", "Boolean", "Float2", "Float3", "Float4", "Color"]
+          },
+          "space": {
+            "enum": ["None", "UV0", "UV1", "Object", "World", "Absolute World", "View", "Tangent", "Screen"]
+          },
+          "stage": {"enum": ["Vertex", "Fragment", "Both"]},
+          "uniformity": {"enum": ["Uniform", "Varying"]},
+          "inputs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["expressionId"],
+              "properties": {
+                "expressionId": {"type": "string", "minLength": 1}
+              },
+              "additionalProperties": false
+            }
+          },
+          "params": {"type": "object"},
+          "source": {
+            "type": "object",
+            "required": ["nodeId", "socketId"],
+            "properties": {
+              "nodeId": {"type": "string"},
+              "socketId": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "channels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": ["kind", "value"],
+                "properties": {
+                  "kind": {"const": "Constant"},
+                  "value": {}
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": ["kind", "resourceId"],
+                "properties": {
+                  "kind": {"const": "TextureResource"},
+                  "resourceId": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": ["kind", "expressionId"],
+                "properties": {
+                  "kind": {"const": "Expression"},
+                  "expressionId": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "parameters": {"type": "array"}
+  },
+  "additionalProperties": true
+}

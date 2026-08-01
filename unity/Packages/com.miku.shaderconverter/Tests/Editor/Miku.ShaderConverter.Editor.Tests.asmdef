@@ -1,0 +1,20 @@
+{
+  "name": "Miku.ShaderConverter.Editor.Tests",
+  "rootNamespace": "Miku.ShaderConverter.Editor.Tests",
+  "references": [
+    "Miku.ShaderConverter.Editor",
+    "Miku.ShaderConverter.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

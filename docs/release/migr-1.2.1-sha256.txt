@@ -1,0 +1,3 @@
+732cccef088759902e163d216dd37f0e377e7c882611efd64746871c2fb2eab3  migr_semantic_exporter-1.2.1.zip
+df2021f7bbd27836ebd0654ae49b1163e7e1651dda4b3f8ac359626e433c154f  migr_gpl_bake_worker-1.1.1.zip
+f6bd76ed5bb53ce1600ddc7629db9a41d22f1812e5e2587368280089479c94e7  com.migr.shaderconverter-1.2.1.tgz

@@ -1,0 +1,30 @@
+* text=auto
+.gitattributes text eol=lf
+
+*.py text eol=lf
+*.cs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.mmd text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.shader text eol=lf
+*.hlsl text eol=lf
+*.asmdef text eol=lf
+*.shadergraph text eol=lf
+*.shadersubgraph text eol=lf
+
+*.blend binary
+*.blend1 binary
+*.fbx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.tga binary
+*.zip binary
+*.rar binary
+*.7z binary
+*.tgz binary
+*.pptx binary
+*.pdf binary
+*.svg text eol=lf

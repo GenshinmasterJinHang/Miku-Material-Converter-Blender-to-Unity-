@@ -1,0 +1,307 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:miku:schema:material-ir:1.0",
+  "title": "Miku MaterialIR 1.0",
+  "type": "object",
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "toolVersion",
+    "id",
+    "canonicalHash",
+    "materialKey",
+    "workflow",
+    "valueGraph",
+    "closureGraph",
+    "weightedClosures",
+    "surfaceModelPlan",
+    "regions",
+    "expressions",
+    "channels",
+    "parameters",
+    "diagnostics"
+  ],
+  "properties": {
+    "documentKind": {"const": "miku-material-ir-1.0"},
+    "schemaVersion": {"const": "1.0"},
+    "toolVersion": {"type": "string", "minLength": 1},
+    "id": {"type": "string", "minLength": 1},
+    "canonicalHash": {"$ref": "#/$defs/sha256"},
+    "materialKey": {"type": "string", "minLength": 1},
+    "workflow": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "standard_pbr",
+            "generic_toon",
+            "genshin_toon",
+            "wuwa_toon",
+            "hsr_toon"
+          ]
+        },
+        "part": {"enum": ["Body", "Hair", "Face", "Eye", "Effect"]}
+      },
+      "additionalProperties": false
+    },
+    "source": {"type": "object"},
+    "valueGraph": {
+      "type": "object",
+      "required": ["schema", "expressions"],
+      "properties": {
+        "schema": {"const": "miku-value-graph-1.0"},
+        "expressions": {"type": "array", "items": {"$ref": "#/$defs/valueExpression"}}
+      },
+      "additionalProperties": false
+    },
+    "closureGraph": {"$ref": "#/$defs/closureGraph"},
+    "weightedClosures": {"$ref": "#/$defs/weightedClosureSet"},
+    "surfaceModelPlan": {"$ref": "#/$defs/surfaceModelPlan"},
+    "regions": {"type": "array"},
+    "expressions": {"type": "array", "items": {"$ref": "#/$defs/valueExpression"}},
+    "channels": {"type": "array"},
+    "resources": {},
+    "parameters": {"type": "array"},
+    "provenance": {"type": "object"},
+    "diagnostics": {"type": "array"},
+    "surfaceContract": {"type": "object"},
+    "migration": {"type": "object"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "valueExpression": {
+      "type": "object",
+      "required": ["id", "op", "valueType", "space", "stage", "uniformity", "inputs", "params"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "op": {"type": "string", "minLength": 1},
+        "valueType": {"enum": ["Scalar", "Boolean", "Float2", "Float3", "Float4", "Color"]},
+        "space": {"enum": ["None", "UV0", "UV1", "Object", "World", "Absolute World", "View", "Tangent", "Screen"]},
+        "stage": {"enum": ["Vertex", "Fragment", "Both"]},
+        "uniformity": {"enum": ["Uniform", "Varying"]},
+        "inputs": {"type": "object"},
+        "params": {"type": "object"},
+        "source": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "weightExpression": {
+      "type": "object",
+      "required": ["id", "kind", "valueType"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": [
+            "Constant",
+            "Parameter",
+            "Texture",
+            "Math",
+            "ViewDependent",
+            "LayerWeight",
+            "Fresnel",
+            "Add",
+            "Multiply",
+            "OneMinus",
+            "Clamp",
+            "ImplicitConversion"
+          ]
+        },
+        "valueType": {"type": "string", "minLength": 1},
+        "value": {},
+        "operation": {"type": "string"},
+        "outputSocket": {"type": "string"},
+        "input": {"$ref": "#/$defs/weightExpression"},
+        "inputs": {},
+        "minimum": {"type": "number"},
+        "maximum": {"type": "number"},
+        "conversion": {"type": "object"},
+        "source": {"type": "object"},
+        "expressionId": {"type": "string", "minLength": 1},
+        "requiresBake": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "closure": {
+      "type": "object",
+      "required": ["id", "kind", "domain", "sourceNodeId", "sourceSocketId", "groupPath", "sourceSocketOrder"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": [
+            "Null",
+            "Principled",
+            "Diffuse",
+            "Glossy",
+            "Metallic",
+            "Emission",
+            "Transparent",
+            "Glass",
+            "Refraction",
+            "Translucent",
+            "SubsurfaceScattering",
+            "Sheen",
+            "Volume",
+            "Holdout",
+            "Mix",
+            "Add",
+            "ShaderToRgbBarrier",
+            "Unsupported"
+          ]
+        },
+        "domain": {
+          "enum": [
+            "SurfaceScattering",
+            "SurfaceTransmission",
+            "TransparentPassThrough",
+            "Emission",
+            "Refraction",
+            "Volume",
+            "Holdout",
+            "Unsupported"
+          ]
+        },
+        "sourceNodeId": {"type": "string"},
+        "sourceSocketId": {"type": "string"},
+        "groupPath": {"type": "array", "items": {"type": "string"}},
+        "sourceSocketOrder": {"type": "array", "items": {"type": "string"}},
+        "operation": {"type": "string"},
+        "first": {"$ref": "#/$defs/closure"},
+        "second": {"$ref": "#/$defs/closure"},
+        "factor": {"$ref": "#/$defs/weightExpression"},
+        "factorConversion": {"type": "object"},
+        "localWeight": {"$ref": "#/$defs/weightExpression"},
+        "parameters": {"type": "object"},
+        "distribution": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "closureGraph": {
+      "type": "object",
+      "required": ["schema", "root", "rootClosureId", "diagnostics"],
+      "properties": {
+        "schema": {"const": "miku-closure-1.0"},
+        "root": {"$ref": "#/$defs/closure"},
+        "rootClosureId": {"type": "string", "minLength": 1},
+        "diagnostics": {"type": "array"}
+      },
+      "additionalProperties": false
+    },
+    "weightedTerm": {
+      "type": "object",
+      "required": [
+        "id",
+        "stableTermId",
+        "closureId",
+        "sourceClosureId",
+        "closureKind",
+        "domain",
+        "closureDomain",
+        "parameters",
+        "weightExpression",
+        "localWeightExpression",
+        "finalWeight",
+        "finalWeightExpression",
+        "dynamicDependencies",
+        "viewDependent",
+        "sceneDependent",
+        "meshDependent",
+        "weightTrace",
+        "sourcePaths",
+        "fidelity",
+        "diagnostics",
+        "source"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "stableTermId": {"type": "string", "minLength": 1},
+        "closureId": {"type": "string", "minLength": 1},
+        "sourceClosureId": {"type": "string", "minLength": 1},
+        "closureKind": {"type": "string", "minLength": 1},
+        "domain": {"type": "string", "minLength": 1},
+        "closureDomain": {"type": "string", "minLength": 1},
+        "parameters": {"type": "object"},
+        "distribution": {"type": "string"},
+        "weightExpression": {"$ref": "#/$defs/weightExpression"},
+        "localWeightExpression": {"$ref": "#/$defs/weightExpression"},
+        "finalWeight": {"$ref": "#/$defs/weightExpression"},
+        "finalWeightExpression": {"$ref": "#/$defs/weightExpression"},
+        "normalExpression": {},
+        "tangentExpression": {},
+        "roughnessExpression": {},
+        "iorExpression": {},
+        "dynamicDependencies": {"type": "array"},
+        "viewDependent": {"type": "boolean"},
+        "sceneDependent": {"type": "boolean"},
+        "meshDependent": {"type": "boolean"},
+        "weightTrace": {"type": "array"},
+        "sourcePaths": {"type": "array"},
+        "fidelity": {"type": "string"},
+        "diagnostics": {"type": "array"},
+        "source": {"type": "object"},
+        "mergedFrom": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "weightedClosureSet": {
+      "type": "object",
+      "required": ["schema", "terms"],
+      "properties": {
+        "schema": {"const": "miku-weighted-closures-1.0"},
+        "terms": {"type": "array", "items": {"$ref": "#/$defs/weightedTerm"}},
+        "simplifications": {"type": "array"},
+        "approximations": {"type": "array"}
+      },
+      "additionalProperties": false
+    },
+    "surfaceModelPlan": {
+      "type": "object",
+      "required": [
+        "schema",
+        "materialId",
+        "kind",
+        "features",
+        "rootClosureId",
+        "closureLoweringPlan",
+        "channelPlans",
+        "renderStatePlan",
+        "shaderRequirements",
+        "parameterPlans",
+        "fidelity",
+        "fidelityPolicy",
+        "approximations",
+        "diagnostics"
+      ],
+      "properties": {
+        "schema": {"const": "miku-surface-model-plan-1.0"},
+        "materialId": {"type": "string", "minLength": 1},
+        "kind": {
+          "enum": [
+            "OpaquePBR",
+            "CutoutPBR",
+            "TransparentLit",
+            "TransparentEmission",
+            "RefractiveGlass",
+            "CustomMultiLobe",
+            "UnsupportedSurface"
+          ]
+        },
+        "features": {"type": "object"},
+        "rootClosureId": {"type": "string", "minLength": 1},
+        "rootClosure": {"type": "object"},
+        "closureLoweringPlan": {"type": "object"},
+        "channelPlans": {"type": "array"},
+        "renderStatePlan": {"type": "object"},
+        "shaderRequirements": {"type": "object"},
+        "parameterPlans": {"type": "array"},
+        "transparentCompositePlan": {"type": ["object", "null"]},
+        "fidelity": {"enum": ["Exact", "Equivalent", "Approximate", "Baked"]},
+        "fidelityPolicy": {"enum": ["AllowDeclaredApproximation", "Strict"]},
+        "approximations": {"type": "array"},
+        "diagnostics": {"type": "array"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

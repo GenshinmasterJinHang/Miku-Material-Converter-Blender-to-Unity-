@@ -1,0 +1,28 @@
+{
+  "schema": "b2u-bundle-1.2",
+  "name": "B2U Triangle Integration Fixture",
+  "generator": {
+    "name": "B2U Blender to Unity Bridge",
+    "version": "0.11.0",
+    "blender": [5, 2, 0]
+  },
+  "model": null,
+  "modelExported": false,
+  "materialPolicy": {
+    "primary": "miku",
+    "fallback": "gltf-pbr",
+    "unknownShader": "keep-model-material-and-report",
+    "proceduralNodes": "bake-recommended"
+  },
+  "materials": [{
+    "sourceName": "DemoMaterial",
+    "materialKey": "DemoMaterial",
+    "miku": "DemoMaterial.miku",
+    "bindings": [],
+    "requiresModel": false,
+    "preset": "",
+    "blockingDiagnostics": 0,
+    "portability": "preview-ready"
+  }],
+  "diagnostics": []
+}

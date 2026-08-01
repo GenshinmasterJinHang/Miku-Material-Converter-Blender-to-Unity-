@@ -1,0 +1,30 @@
+name: Blender headless
+
+on:
+  workflow_dispatch:
+    inputs:
+      blender_path:
+        description: Absolute path to the exact Blender executable on the self-hosted runner
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: blender-headless-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  blender:
+    runs-on: [self-hosted, blender]
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Set up Python controller
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+      - name: Run Blender smoke suite
+        run: python tools/ci/run_blender_headless.py --blender "${{ inputs.blender_path }}"

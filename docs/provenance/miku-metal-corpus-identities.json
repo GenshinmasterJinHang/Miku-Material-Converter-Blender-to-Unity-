@@ -1,0 +1,41 @@
+{
+  "schema": "miku-metal-corpus-identities-1.0",
+  "materialsTotal": 73,
+  "sources": [
+    {
+      "blendName": "彩色金属5",
+      "relativePath": "材质库/金属/彩色金属/彩色金属5.blend",
+      "sourceSha256": "16ccc1e5e1ff1defef911f50865aaa2ed714b0fd6c9a2843d44acbd1878a8ec3",
+      "persistentSourceId": "b945054f-ca3f-53b4-b9ec-8a75e882d705",
+      "expectedMaterials": 8
+    },
+    {
+      "blendName": "金1",
+      "relativePath": "材质库/金属/金/金1.blend",
+      "sourceSha256": "7cd6df4f2f65cf809d1fb9a9fe8829e569318ed928f747de7179fcbc8c500d94",
+      "persistentSourceId": "a3b8240f-17bc-5d5b-8b58-1945a11a712b",
+      "expectedMaterials": 12
+    },
+    {
+      "blendName": "铁4",
+      "relativePath": "材质库/金属/铁/铁4.blend",
+      "sourceSha256": "63f200f6ade550fdb69c2ac85eaf0b701590652465233e507d97383d544cccfe",
+      "persistentSourceId": "3ea9126d-e851-5850-b446-28e01f837bd1",
+      "expectedMaterials": 19
+    },
+    {
+      "blendName": "铜3",
+      "relativePath": "材质库/金属/铜/铜3.blend",
+      "sourceSha256": "ae2ddaa59f9e96a4336162d9962fd15f4702ef151fc10d18a5e8c6f5c5d07d60",
+      "persistentSourceId": "c93dab08-a4c2-5e42-81db-dab1541a4339",
+      "expectedMaterials": 14
+    },
+    {
+      "blendName": "银2",
+      "relativePath": "材质库/金属/银/银2.blend",
+      "sourceSha256": "2f1178aff0a2c5f30d062e14a078e61756e0e3118bfe024887f87f9f2b749b9c",
+      "persistentSourceId": "6a497e78-6ed2-5ec8-9bf2-db549c5df8ed",
+      "expectedMaterials": 20
+    }
+  ]
+}

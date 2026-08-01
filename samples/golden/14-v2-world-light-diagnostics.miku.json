@@ -1,0 +1,27 @@
+{
+  "version": "miku-3.0",
+  "material": { "name": "V2WorldLightDiagnostics" },
+  "nodes": [
+    { "id": "node_000_bg", "op": "Shader.Background", "params": { "materialSurfaceUnsupported": true }, "inputs": [
+      { "id": "Color", "name": "Color", "dir": "in", "valueType": "color4", "semantic": "none", "space": "none", "defaultValue": [0.1, 0.15, 0.25, 1] },
+      { "id": "Strength", "name": "Strength", "dir": "in", "valueType": "float", "semantic": "none", "space": "none", "defaultValue": 1 }
+    ], "outputs": [
+      { "id": "Background", "name": "Background", "dir": "out", "valueType": "closure_bsdf", "semantic": "none", "space": "none" }
+    ], "source": { "blenderNodeName": "Background", "blenderNodeType": "ShaderNodeBackground", "groupPath": ["Root"] } },
+    { "id": "node_001_world", "op": "Output.World", "params": { "materialSurfaceUnsupported": true }, "inputs": [
+      { "id": "Surface", "name": "Surface", "dir": "in", "valueType": "closure_bsdf", "semantic": "none", "space": "none" }
+    ], "outputs": [], "source": { "blenderNodeName": "World Output", "blenderNodeType": "ShaderNodeOutputWorld", "groupPath": ["Root"] } },
+    { "id": "node_002_light", "op": "Output.Light", "params": { "materialSurfaceUnsupported": true }, "inputs": [
+      { "id": "Surface", "name": "Surface", "dir": "in", "valueType": "closure_bsdf", "semantic": "none", "space": "none" }
+    ], "outputs": [], "source": { "blenderNodeName": "Light Output", "blenderNodeType": "ShaderNodeOutputLight", "groupPath": ["Root"] } }
+  ],
+  "edges": [
+    { "from": { "node": "node_000_bg", "socket": "Background" }, "to": { "node": "node_001_world", "socket": "Surface" } }
+  ],
+  "resources": {},
+  "entry": {},
+  "diagnostics": [
+    { "severity": "warning", "code": "conditional_node", "node": "World Output", "blenderNodeType": "ShaderNodeOutputWorld", "groupPath": ["Root"], "message": "World output is diagnostic metadata for a separate skybox/lighting conversion path." },
+    { "severity": "warning", "code": "conditional_node", "node": "Light Output", "blenderNodeType": "ShaderNodeOutputLight", "groupPath": ["Root"], "message": "Light output is diagnostic metadata and is not mixed into a material surface shader." }
+  ]
+}

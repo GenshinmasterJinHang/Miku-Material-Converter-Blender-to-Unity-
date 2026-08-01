@@ -1,0 +1,38 @@
+{
+  "version": "miku-3.0",
+  "material": { "name": "V2ProceduralStyle" },
+  "nodes": [
+    { "id": "node_000_uv", "op": "Input.TextureCoordinate", "params": {}, "inputs": [], "outputs": [
+      { "id": "UV", "name": "UV", "dir": "out", "valueType": "float3", "semantic": "uv0", "space": "uv" }
+    ], "source": { "blenderNodeName": "Texture Coordinate", "blenderNodeType": "ShaderNodeTexCoord", "groupPath": ["Root"] } },
+    { "id": "node_001_checker", "op": "Texture.Checker", "params": { "scale": 8 }, "inputs": [
+      { "id": "Vector", "name": "Vector", "dir": "in", "valueType": "float3", "semantic": "none", "space": "none" }
+    ], "outputs": [
+      { "id": "Color", "name": "Color", "dir": "out", "valueType": "color4", "semantic": "material_color", "space": "none" }
+    ], "source": { "blenderNodeName": "Checker", "blenderNodeType": "ShaderNodeTexChecker", "groupPath": ["Root"] } },
+    { "id": "node_002_noise", "op": "Texture.Noise", "params": { "scale": 12, "detail": 4, "roughness": 0.55 }, "inputs": [
+      { "id": "Vector", "name": "Vector", "dir": "in", "valueType": "float3", "semantic": "none", "space": "none" }
+    ], "outputs": [
+      { "id": "Fac", "name": "Fac", "dir": "out", "valueType": "float", "semantic": "none", "space": "none" }
+    ], "source": { "blenderNodeName": "Noise", "blenderNodeType": "ShaderNodeTexNoise", "groupPath": ["Root"] } },
+    { "id": "node_003_fresnel", "op": "Input.Fresnel", "params": { "ior": 1.45 }, "inputs": [], "outputs": [
+      { "id": "Fac", "name": "Fac", "dir": "out", "valueType": "float", "semantic": "none", "space": "none" }
+    ], "source": { "blenderNodeName": "Fresnel", "blenderNodeType": "ShaderNodeFresnel", "groupPath": ["Root"] } },
+    { "id": "node_004_mix", "op": "Color.Mix", "params": { "blendType": "SCREEN" }, "inputs": [
+      { "id": "Fac", "name": "Fac", "dir": "in", "valueType": "float", "semantic": "none", "space": "none", "defaultValue": 0.5 },
+      { "id": "Color1", "name": "Color1", "dir": "in", "valueType": "color4", "semantic": "none", "space": "none" },
+      { "id": "Color2", "name": "Color2", "dir": "in", "valueType": "color4", "semantic": "none", "space": "none", "defaultValue": [0.1, 0.3, 1.0, 1.0] }
+    ], "outputs": [
+      { "id": "Color", "name": "Color", "dir": "out", "valueType": "color4", "semantic": "material_color", "space": "none" }
+    ], "source": { "blenderNodeName": "ScreenMix", "blenderNodeType": "ShaderNodeMixRGB", "groupPath": ["Root"] } }
+  ],
+  "edges": [
+    { "from": { "node": "node_000_uv", "socket": "UV" }, "to": { "node": "node_001_checker", "socket": "Vector" } },
+    { "from": { "node": "node_000_uv", "socket": "UV" }, "to": { "node": "node_002_noise", "socket": "Vector" } },
+    { "from": { "node": "node_003_fresnel", "socket": "Fac" }, "to": { "node": "node_004_mix", "socket": "Fac" } },
+    { "from": { "node": "node_001_checker", "socket": "Color" }, "to": { "node": "node_004_mix", "socket": "Color1" } }
+  ],
+  "resources": {},
+  "entry": { "surface": { "node": "node_004_mix", "socket": "Color" } },
+  "diagnostics": []
+}

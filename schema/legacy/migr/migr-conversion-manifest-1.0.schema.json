@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://migr.dev/schema/migr-conversion-manifest-1.0.schema.json",
+  "type": "object",
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "toolVersion",
+    "id",
+    "canonicalHash",
+    "materialKey",
+    "persistentSourceId",
+    "persistentMaterialId",
+    "irHash",
+    "planHash",
+    "targetProfileHash",
+    "regions",
+    "bakeJobs",
+    "completion",
+    "diagnostics"
+  ],
+  "properties": {
+    "documentKind": { "const": "migr-conversion-manifest-1.0" },
+    "schemaVersion": { "const": "1.0" },
+    "toolVersion": { "type": "string", "minLength": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "canonicalHash": { "$ref": "#/$defs/sha256" },
+    "materialKey": { "type": "string", "minLength": 1 },
+    "persistentSourceId": { "type": "string", "minLength": 1 },
+    "persistentMaterialId": { "type": "string", "minLength": 1 },
+    "irHash": { "$ref": "#/$defs/sha256" },
+    "planHash": { "$ref": "#/$defs/sha256" },
+    "targetProfileHash": { "$ref": "#/$defs/sha256" },
+    "regions": { "type": "array" },
+    "bakeJobs": { "type": "array" },
+    "executor": { "type": "string", "minLength": 1 },
+    "completion": {
+      "type": "object",
+      "required": ["status", "exitCode", "marker", "artifacts"],
+      "properties": {
+        "status": { "enum": ["completed", "failed"] },
+        "exitCode": { "type": "integer" },
+        "marker": { "type": "string" },
+        "artifacts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/artifact" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "diagnostics": { "type": "array" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "artifact": {
+      "type": "object",
+      "required": ["id", "relativePath", "sha256", "byteLength"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "relativePath": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "byteLength": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

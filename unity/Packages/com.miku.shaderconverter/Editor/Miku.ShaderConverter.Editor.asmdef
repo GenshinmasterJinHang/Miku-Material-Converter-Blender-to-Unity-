@@ -1,0 +1,14 @@
+{
+  "name": "Miku.ShaderConverter.Editor",
+  "rootNamespace": "Miku.ShaderConverter.Editor",
+  "references": [
+    "Miku.ShaderConverter.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.Newtonsoft.Json",
+    "glTFast"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

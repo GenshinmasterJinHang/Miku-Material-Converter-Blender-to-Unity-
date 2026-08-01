@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible B2U/Miku defect
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include secrets, private paths, or vulnerability details. Use SECURITY.md for sensitive reports.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Steps and a redistributable minimal fixture, if available.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Exact versions
+      description: OS, Blender/add-on, Unity Editor, URP, Shader Graph, Unity package, and Miku schema.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics and logs
+      description: Paste redacted structured diagnostics and relevant test output.

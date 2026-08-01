@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://migr.dev/schema/migr-conversion-manifest-2.0.schema.json",
+  "title": "MiGR Conversion Manifest 2.0",
+  "type": "object",
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "toolVersion",
+    "id",
+    "canonicalHash",
+    "materialKey",
+    "persistentSourceId",
+    "persistentMaterialId",
+    "irHash",
+    "planHash",
+    "targetProfileHash",
+    "surfaceModel",
+    "closureGraph",
+    "weightedClosures",
+    "regions",
+    "bakeJobs",
+    "completion",
+    "diagnostics"
+  ],
+  "properties": {
+    "documentKind": {"const": "migr-conversion-manifest-2.0"},
+    "schemaVersion": {"const": "2.0"},
+    "toolVersion": {"type": "string", "minLength": 1},
+    "id": {"type": "string", "minLength": 1},
+    "canonicalHash": {"$ref": "#/$defs/sha256"},
+    "materialKey": {"type": "string", "minLength": 1},
+    "persistentSourceId": {"type": "string", "minLength": 1},
+    "persistentMaterialId": {"type": "string", "minLength": 1},
+    "irHash": {"$ref": "#/$defs/sha256"},
+    "planHash": {"$ref": "#/$defs/sha256"},
+    "targetProfileHash": {"$ref": "#/$defs/sha256"},
+    "surfaceModel": {"type": "object"},
+    "closureGraph": {"type": "object"},
+    "weightedClosures": {"type": "object"},
+    "regions": {"type": "array"},
+    "bakeJobs": {"type": "array"},
+    "executor": {"type": "string", "minLength": 1},
+    "completion": {
+      "type": "object",
+      "required": ["status", "exitCode", "marker", "artifacts"],
+      "properties": {
+        "status": {"enum": ["completed", "failed"]},
+        "exitCode": {"type": "integer"},
+        "marker": {"type": "string"},
+        "artifacts": {"type": "array"}
+      },
+      "additionalProperties": false
+    },
+    "diagnostics": {"type": "array"},
+    "migration": {"type": "object"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

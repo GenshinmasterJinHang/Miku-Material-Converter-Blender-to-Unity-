@@ -1,0 +1,25 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{py,cs}]
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,md,mmd}]
+indent_style = space
+indent_size = 2
+
+[*.{shader,hlsl}]
+indent_style = space
+indent_size = 4
+
+[*.unity]
+trim_trailing_whitespace = false
+
+[*.meta]
+trim_trailing_whitespace = false

@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "com.miku.shaderconverter": "file:../LocalPackages/com.miku.shaderconverter-1.2.1.tgz",
+    "com.unity.render-pipelines.universal": "17.4.0"
+  }
+}

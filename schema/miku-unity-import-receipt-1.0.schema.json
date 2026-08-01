@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:miku:schema:unity-import-receipt:1.0",
+  "type": "object",
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "toolVersion",
+    "id",
+    "canonicalHash",
+    "transactionId",
+    "bundleHash",
+    "targetProfileHash",
+    "status",
+    "assets",
+    "compile",
+    "textureImporterSettings",
+    "rollback",
+    "verification"
+  ],
+  "properties": {
+    "documentKind": { "const": "miku-unity-import-receipt-1.0" },
+    "schemaVersion": { "const": "1.0" },
+    "toolVersion": { "type": "string", "minLength": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "canonicalHash": { "$ref": "#/$defs/sha256" },
+    "transactionId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "bundleHash": { "$ref": "#/$defs/sha256" },
+    "targetProfileHash": { "$ref": "#/$defs/sha256" },
+    "status": { "enum": ["staged", "committed", "rolled-back", "failed"] },
+    "assets": { "type": "array", "minItems": 2 },
+    "compile": {
+      "type": "object",
+      "required": ["shaderGraphLoaded", "shaderCompiled", "shaderName", "messages"],
+      "properties": {
+        "shaderGraphLoaded": { "const": true },
+        "shaderCompiled": { "const": true },
+        "shaderName": { "type": "string", "minLength": 1 },
+        "messages": { "type": "array", "maxItems": 0 }
+      },
+      "additionalProperties": false
+    },
+    "textureImporterSettings": { "type": "array" },
+    "rollback": { "type": "object" },
+    "verification": {
+      "type": "object",
+      "required": ["assetReferences", "textureBindings", "renderPipeline"],
+      "properties": {
+        "assetReferences": { "const": true },
+        "textureBindings": { "const": true },
+        "renderPipeline": { "type": "string", "pattern": "UniversalRenderPipelineAsset" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

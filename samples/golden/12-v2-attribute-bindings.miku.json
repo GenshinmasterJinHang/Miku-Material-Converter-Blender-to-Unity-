@@ -1,0 +1,30 @@
+{
+  "version": "miku-3.0",
+  "material": { "name": "V2AttributeBindings" },
+  "nodes": [
+    { "id": "node_000_uvmap", "op": "Input.UVMap", "params": { "uvMap": "LightmapUV" }, "inputs": [], "outputs": [
+      { "id": "UV", "name": "UV", "dir": "out", "valueType": "float3", "semantic": "uv0", "space": "uv" }
+    ], "source": { "blenderNodeName": "LightmapUV", "blenderNodeType": "ShaderNodeUVMap", "groupPath": ["Root"] } },
+    { "id": "node_001_sun", "op": "Input.Attribute", "params": { "attributeName": "SUN" }, "inputs": [], "outputs": [
+      { "id": "Vector", "name": "Vector", "dir": "out", "valueType": "float3", "semantic": "attribute_geometry", "space": "none" }
+    ], "source": { "blenderNodeName": "SUN", "blenderNodeType": "ShaderNodeAttribute", "groupPath": ["Root"] } },
+    { "id": "node_002_color_attr", "op": "Input.ColorAttribute", "params": { "attributeName": "Mask" }, "inputs": [], "outputs": [
+      { "id": "Color", "name": "Color", "dir": "out", "valueType": "color4", "semantic": "vertex_color0", "space": "none" }
+    ], "source": { "blenderNodeName": "Mask", "blenderNodeType": "ShaderNodeVertexColor", "groupPath": ["Root"] } },
+    { "id": "node_003_dot", "op": "VectorMath", "params": { "operation": "DOT_PRODUCT" }, "inputs": [
+      { "id": "Vector", "name": "Vector", "dir": "in", "valueType": "float3", "semantic": "none", "space": "none" },
+      { "id": "Vector_001", "name": "Vector_001", "dir": "in", "valueType": "float3", "semantic": "none", "space": "none", "defaultValue": [0, 1, 0] }
+    ], "outputs": [
+      { "id": "Value", "name": "Value", "dir": "out", "valueType": "float", "semantic": "none", "space": "none" }
+    ], "source": { "blenderNodeName": "SunDot", "blenderNodeType": "ShaderNodeVectorMath", "groupPath": ["Root"] } }
+  ],
+  "edges": [
+    { "from": { "node": "node_001_sun", "socket": "Vector" }, "to": { "node": "node_003_dot", "socket": "Vector" } }
+  ],
+  "resources": {},
+  "entry": { "surface": { "node": "node_002_color_attr", "socket": "Color" } },
+  "diagnostics": [
+    { "severity": "warning", "code": "missing_attribute_binding", "node": "SUN", "blenderNodeType": "ShaderNodeAttribute", "groupPath": ["Root"], "message": "Attribute(\"SUN\") must be mapped to material, global, vertex, or renderer data before high-fidelity Unity generation." },
+    { "severity": "warning", "code": "missing_uv_binding", "node": "LightmapUV", "blenderNodeType": "ShaderNodeUVMap", "groupPath": ["Root"], "message": "UV Map(\"LightmapUV\") defaults to TEXCOORD0 until a binding is supplied." }
+  ]
+}

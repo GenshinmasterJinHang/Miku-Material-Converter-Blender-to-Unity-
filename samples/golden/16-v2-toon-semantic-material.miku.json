@@ -1,0 +1,222 @@
+{
+  "version": "miku-3.0",
+  "material": {
+    "name": "ToonSemantic"
+  },
+  "nodes": [
+    {
+      "id": "node_000_uv",
+      "op": "Input.UVMap",
+      "params": {
+        "uvMap": "UVMap"
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "UV",
+          "name": "UV",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "uv0",
+          "space": "uv"
+        }
+      ],
+      "source": {
+        "blenderNodeName": "UV",
+        "blenderNodeType": "ShaderNodeUVMap",
+        "groupPath": [
+          "Root"
+        ]
+      }
+    },
+    {
+      "id": "node_001_base",
+      "op": "Texture.Image",
+      "params": {
+        "resource": "res_000_base"
+      },
+      "inputs": [
+        {
+          "id": "Vector",
+          "name": "Vector",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Color",
+          "name": "Color",
+          "dir": "out",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none"
+        },
+        {
+          "id": "Alpha",
+          "name": "Alpha",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none"
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Base Color",
+        "blenderNodeType": "ShaderNodeTexImage",
+        "groupPath": [
+          "Root"
+        ]
+      }
+    },
+    {
+      "id": "node_002_lightmap",
+      "op": "Texture.Image",
+      "params": {
+        "resource": "res_001_lightmap"
+      },
+      "inputs": [
+        {
+          "id": "Vector",
+          "name": "Vector",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Color",
+          "name": "Color",
+          "dir": "out",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none"
+        }
+      ],
+      "source": {
+        "blenderNodeName": "LightMap",
+        "blenderNodeType": "ShaderNodeTexImage",
+        "groupPath": [
+          "Root"
+        ]
+      }
+    },
+    {
+      "id": "node_003_output",
+      "op": "Output.Material",
+      "params": {},
+      "inputs": [
+        {
+          "id": "Surface",
+          "name": "Surface",
+          "dir": "in",
+          "valueType": "surface",
+          "semantic": "none",
+          "space": "none"
+        }
+      ],
+      "outputs": [],
+      "source": {
+        "blenderNodeName": "Output",
+        "blenderNodeType": "ShaderNodeOutputMaterial",
+        "groupPath": [
+          "Root"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": {
+        "node": "node_000_uv",
+        "socket": "UV"
+      },
+      "to": {
+        "node": "node_001_base",
+        "socket": "Vector"
+      }
+    },
+    {
+      "from": {
+        "node": "node_000_uv",
+        "socket": "UV"
+      },
+      "to": {
+        "node": "node_002_lightmap",
+        "socket": "Vector"
+      }
+    },
+    {
+      "from": {
+        "node": "node_001_base",
+        "socket": "Color"
+      },
+      "to": {
+        "node": "node_003_output",
+        "socket": "Surface"
+      }
+    }
+  ],
+  "resources": {
+    "res_000_base": {
+      "kind": "image",
+      "name": "上衣颜色.tga",
+      "path": "Textures/上衣颜色.tga",
+      "colorSpace": "sRGB",
+      "semantic": "BaseColorTexture",
+      "recommendedColorSpace": "sRGB"
+    },
+    "res_001_lightmap": {
+      "kind": "image",
+      "name": "上衣光照图.tga",
+      "path": "Textures/上衣光照图.tga",
+      "colorSpace": "Non-Color",
+      "semantic": "LightMapTexture",
+      "recommendedColorSpace": "Linear",
+      "channels": {
+        "r": "AO",
+        "g": "ShadowDetail",
+        "b": "SpecThreshold",
+        "a": "RampOrMaterialId"
+      }
+    },
+    "res_002_ramp": {
+      "kind": "image",
+      "name": "身体冷色调Ramp.tga",
+      "path": "Textures/身体冷色调Ramp.tga",
+      "colorSpace": "sRGB",
+      "semantic": "RampTexture",
+      "recommendedColorSpace": "sRGB",
+      "recommendedFilter": "Point",
+      "recommendedWrap": "Clamp"
+    },
+    "res_003_sdf": {
+      "kind": "image",
+      "name": "脸部阴影SDF.tga",
+      "path": "Textures/脸部阴影SDF.tga",
+      "colorSpace": "Non-Color",
+      "semantic": "FaceSDFTexture",
+      "recommendedColorSpace": "Linear"
+    },
+    "res_004_matcap": {
+      "kind": "image",
+      "name": "matcap_trans.png",
+      "path": "Textures/matcap_trans.png",
+      "colorSpace": "sRGB",
+      "semantic": "MatCapTexture",
+      "recommendedColorSpace": "sRGB",
+      "recommendedWrap": "Clamp"
+    }
+  },
+  "entry": {
+    "surface": {
+      "node": "node_003_output",
+      "socket": "Surface"
+    }
+  },
+  "diagnostics": []
+}

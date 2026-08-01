@@ -1,0 +1,773 @@
+{
+  "version": "miku-3.0",
+  "metadata": {
+    "exportName": "Dots Stroke",
+    "mgirFileName": "Dots Stroke.miku.json",
+    "sourceMaterialName": "Dots Stroke",
+    "pluginVersion": "0.11.0",
+    "groupInterfaceMappings": [],
+    "materialWorkflow": "AUTO_HYBRID"
+  },
+  "material": {
+    "name": "Dots Stroke"
+  },
+  "nodes": [
+    {
+      "id": "node_material_output_6471f47b810c",
+      "op": "Output.Material",
+      "params": {},
+      "inputs": [
+        {
+          "id": "Surface",
+          "name": "Surface",
+          "dir": "in",
+          "valueType": "surface",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_material_output_6471f47b810c",
+          "sourceSocketId": "Surface"
+        },
+        {
+          "id": "Volume",
+          "name": "Volume",
+          "dir": "in",
+          "valueType": "closure_volume",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_material_output_6471f47b810c",
+          "sourceSocketId": "Volume"
+        },
+        {
+          "id": "Displacement",
+          "name": "Displacement",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Vertex",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_material_output_6471f47b810c",
+          "sourceSocketId": "Displacement",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Thickness",
+          "name": "Thickness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_material_output_6471f47b810c",
+          "sourceSocketId": "Thickness",
+          "defaultValue": 0.0
+        }
+      ],
+      "outputs": [],
+      "source": {
+        "blenderNodeName": "Material Output",
+        "blenderNodeType": "ShaderNodeOutputMaterial",
+        "groupPath": [
+          "Root"
+        ],
+        "frame": {
+          "name": "Frame",
+          "label": "Versioning: Use Nodes was removed"
+        }
+      }
+    },
+    {
+      "id": "node_principled_bsdf_f25435d13fa7",
+      "op": "Shader.PrincipledBSDF",
+      "params": {},
+      "inputs": [
+        {
+          "id": "Base Color",
+          "name": "Base Color",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Base Color",
+          "defaultValue": [
+            0.800000011920929,
+            0.800000011920929,
+            0.800000011920929,
+            1.0
+          ]
+        },
+        {
+          "id": "Metallic",
+          "name": "Metallic",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Metallic",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Roughness",
+          "name": "Roughness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Roughness",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "IOR",
+          "name": "IOR",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "IOR",
+          "defaultValue": 1.5
+        },
+        {
+          "id": "Alpha",
+          "name": "Alpha",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Alpha",
+          "defaultValue": 1.0
+        },
+        {
+          "id": "Thin Wall",
+          "name": "Thin Wall",
+          "dir": "in",
+          "valueType": "bool",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Thin Wall",
+          "defaultValue": false
+        },
+        {
+          "id": "Normal",
+          "name": "Normal",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "implicit_geometry_normal",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Normal",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Weight",
+          "name": "Weight",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Weight",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Diffuse Roughness",
+          "name": "Diffuse Roughness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Diffuse Roughness",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Subsurface Weight",
+          "name": "Subsurface Weight",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Subsurface Weight",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Subsurface Radius",
+          "name": "Subsurface Radius",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Subsurface Radius",
+          "defaultValue": [
+            1.0,
+            0.20000000298023224,
+            0.10000000149011612
+          ]
+        },
+        {
+          "id": "Subsurface Scale",
+          "name": "Subsurface Scale",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Subsurface Scale",
+          "defaultValue": 0.004999999888241291
+        },
+        {
+          "id": "Subsurface IOR",
+          "name": "Subsurface IOR",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Subsurface IOR",
+          "defaultValue": 1.399999976158142
+        },
+        {
+          "id": "Subsurface Anisotropy",
+          "name": "Subsurface Anisotropy",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Subsurface Anisotropy",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Specular IOR Level",
+          "name": "Specular IOR Level",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Specular IOR Level",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Specular Tint",
+          "name": "Specular Tint",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Specular Tint",
+          "defaultValue": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "id": "Anisotropic",
+          "name": "Anisotropic",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Anisotropic",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Anisotropic Rotation",
+          "name": "Anisotropic Rotation",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Anisotropic Rotation",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Tangent",
+          "name": "Tangent",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Tangent",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Transmission Weight",
+          "name": "Transmission Weight",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Transmission Weight",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Coat Weight",
+          "name": "Coat Weight",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Coat Weight",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Coat Roughness",
+          "name": "Coat Roughness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Coat Roughness",
+          "defaultValue": 0.029999999329447746
+        },
+        {
+          "id": "Coat IOR",
+          "name": "Coat IOR",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Coat IOR",
+          "defaultValue": 1.5
+        },
+        {
+          "id": "Coat Tint",
+          "name": "Coat Tint",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Coat Tint",
+          "defaultValue": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "id": "Coat Normal",
+          "name": "Coat Normal",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Coat Normal",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Sheen Weight",
+          "name": "Sheen Weight",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Sheen Weight",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Sheen Roughness",
+          "name": "Sheen Roughness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Sheen Roughness",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Sheen Tint",
+          "name": "Sheen Tint",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Sheen Tint",
+          "defaultValue": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "id": "Emission Color",
+          "name": "Emission Color",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Emission Color",
+          "defaultValue": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "id": "Emission Strength",
+          "name": "Emission Strength",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Emission Strength",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Thin Film Thickness",
+          "name": "Thin Film Thickness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Thin Film Thickness",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Thin Film IOR",
+          "name": "Thin Film IOR",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "Thin Film IOR",
+          "defaultValue": 1.3300000429153442
+        }
+      ],
+      "outputs": [
+        {
+          "id": "BSDF",
+          "name": "BSDF",
+          "dir": "out",
+          "valueType": "closure_bsdf",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_principled_bsdf_f25435d13fa7",
+          "sourceSocketId": "BSDF"
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Principled BSDF",
+        "blenderNodeType": "ShaderNodeBsdfPrincipled",
+        "groupPath": [
+          "Root"
+        ],
+        "frame": {
+          "name": "Frame",
+          "label": "Versioning: Use Nodes was removed"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": {
+        "node": "node_principled_bsdf_f25435d13fa7",
+        "socket": "BSDF"
+      },
+      "to": {
+        "node": "node_material_output_6471f47b810c",
+        "socket": "Surface"
+      }
+    }
+  ],
+  "resources": {},
+  "entry": {
+    "surface": {
+      "node": "node_material_output_6471f47b810c",
+      "socket": "Surface"
+    }
+  },
+  "diagnostics": [
+    {
+      "severity": "info",
+      "code": "MIKU_EEVEE_OUTPUT_SELECTED",
+      "translationQuality": "Equivalent",
+      "message": "Selected the Blender 5.2 EEVEE-compatible Material Output.",
+      "node": "Material Output",
+      "data": {
+        "target": "EEVEE",
+        "active": true,
+        "priority": 0
+      },
+      "sourceNodeId": "node_material_output_6471f47b810c"
+    },
+    {
+      "severity": "info",
+      "code": "frame_metadata",
+      "node": "Material Output",
+      "blenderNodeType": "ShaderNodeOutputMaterial",
+      "groupPath": [
+        "Root"
+      ],
+      "message": "Node is visually grouped in Frame 'Versioning: Use Nodes was removed'; Frame is non-computational and was preserved as source metadata."
+    },
+    {
+      "severity": "info",
+      "code": "frame_metadata",
+      "node": "Principled BSDF",
+      "blenderNodeType": "ShaderNodeBsdfPrincipled",
+      "groupPath": [
+        "Root"
+      ],
+      "message": "Node is visually grouped in Frame 'Versioning: Use Nodes was removed'; Frame is non-computational and was preserved as source metadata."
+    },
+    {
+      "severity": "info",
+      "code": "hybrid_backend_selected",
+      "message": "B2U selected SEMANTIC_PBR: The graph is losslessly reducible to the fixed Standard PBR template.",
+      "data": {
+        "requestedMode": "AUTO_HYBRID",
+        "selectedBackend": "SEMANTIC_PBR",
+        "supportedCoverage": 1.0,
+        "unsupportedOps": [],
+        "textureNodes": []
+      }
+    }
+  ],
+  "standardPbrSemantic": {
+    "workflow": "Metallic",
+    "source": {
+      "shader": "PrincipledBSDF",
+      "blenderMaterial": "Dots Stroke",
+      "confidence": 0.6
+    },
+    "slots": {
+      "BaseColor": {
+        "color": [
+          0.800000011920929,
+          0.800000011920929,
+          0.800000011920929,
+          1.0
+        ],
+        "channel": "RGBA",
+        "colorSpace": "sRGB",
+        "required": false,
+        "scalar": null,
+        "source": "socket_default",
+        "confidence": 0.6,
+        "socketPath": "MaterialOutput.Surface/PrincipledBSDF.Base Color"
+      },
+      "Metalness": {
+        "scalar": 0.0,
+        "channel": "R",
+        "colorSpace": "Linear",
+        "source": "socket_default",
+        "confidence": 0.6,
+        "socketPath": "MaterialOutput.Surface/PrincipledBSDF.Metallic"
+      },
+      "Roughness": {
+        "scalar": 0.5,
+        "channel": "R",
+        "colorSpace": "Linear",
+        "convertToSmoothness": true,
+        "source": "socket_default",
+        "confidence": 0.6,
+        "socketPath": "MaterialOutput.Surface/PrincipledBSDF.Roughness"
+      },
+      "Alpha": {
+        "scalar": 1.0,
+        "channel": "R",
+        "alphaMode": "Opaque",
+        "cutoff": 0.5,
+        "source": "socket_default",
+        "confidence": 0.6,
+        "socketPath": "MaterialOutput.Surface/PrincipledBSDF.Alpha"
+      }
+    },
+    "packedTextures": {},
+    "diagnostics": [
+      {
+        "severity": "info",
+        "code": "standard_pbr_roughness_to_smoothness",
+        "message": "Roughness converted to Smoothness using smoothness = 1 - roughness."
+      }
+    ]
+  },
+  "eeveeFeatureReport": {
+    "schema": "eevee-feature-report-1.0",
+    "sourceRenderer": "BLENDER_EEVEE_NEXT",
+    "blenderVersion": "5.2.0",
+    "translationQualityVocabulary": [
+      "Exact",
+      "Equivalent",
+      "Approximate",
+      "Baked",
+      "RequiresProjectSetup",
+      "RequiresRuntimeSupport",
+      "Deferred",
+      "Unsupported"
+    ],
+    "deferredOps": [],
+    "approximateOps": [],
+    "bakeCandidateOps": [],
+    "generationAllowed": true
+  },
+  "capabilityReport": {
+    "schema": "b2u-hybrid-plan-2.0",
+    "qualityProfile": "PC_HIGH",
+    "requestedMode": "AUTO_HYBRID",
+    "selectedBackend": "SEMANTIC_PBR",
+    "reason": "The graph is losslessly reducible to the fixed Standard PBR template.",
+    "liveNodeCount": 2,
+    "edgeCount": 1,
+    "textureSampleEstimate": 0,
+    "closureLobeEstimate": 1,
+    "supportedCoverage": 1.0,
+    "supportedOps": [
+      "Output.Material",
+      "Shader.PrincipledBSDF"
+    ],
+    "conditionalOps": [],
+    "unsupportedOps": [],
+    "deferredOps": [],
+    "textureNodes": [],
+    "requiresTextureBake": false,
+    "requiresModelExport": false,
+    "blockingDiagnosticCodes": [],
+    "requirements": {
+      "depthTexture": false,
+      "opaqueTexture": false,
+      "vertexDisplacement": false,
+      "transmissionApproximation": false,
+      "linearColorSpace": false,
+      "closedMesh": false,
+      "reflectionProbe": false,
+      "runtimeTextureSupport": false
+    },
+    "budgets": {
+      "maxLiveNodes": 1024,
+      "maxTextureSamples": 64,
+      "maxClosureLobes": 16,
+      "withinBudget": true
+    }
+  },
+  "compilePolicy": {
+    "schema": "b2u-hybrid-plan-2.0",
+    "requestedMode": "AUTO_HYBRID",
+    "qualityProfile": "PC_HIGH",
+    "selectedBackend": "SEMANTIC_PBR",
+    "fallbackOrder": [
+      "NODE_GRAPH",
+      "BRANCH_BAKE",
+      "BAKED_PBR"
+    ],
+    "reason": "The graph is losslessly reducible to the fixed Standard PBR template."
+  }
+}

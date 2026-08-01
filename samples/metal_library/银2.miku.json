@@ -1,0 +1,2989 @@
+{
+  "version": "miku-3.0",
+  "metadata": {
+    "exportName": "银2",
+    "mgirFileName": "银2.miku.json",
+    "sourceMaterialName": "银2",
+    "pluginVersion": "0.11.0",
+    "groupInterfaceMappings": [
+      {
+        "kind": "input_default",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "externalSocket": "Input_5",
+        "internalNode": "Group Input",
+        "internalSocket": "Input_5",
+        "syntheticNodeKey": "node_group_input_5_default_4ad2e8f260c3",
+        "defaultValue": 0.0
+      },
+      {
+        "kind": "input_default",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "externalSocket": "Input_7",
+        "internalNode": "Group Input",
+        "internalSocket": "Input_7",
+        "syntheticNodeKey": "node_group_input_7_default_02c988be7893",
+        "defaultValue": 0.0
+      },
+      {
+        "kind": "input_default",
+        "groupNode": "Group.014",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ],
+        "externalSocket": "Input_7",
+        "internalNode": "Group Input",
+        "internalSocket": "Input_7",
+        "syntheticNodeKey": "node_group_014_input_7_default_50664536ad0b",
+        "defaultValue": 0.0
+      },
+      {
+        "kind": "input_default",
+        "groupNode": "Group.014",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ],
+        "externalSocket": "Input_9",
+        "internalNode": "Group Input",
+        "internalSocket": "Input_9",
+        "syntheticNodeKey": "node_group_014_input_9_default_5c05b83d3e2f",
+        "defaultValue": 0.05666656792163849
+      },
+      {
+        "kind": "input_default",
+        "groupNode": "Group.014",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ],
+        "externalSocket": "Input_17",
+        "internalNode": "Group Input",
+        "internalSocket": "Input_17",
+        "syntheticNodeKey": "node_group_014_input_17_default_50df42222764",
+        "defaultValue": 1.0
+      },
+      {
+        "kind": "input_default",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "externalSocket": "Input_1",
+        "internalNode": "Group Input",
+        "internalSocket": "Input_1",
+        "syntheticNodeKey": "node_group_input_1_default_291d554ae9b2",
+        "defaultValue": 10.0
+      },
+      {
+        "kind": "input_default",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "externalSocket": "Input_3",
+        "internalNode": "Group Input",
+        "internalSocket": "Input_3",
+        "syntheticNodeKey": "node_group_input_3_default_55d68652c4b4",
+        "defaultValue": 10.0
+      },
+      {
+        "kind": "input_default",
+        "groupNode": "Group.014",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ],
+        "externalSocket": "Input_3",
+        "internalNode": "Group Input",
+        "internalSocket": "Input_3",
+        "syntheticNodeKey": "node_group_014_input_3_default_2e5ec130d09a",
+        "defaultValue": [
+          0.479320228099823,
+          0.479320228099823,
+          0.479320228099823,
+          1.0
+        ]
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.006",
+        "internalSocket": "Value",
+        "externalSocket": "Input_1",
+        "sourceNodeKey": "node_group_input_1_default_291d554ae9b2"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group.009",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ],
+        "internalNode": "Mix.002",
+        "internalSocket": "Factor_Float",
+        "externalSocket": "Input_11",
+        "sourceNodeKey": "node_group_014_input_7_default_50664536ad0b"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.007",
+        "internalSocket": "Value",
+        "externalSocket": "Input_3",
+        "sourceNodeKey": "node_group_input_3_default_55d68652c4b4"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group.009",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ],
+        "internalNode": "Wave Texture",
+        "internalSocket": "Vector",
+        "externalSocket": "Input_3",
+        "sourceNodeKey": "node_texture_coordinate_2993417c3d2f"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group.014",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ],
+        "internalNode": "Glossy BSDF",
+        "internalSocket": "Color",
+        "externalSocket": "Input_3",
+        "sourceNodeKey": "node_group_014_input_3_default_2e5ec130d09a"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.006",
+        "internalSocket": "Value_001",
+        "externalSocket": "Input_33",
+        "sourceNodeKey": "node_group_014_input_17_default_50df42222764"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.007",
+        "internalSocket": "Value_001",
+        "externalSocket": "Input_33",
+        "sourceNodeKey": "node_group_014_input_17_default_50df42222764"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.008",
+        "internalSocket": "Value_001",
+        "externalSocket": "Input_33",
+        "sourceNodeKey": "node_group_014_input_17_default_50df42222764"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.009",
+        "internalSocket": "Value_001",
+        "externalSocket": "Input_33",
+        "sourceNodeKey": "node_group_014_input_17_default_50df42222764"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.008",
+        "internalSocket": "Value",
+        "externalSocket": "Input_5",
+        "sourceNodeKey": "node_group_input_5_default_4ad2e8f260c3"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.009",
+        "internalSocket": "Value",
+        "externalSocket": "Input_7",
+        "sourceNodeKey": "node_group_input_7_default_02c988be7893"
+      },
+      {
+        "kind": "input_connection",
+        "groupNode": "Group.009",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ],
+        "internalNode": "Bump",
+        "internalSocket": "Strength",
+        "externalSocket": "Input_7",
+        "sourceNodeKey": "node_group_014_input_9_default_5c05b83d3e2f"
+      },
+      {
+        "kind": "output_mapping",
+        "groupNode": "Group.009",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ],
+        "internalNode": "Bump",
+        "internalSocket": "Normal",
+        "externalSocket": "Output_1",
+        "sourceNodeKey": "node_bump_226bd9c22d14"
+      },
+      {
+        "kind": "output_mapping",
+        "groupNode": "Group.014",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ],
+        "internalNode": "Glossy BSDF",
+        "internalSocket": "BSDF",
+        "externalSocket": "Output_1",
+        "sourceNodeKey": "node_glossy_bsdf_28c0e0335d2d"
+      },
+      {
+        "kind": "output_mapping",
+        "groupNode": "Group.009",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ],
+        "internalNode": "Mix",
+        "internalSocket": "Result_Color",
+        "externalSocket": "Output_13",
+        "sourceNodeKey": "node_mix_98de99fb105a"
+      },
+      {
+        "kind": "output_mapping",
+        "groupNode": "Group.014",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ],
+        "internalNode": "Group.009",
+        "internalSocket": "Output_13",
+        "externalSocket": "Output_13",
+        "sourceNodeKey": "node_mix_98de99fb105a"
+      },
+      {
+        "kind": "output_mapping",
+        "groupNode": "Group.014",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ],
+        "internalNode": "Group.009",
+        "internalSocket": "Output_1",
+        "externalSocket": "Output_15",
+        "sourceNodeKey": "node_bump_226bd9c22d14"
+      },
+      {
+        "kind": "output_mapping",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.006",
+        "internalSocket": "Value",
+        "externalSocket": "Output_17",
+        "sourceNodeKey": "node_math_006_a9730bfea642"
+      },
+      {
+        "kind": "output_mapping",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.007",
+        "internalSocket": "Value",
+        "externalSocket": "Output_19",
+        "sourceNodeKey": "node_math_007_00f53db10fb6"
+      },
+      {
+        "kind": "output_mapping",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.008",
+        "internalSocket": "Value",
+        "externalSocket": "Output_21",
+        "sourceNodeKey": "node_math_008_3c2e41f68de3"
+      },
+      {
+        "kind": "output_mapping",
+        "groupNode": "Group",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ],
+        "internalNode": "Math.009",
+        "internalSocket": "Value",
+        "externalSocket": "Output_23",
+        "sourceNodeKey": "node_math_009_65ac51dc9ed7"
+      }
+    ],
+    "materialWorkflow": "AUTO_HYBRID"
+  },
+  "material": {
+    "name": "银2"
+  },
+  "nodes": [
+    {
+      "id": "node_bump_226bd9c22d14",
+      "op": "Vector.Bump",
+      "params": {
+        "strength": 0.20000000298023224,
+        "distance": 1.0
+      },
+      "inputs": [
+        {
+          "id": "Strength",
+          "name": "Strength",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_bump_226bd9c22d14",
+          "sourceSocketId": "Strength",
+          "defaultValue": 0.20000000298023224
+        },
+        {
+          "id": "Distance",
+          "name": "Distance",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_bump_226bd9c22d14",
+          "sourceSocketId": "Distance",
+          "defaultValue": 1.0
+        },
+        {
+          "id": "Filter Width",
+          "name": "Filter Width",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_bump_226bd9c22d14",
+          "sourceSocketId": "Filter Width",
+          "defaultValue": 1.0
+        },
+        {
+          "id": "Height",
+          "name": "Height",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_bump_226bd9c22d14",
+          "sourceSocketId": "Height",
+          "defaultValue": 1.0
+        },
+        {
+          "id": "Normal",
+          "name": "Normal",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "implicit_geometry_normal",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_bump_226bd9c22d14",
+          "sourceSocketId": "Normal",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Normal",
+          "name": "Normal",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "normal",
+          "space": "tangent",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_bump_226bd9c22d14",
+          "sourceSocketId": "Normal",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Bump",
+        "blenderNodeType": "ShaderNodeBump",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ]
+      }
+    },
+    {
+      "id": "node_glossy_bsdf_28c0e0335d2d",
+      "op": "Shader.AnisotropicBSDF",
+      "params": {
+        "approximation": "surface_ir_limited",
+        "distribution": "GGX"
+      },
+      "inputs": [
+        {
+          "id": "Color",
+          "name": "Color",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_glossy_bsdf_28c0e0335d2d",
+          "sourceSocketId": "Color",
+          "defaultValue": [
+            0.800000011920929,
+            0.800000011920929,
+            0.800000011920929,
+            1.0
+          ]
+        },
+        {
+          "id": "Roughness",
+          "name": "Roughness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_glossy_bsdf_28c0e0335d2d",
+          "sourceSocketId": "Roughness",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Anisotropy",
+          "name": "Anisotropy",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_glossy_bsdf_28c0e0335d2d",
+          "sourceSocketId": "Anisotropy",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Rotation",
+          "name": "Rotation",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_glossy_bsdf_28c0e0335d2d",
+          "sourceSocketId": "Rotation",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Normal",
+          "name": "Normal",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_glossy_bsdf_28c0e0335d2d",
+          "sourceSocketId": "Normal",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Tangent",
+          "name": "Tangent",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_glossy_bsdf_28c0e0335d2d",
+          "sourceSocketId": "Tangent",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Weight",
+          "name": "Weight",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_glossy_bsdf_28c0e0335d2d",
+          "sourceSocketId": "Weight",
+          "defaultValue": 0.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "BSDF",
+          "name": "BSDF",
+          "dir": "out",
+          "valueType": "closure_bsdf",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_glossy_bsdf_28c0e0335d2d",
+          "sourceSocketId": "BSDF"
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Glossy BSDF",
+        "blenderNodeType": "ShaderNodeBsdfAnisotropic",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ]
+      }
+    },
+    {
+      "id": "node_group_014_input_17_default_50df42222764",
+      "op": "Input.Value",
+      "params": {
+        "value": 1.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "material_scalar",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Uniform",
+          "sourceNodeId": "node_group_014_input_17_default_50df42222764",
+          "sourceSocketId": "Value",
+          "defaultValue": 1.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Group.014.Input_17 Default",
+        "blenderNodeType": "ShaderNodeValue",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ]
+      }
+    },
+    {
+      "id": "node_group_014_input_3_default_2e5ec130d09a",
+      "op": "Input.RGB",
+      "params": {
+        "value": [
+          0.479320228099823,
+          0.479320228099823,
+          0.479320228099823,
+          1.0
+        ]
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "Color",
+          "name": "Color",
+          "dir": "out",
+          "valueType": "color4",
+          "semantic": "material_color",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Uniform",
+          "sourceNodeId": "node_group_014_input_3_default_2e5ec130d09a",
+          "sourceSocketId": "Color",
+          "defaultValue": [
+            0.479320228099823,
+            0.479320228099823,
+            0.479320228099823,
+            1.0
+          ]
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Group.014.Input_3 Default",
+        "blenderNodeType": "ShaderNodeRGB",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ]
+      }
+    },
+    {
+      "id": "node_group_014_input_7_default_50664536ad0b",
+      "op": "Input.Value",
+      "params": {
+        "value": 0.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "material_scalar",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Uniform",
+          "sourceNodeId": "node_group_014_input_7_default_50664536ad0b",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Group.014.Input_7 Default",
+        "blenderNodeType": "ShaderNodeValue",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ]
+      }
+    },
+    {
+      "id": "node_group_014_input_9_default_5c05b83d3e2f",
+      "op": "Input.Value",
+      "params": {
+        "value": 0.05666656792163849
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "material_scalar",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Uniform",
+          "sourceNodeId": "node_group_014_input_9_default_5c05b83d3e2f",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.05666656792163849
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Group.014.Input_9 Default",
+        "blenderNodeType": "ShaderNodeValue",
+        "groupPath": [
+          "Root",
+          "Group.014"
+        ]
+      }
+    },
+    {
+      "id": "node_group_input_1_default_291d554ae9b2",
+      "op": "Input.Value",
+      "params": {
+        "value": 10.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "material_scalar",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Uniform",
+          "sourceNodeId": "node_group_input_1_default_291d554ae9b2",
+          "sourceSocketId": "Value",
+          "defaultValue": 10.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Group.Input_1 Default",
+        "blenderNodeType": "ShaderNodeValue",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ]
+      }
+    },
+    {
+      "id": "node_group_input_3_default_55d68652c4b4",
+      "op": "Input.Value",
+      "params": {
+        "value": 10.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "material_scalar",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Uniform",
+          "sourceNodeId": "node_group_input_3_default_55d68652c4b4",
+          "sourceSocketId": "Value",
+          "defaultValue": 10.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Group.Input_3 Default",
+        "blenderNodeType": "ShaderNodeValue",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ]
+      }
+    },
+    {
+      "id": "node_group_input_5_default_4ad2e8f260c3",
+      "op": "Input.Value",
+      "params": {
+        "value": 0.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "material_scalar",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Uniform",
+          "sourceNodeId": "node_group_input_5_default_4ad2e8f260c3",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Group.Input_5 Default",
+        "blenderNodeType": "ShaderNodeValue",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ]
+      }
+    },
+    {
+      "id": "node_group_input_7_default_02c988be7893",
+      "op": "Input.Value",
+      "params": {
+        "value": 0.0
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "material_scalar",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Uniform",
+          "sourceNodeId": "node_group_input_7_default_02c988be7893",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Group.Input_7 Default",
+        "blenderNodeType": "ShaderNodeValue",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ]
+      }
+    },
+    {
+      "id": "node_material_output_001_f9e693cd7a7c",
+      "op": "Output.Material",
+      "params": {},
+      "inputs": [
+        {
+          "id": "Surface",
+          "name": "Surface",
+          "dir": "in",
+          "valueType": "surface",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_material_output_001_f9e693cd7a7c",
+          "sourceSocketId": "Surface"
+        },
+        {
+          "id": "Volume",
+          "name": "Volume",
+          "dir": "in",
+          "valueType": "closure_volume",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_material_output_001_f9e693cd7a7c",
+          "sourceSocketId": "Volume"
+        },
+        {
+          "id": "Displacement",
+          "name": "Displacement",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Vertex",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_material_output_001_f9e693cd7a7c",
+          "sourceSocketId": "Displacement",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Thickness",
+          "name": "Thickness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Fragment",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_material_output_001_f9e693cd7a7c",
+          "sourceSocketId": "Thickness",
+          "defaultValue": 0.0
+        }
+      ],
+      "outputs": [],
+      "source": {
+        "blenderNodeName": "Material Output.001",
+        "blenderNodeType": "ShaderNodeOutputMaterial",
+        "groupPath": [
+          "Root"
+        ]
+      }
+    },
+    {
+      "id": "node_math_006_a9730bfea642",
+      "op": "Math",
+      "params": {
+        "operation": "MULTIPLY"
+      },
+      "inputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_006_a9730bfea642",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Value_001",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_006_a9730bfea642",
+          "sourceSocketId": "Value_001",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Value_002",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_006_a9730bfea642",
+          "sourceSocketId": "Value_002",
+          "defaultValue": 0.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_006_a9730bfea642",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Math.006",
+        "blenderNodeType": "ShaderNodeMath",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ]
+      }
+    },
+    {
+      "id": "node_math_007_00f53db10fb6",
+      "op": "Math",
+      "params": {
+        "operation": "MULTIPLY"
+      },
+      "inputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_007_00f53db10fb6",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Value_001",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_007_00f53db10fb6",
+          "sourceSocketId": "Value_001",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Value_002",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_007_00f53db10fb6",
+          "sourceSocketId": "Value_002",
+          "defaultValue": 0.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_007_00f53db10fb6",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Math.007",
+        "blenderNodeType": "ShaderNodeMath",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ]
+      }
+    },
+    {
+      "id": "node_math_008_3c2e41f68de3",
+      "op": "Math",
+      "params": {
+        "operation": "MULTIPLY"
+      },
+      "inputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_008_3c2e41f68de3",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Value_001",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_008_3c2e41f68de3",
+          "sourceSocketId": "Value_001",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Value_002",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_008_3c2e41f68de3",
+          "sourceSocketId": "Value_002",
+          "defaultValue": 0.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_008_3c2e41f68de3",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Math.008",
+        "blenderNodeType": "ShaderNodeMath",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ]
+      }
+    },
+    {
+      "id": "node_math_009_65ac51dc9ed7",
+      "op": "Math",
+      "params": {
+        "operation": "MULTIPLY"
+      },
+      "inputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_009_65ac51dc9ed7",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Value_001",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_009_65ac51dc9ed7",
+          "sourceSocketId": "Value_001",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Value_002",
+          "name": "Value",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_009_65ac51dc9ed7",
+          "sourceSocketId": "Value_002",
+          "defaultValue": 0.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Value",
+          "name": "Value",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_math_009_65ac51dc9ed7",
+          "sourceSocketId": "Value",
+          "defaultValue": 0.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Math.009",
+        "blenderNodeType": "ShaderNodeMath",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009",
+          "Group"
+        ]
+      }
+    },
+    {
+      "id": "node_mix_001_9baee713b2a1",
+      "op": "Math.Mix",
+      "params": {
+        "blendType": "MIX",
+        "factorMode": "UNIFORM"
+      },
+      "inputs": [
+        {
+          "id": "Factor_Float",
+          "name": "Factor",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "Factor_Float",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Factor_Vector",
+          "name": "Factor",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "Factor_Vector",
+          "defaultValue": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "id": "A_Float",
+          "name": "A",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "A_Float",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "B_Float",
+          "name": "B",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "B_Float",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "A_Vector",
+          "name": "A",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "A_Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "B_Vector",
+          "name": "B",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "B_Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "A_Color",
+          "name": "A",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "A_Color",
+          "defaultValue": [
+            0.6188784241676331,
+            0.6188784241676331,
+            0.6188784241676331,
+            1.0
+          ]
+        },
+        {
+          "id": "B_Color",
+          "name": "B",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "B_Color",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "A_Rotation",
+          "name": "A",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "A_Rotation",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "B_Rotation",
+          "name": "B",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "B_Rotation",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Result_Float",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "Result_Float",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Result_Vector",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "Result_Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Result_Color",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "Result_Color",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Result_Rotation",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_001_9baee713b2a1",
+          "sourceSocketId": "Result_Rotation",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Mix.001",
+        "blenderNodeType": "ShaderNodeMix",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ]
+      }
+    },
+    {
+      "id": "node_mix_002_8b1dcf0e0c25",
+      "op": "Math.Mix",
+      "params": {
+        "blendType": "MIX",
+        "factorMode": "UNIFORM"
+      },
+      "inputs": [
+        {
+          "id": "Factor_Float",
+          "name": "Factor",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "Factor_Float",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Factor_Vector",
+          "name": "Factor",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "Factor_Vector",
+          "defaultValue": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "id": "A_Float",
+          "name": "A",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "A_Float",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "B_Float",
+          "name": "B",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "B_Float",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "A_Vector",
+          "name": "A",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "A_Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "B_Vector",
+          "name": "B",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "B_Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "A_Color",
+          "name": "A",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "A_Color",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "B_Color",
+          "name": "B",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "B_Color",
+          "defaultValue": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "id": "A_Rotation",
+          "name": "A",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "A_Rotation",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "B_Rotation",
+          "name": "B",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "B_Rotation",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Result_Float",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "Result_Float",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Result_Vector",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "Result_Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Result_Color",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "Result_Color",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Result_Rotation",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_002_8b1dcf0e0c25",
+          "sourceSocketId": "Result_Rotation",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Mix.002",
+        "blenderNodeType": "ShaderNodeMix",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ]
+      }
+    },
+    {
+      "id": "node_mix_98de99fb105a",
+      "op": "Math.Mix",
+      "params": {
+        "blendType": "ADD",
+        "factorMode": "UNIFORM"
+      },
+      "inputs": [
+        {
+          "id": "Factor_Float",
+          "name": "Factor",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "Factor_Float",
+          "defaultValue": 1.0
+        },
+        {
+          "id": "Factor_Vector",
+          "name": "Factor",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "Factor_Vector",
+          "defaultValue": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "id": "A_Float",
+          "name": "A",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "A_Float",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "B_Float",
+          "name": "B",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "B_Float",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "A_Vector",
+          "name": "A",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "A_Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "B_Vector",
+          "name": "B",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "B_Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "A_Color",
+          "name": "A",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "A_Color",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": "B_Color",
+          "name": "B",
+          "dir": "in",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "B_Color",
+          "defaultValue": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "id": "A_Rotation",
+          "name": "A",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "A_Rotation",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "B_Rotation",
+          "name": "B",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "B_Rotation",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Result_Float",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "Result_Float",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Result_Vector",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "Result_Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Result_Color",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "Result_Color",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Result_Rotation",
+          "name": "Result",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Unknown",
+          "sourceNodeId": "node_mix_98de99fb105a",
+          "sourceSocketId": "Result_Rotation",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Mix",
+        "blenderNodeType": "ShaderNodeMix",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ]
+      }
+    },
+    {
+      "id": "node_texture_coordinate_2993417c3d2f",
+      "op": "Input.TextureCoordinate",
+      "params": {},
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "Generated",
+          "name": "Generated",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "generated_coord",
+          "space": "object",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_texture_coordinate_2993417c3d2f",
+          "sourceSocketId": "Generated",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Normal",
+          "name": "Normal",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "normal",
+          "space": "object",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_texture_coordinate_2993417c3d2f",
+          "sourceSocketId": "Normal",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "UV",
+          "name": "UV",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "uv0",
+          "space": "uv",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_texture_coordinate_2993417c3d2f",
+          "sourceSocketId": "UV",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Object",
+          "name": "Object",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "object_coord",
+          "space": "object",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_texture_coordinate_2993417c3d2f",
+          "sourceSocketId": "Object",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Camera",
+          "name": "Camera",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "camera_coord",
+          "space": "view",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_texture_coordinate_2993417c3d2f",
+          "sourceSocketId": "Camera",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Window",
+          "name": "Window",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "window_coord",
+          "space": "screen",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_texture_coordinate_2993417c3d2f",
+          "sourceSocketId": "Window",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Reflection",
+          "name": "Reflection",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "reflection_coord",
+          "space": "world",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_texture_coordinate_2993417c3d2f",
+          "sourceSocketId": "Reflection",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Texture Coordinate",
+        "blenderNodeType": "ShaderNodeTexCoord",
+        "groupPath": [
+          "Root"
+        ]
+      }
+    },
+    {
+      "id": "node_voronoi_texture_47d46142326a",
+      "op": "Texture.Voronoi",
+      "params": {
+        "dimensions": "3D",
+        "feature": "F1",
+        "distance": "EUCLIDEAN",
+        "normalize": false,
+        "w": 0.0,
+        "scale": 10.0,
+        "detail": 0.0,
+        "roughness": 0.5,
+        "lacunarity": 2.0,
+        "smoothness": 1.0,
+        "exponent": 0.5,
+        "randomness": 1.0,
+        "preferredRepresentation": "BakedParity",
+        "approximateNativeAvailable": true
+      },
+      "inputs": [
+        {
+          "id": "Vector",
+          "name": "Vector",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "W",
+          "name": "W",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "W",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Scale",
+          "name": "Scale",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Scale",
+          "defaultValue": 10.0
+        },
+        {
+          "id": "Detail",
+          "name": "Detail",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Detail",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Roughness",
+          "name": "Roughness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Roughness",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Lacunarity",
+          "name": "Lacunarity",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Lacunarity",
+          "defaultValue": 2.0
+        },
+        {
+          "id": "Smoothness",
+          "name": "Smoothness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Smoothness",
+          "defaultValue": 1.0
+        },
+        {
+          "id": "Exponent",
+          "name": "Exponent",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Exponent",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Randomness",
+          "name": "Randomness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Randomness",
+          "defaultValue": 1.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Distance",
+          "name": "Distance",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Distance",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Color",
+          "name": "Color",
+          "dir": "out",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Color",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Position",
+          "name": "Position",
+          "dir": "out",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Position",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "W",
+          "name": "W",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "W",
+          "defaultValue": 0.0
+        },
+        {
+          "id": "Radius",
+          "name": "Radius",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_voronoi_texture_47d46142326a",
+          "sourceSocketId": "Radius",
+          "defaultValue": 0.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Voronoi Texture",
+        "blenderNodeType": "ShaderNodeTexVoronoi",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ]
+      }
+    },
+    {
+      "id": "node_wave_texture_2676d4324bf5",
+      "op": "Texture.Wave",
+      "params": {
+        "waveType": "BANDS",
+        "bandsDirection": "Z",
+        "ringsDirection": "SPHERICAL",
+        "waveProfile": "SIN",
+        "scale": 10.0,
+        "distortion": 1.0,
+        "detail": 2.0,
+        "detailScale": 1.0,
+        "detailRoughness": 0.5,
+        "phaseOffset": 0.0,
+        "preferredRepresentation": "BakedParity"
+      },
+      "inputs": [
+        {
+          "id": "Vector",
+          "name": "Vector",
+          "dir": "in",
+          "valueType": "float3",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_wave_texture_2676d4324bf5",
+          "sourceSocketId": "Vector",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Scale",
+          "name": "Scale",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_wave_texture_2676d4324bf5",
+          "sourceSocketId": "Scale",
+          "defaultValue": 10.0
+        },
+        {
+          "id": "Distortion",
+          "name": "Distortion",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_wave_texture_2676d4324bf5",
+          "sourceSocketId": "Distortion",
+          "defaultValue": 1.0
+        },
+        {
+          "id": "Detail",
+          "name": "Detail",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_wave_texture_2676d4324bf5",
+          "sourceSocketId": "Detail",
+          "defaultValue": 2.0
+        },
+        {
+          "id": "Detail Scale",
+          "name": "Detail Scale",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_wave_texture_2676d4324bf5",
+          "sourceSocketId": "Detail Scale",
+          "defaultValue": 1.0
+        },
+        {
+          "id": "Detail Roughness",
+          "name": "Detail Roughness",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_wave_texture_2676d4324bf5",
+          "sourceSocketId": "Detail Roughness",
+          "defaultValue": 0.5
+        },
+        {
+          "id": "Phase Offset",
+          "name": "Phase Offset",
+          "dir": "in",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_wave_texture_2676d4324bf5",
+          "sourceSocketId": "Phase Offset",
+          "defaultValue": 0.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "Color",
+          "name": "Color",
+          "dir": "out",
+          "valueType": "color4",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_wave_texture_2676d4324bf5",
+          "sourceSocketId": "Color",
+          "defaultValue": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": "Fac",
+          "name": "Factor",
+          "dir": "out",
+          "valueType": "float",
+          "semantic": "none",
+          "space": "none",
+          "shaderStage": "Both",
+          "uniformity": "Varying",
+          "sourceNodeId": "node_wave_texture_2676d4324bf5",
+          "sourceSocketId": "Fac",
+          "defaultValue": 0.0
+        }
+      ],
+      "source": {
+        "blenderNodeName": "Wave Texture",
+        "blenderNodeType": "ShaderNodeTexWave",
+        "groupPath": [
+          "Root",
+          "Group.014",
+          "Group.009"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": {
+        "node": "node_bump_226bd9c22d14",
+        "socket": "Normal"
+      },
+      "to": {
+        "node": "node_glossy_bsdf_28c0e0335d2d",
+        "socket": "Normal"
+      }
+    },
+    {
+      "from": {
+        "node": "node_glossy_bsdf_28c0e0335d2d",
+        "socket": "BSDF"
+      },
+      "to": {
+        "node": "node_material_output_001_f9e693cd7a7c",
+        "socket": "Surface"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_014_input_17_default_50df42222764",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_math_006_a9730bfea642",
+        "socket": "Value_001"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_014_input_17_default_50df42222764",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_math_007_00f53db10fb6",
+        "socket": "Value_001"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_014_input_17_default_50df42222764",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_math_008_3c2e41f68de3",
+        "socket": "Value_001"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_014_input_17_default_50df42222764",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_math_009_65ac51dc9ed7",
+        "socket": "Value_001"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_014_input_3_default_2e5ec130d09a",
+        "socket": "Color"
+      },
+      "to": {
+        "node": "node_glossy_bsdf_28c0e0335d2d",
+        "socket": "Color"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_014_input_7_default_50664536ad0b",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_mix_002_8b1dcf0e0c25",
+        "socket": "Factor_Float"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_014_input_9_default_5c05b83d3e2f",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_bump_226bd9c22d14",
+        "socket": "Strength"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_input_1_default_291d554ae9b2",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_math_006_a9730bfea642",
+        "socket": "Value"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_input_3_default_55d68652c4b4",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_math_007_00f53db10fb6",
+        "socket": "Value"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_input_5_default_4ad2e8f260c3",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_math_008_3c2e41f68de3",
+        "socket": "Value"
+      }
+    },
+    {
+      "from": {
+        "node": "node_group_input_7_default_02c988be7893",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_math_009_65ac51dc9ed7",
+        "socket": "Value"
+      }
+    },
+    {
+      "from": {
+        "node": "node_math_006_a9730bfea642",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_wave_texture_2676d4324bf5",
+        "socket": "Scale"
+      }
+    },
+    {
+      "from": {
+        "node": "node_math_007_00f53db10fb6",
+        "socket": "Value"
+      },
+      "to": {
+        "node": "node_voronoi_texture_47d46142326a",
+        "socket": "Scale"
+      }
+    },
+    {
+      "from": {
+        "node": "node_mix_001_9baee713b2a1",
+        "socket": "Result_Color"
+      },
+      "to": {
+        "node": "node_mix_98de99fb105a",
+        "socket": "A_Color"
+      }
+    },
+    {
+      "from": {
+        "node": "node_mix_002_8b1dcf0e0c25",
+        "socket": "Result_Color"
+      },
+      "to": {
+        "node": "node_mix_98de99fb105a",
+        "socket": "B_Color"
+      }
+    },
+    {
+      "from": {
+        "node": "node_mix_98de99fb105a",
+        "socket": "Result_Color"
+      },
+      "to": {
+        "node": "node_glossy_bsdf_28c0e0335d2d",
+        "socket": "Roughness"
+      }
+    },
+    {
+      "from": {
+        "node": "node_texture_coordinate_2993417c3d2f",
+        "socket": "Object"
+      },
+      "to": {
+        "node": "node_wave_texture_2676d4324bf5",
+        "socket": "Vector"
+      }
+    },
+    {
+      "from": {
+        "node": "node_voronoi_texture_47d46142326a",
+        "socket": "Distance"
+      },
+      "to": {
+        "node": "node_bump_226bd9c22d14",
+        "socket": "Height"
+      }
+    },
+    {
+      "from": {
+        "node": "node_voronoi_texture_47d46142326a",
+        "socket": "Distance"
+      },
+      "to": {
+        "node": "node_mix_001_9baee713b2a1",
+        "socket": "Factor_Float"
+      }
+    },
+    {
+      "from": {
+        "node": "node_wave_texture_2676d4324bf5",
+        "socket": "Color"
+      },
+      "to": {
+        "node": "node_voronoi_texture_47d46142326a",
+        "socket": "Vector"
+      }
+    }
+  ],
+  "resources": {},
+  "entry": {
+    "surface": {
+      "node": "node_material_output_001_f9e693cd7a7c",
+      "socket": "Surface"
+    }
+  },
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "MIKU_EEVEE_GLOSSY_ANISOTROPY_IGNORED",
+      "translationQuality": "Equivalent",
+      "message": "Blender 5.2 EEVEE evaluates the Glossy BSDF isotropically; Cycles-only anisotropy inputs are not part of the source result."
+    },
+    {
+      "severity": "warning",
+      "code": "conditional_node",
+      "node": "Bump",
+      "blenderNodeType": "ShaderNodeBump",
+      "groupPath": [
+        "Root",
+        "Group.014",
+        "Group.009"
+      ],
+      "message": "ShaderNodeBump is exported with a limited Unity URP approximation or requires user mapping/Bake settings."
+    },
+    {
+      "severity": "warning",
+      "code": "conditional_node",
+      "node": "Glossy BSDF",
+      "blenderNodeType": "ShaderNodeBsdfAnisotropic",
+      "groupPath": [
+        "Root",
+        "Group.014"
+      ],
+      "message": "ShaderNodeBsdfAnisotropic is exported with a limited Unity URP approximation or requires user mapping/Bake settings."
+    },
+    {
+      "severity": "warning",
+      "code": "texture_node_baked_parity",
+      "sourceNodeId": "node_voronoi_texture_47d46142326a",
+      "message": "Texture.Voronoi uses Texture3D baked parity: Baked parity is the default because Unity's procedural function is not semantically identical.",
+      "data": {
+        "nodeId": "node_voronoi_texture_47d46142326a",
+        "op": "Texture.Voronoi",
+        "coordinateDomain": "Generated",
+        "strategy": "Baked",
+        "translationQuality": "Baked",
+        "representation": "Texture3D",
+        "reason": "Baked parity is the default because Unity's procedural function is not semantically identical."
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "texture_node_baked_parity",
+      "sourceNodeId": "node_wave_texture_2676d4324bf5",
+      "message": "Texture.Wave uses Texture3D baked parity: Baked parity is the default because Unity's procedural function is not semantically identical.",
+      "data": {
+        "nodeId": "node_wave_texture_2676d4324bf5",
+        "op": "Texture.Wave",
+        "coordinateDomain": "Object",
+        "strategy": "Baked",
+        "translationQuality": "Baked",
+        "representation": "Texture3D",
+        "reason": "Baked parity is the default because Unity's procedural function is not semantically identical."
+      }
+    },
+    {
+      "severity": "info",
+      "code": "MIKU_EEVEE_OUTPUT_SELECTED",
+      "translationQuality": "Equivalent",
+      "message": "Selected the Blender 5.2 EEVEE-compatible Material Output.",
+      "node": "Material Output.001",
+      "data": {
+        "target": "ALL",
+        "active": true,
+        "priority": 1
+      },
+      "sourceNodeId": "node_material_output_001_f9e693cd7a7c"
+    },
+    {
+      "severity": "info",
+      "code": "hybrid_backend_selected",
+      "message": "B2U selected BAKED_PBR: One or more active texture islands require a concrete baked parity representation.",
+      "data": {
+        "requestedMode": "AUTO_HYBRID",
+        "selectedBackend": "BAKED_PBR",
+        "supportedCoverage": 1.0,
+        "unsupportedOps": [],
+        "textureNodes": [
+          {
+            "nodeId": "node_wave_texture_2676d4324bf5",
+            "op": "Texture.Wave",
+            "coordinateDomain": "Object",
+            "strategy": "Baked",
+            "translationQuality": "Baked",
+            "representation": "Texture3D",
+            "reason": "Baked parity is the default because Unity's procedural function is not semantically identical."
+          },
+          {
+            "nodeId": "node_voronoi_texture_47d46142326a",
+            "op": "Texture.Voronoi",
+            "coordinateDomain": "Generated",
+            "strategy": "Baked",
+            "translationQuality": "Baked",
+            "representation": "Texture3D",
+            "reason": "Baked parity is the default because Unity's procedural function is not semantically identical."
+          }
+        ]
+      }
+    }
+  ],
+  "standardPbrSemantic": {
+    "workflow": "Metallic",
+    "source": {
+      "shader": "SemanticMaps",
+      "blenderMaterial": "银2",
+      "confidence": 0.0
+    },
+    "slots": {},
+    "packedTextures": {},
+    "diagnostics": []
+  },
+  "eeveeFeatureReport": {
+    "schema": "eevee-feature-report-1.0",
+    "sourceRenderer": "BLENDER_EEVEE_NEXT",
+    "blenderVersion": "5.2.0",
+    "translationQualityVocabulary": [
+      "Exact",
+      "Equivalent",
+      "Approximate",
+      "Baked",
+      "RequiresProjectSetup",
+      "RequiresRuntimeSupport",
+      "Deferred",
+      "Unsupported"
+    ],
+    "deferredOps": [],
+    "approximateOps": [],
+    "bakeCandidateOps": [
+      "Texture.Voronoi"
+    ],
+    "generationAllowed": true
+  },
+  "capabilityReport": {
+    "schema": "b2u-hybrid-plan-2.0",
+    "qualityProfile": "PC_HIGH",
+    "requestedMode": "AUTO_HYBRID",
+    "selectedBackend": "BAKED_PBR",
+    "reason": "One or more active texture islands require a concrete baked parity representation.",
+    "liveNodeCount": 21,
+    "edgeCount": 22,
+    "textureSampleEstimate": 2,
+    "closureLobeEstimate": 1,
+    "supportedCoverage": 1.0,
+    "supportedOps": [
+      "Input.RGB",
+      "Input.TextureCoordinate",
+      "Input.Value",
+      "Math",
+      "Math.Mix",
+      "Output.Material",
+      "Shader.AnisotropicBSDF",
+      "Texture.Voronoi",
+      "Texture.Wave",
+      "Vector.Bump"
+    ],
+    "conditionalOps": [
+      "Shader.AnisotropicBSDF",
+      "Texture.Voronoi",
+      "Vector.Bump"
+    ],
+    "unsupportedOps": [],
+    "deferredOps": [],
+    "textureNodes": [
+      {
+        "nodeId": "node_wave_texture_2676d4324bf5",
+        "op": "Texture.Wave",
+        "coordinateDomain": "Object",
+        "strategy": "Baked",
+        "translationQuality": "Baked",
+        "representation": "Texture3D",
+        "reason": "Baked parity is the default because Unity's procedural function is not semantically identical."
+      },
+      {
+        "nodeId": "node_voronoi_texture_47d46142326a",
+        "op": "Texture.Voronoi",
+        "coordinateDomain": "Generated",
+        "strategy": "Baked",
+        "translationQuality": "Baked",
+        "representation": "Texture3D",
+        "reason": "Baked parity is the default because Unity's procedural function is not semantically identical."
+      }
+    ],
+    "requiresTextureBake": true,
+    "requiresModelExport": true,
+    "blockingDiagnosticCodes": [],
+    "requirements": {
+      "depthTexture": false,
+      "opaqueTexture": false,
+      "vertexDisplacement": false,
+      "transmissionApproximation": false,
+      "linearColorSpace": false,
+      "closedMesh": false,
+      "reflectionProbe": false,
+      "runtimeTextureSupport": false
+    },
+    "budgets": {
+      "maxLiveNodes": 1024,
+      "maxTextureSamples": 64,
+      "maxClosureLobes": 16,
+      "withinBudget": true
+    }
+  },
+  "compilePolicy": {
+    "schema": "b2u-hybrid-plan-2.0",
+    "requestedMode": "AUTO_HYBRID",
+    "qualityProfile": "PC_HIGH",
+    "selectedBackend": "BAKED_PBR",
+    "fallbackOrder": [
+      "NODE_GRAPH",
+      "BRANCH_BAKE",
+      "BAKED_PBR"
+    ],
+    "reason": "One or more active texture islands require a concrete baked parity representation."
+  }
+}

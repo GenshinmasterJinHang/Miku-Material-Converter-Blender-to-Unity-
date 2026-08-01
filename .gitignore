@@ -1,0 +1,97 @@
+# Unity generated
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Asset meta data should only be ignored when in corresponding /Packages folder
+/[Aa]ssets/**/*.meta
+
+# Unity3D Generated File On Crash Reports
+sysinfo.txt
+
+# Builds
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Crashlytics generated file
+crashlytics-build.properties
+
+# Packed Addressables
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+
+# Temporary auto-generated Android Assets
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+
+# Blender local/backup files
+*.blend1
+*.blend2
+*.blend@
+
+# Local editor, MCP, and test state
+.mcp_tmp/
+.cursor/
+.claude/
+.codegraph/
+.superpowers/
+TestResults*.xml
+TestResults*.log
+*.testlog
+/outputs/
+
+# Generated validation projects and local tool installations
+/.validation/
+/.tools/
+/Generated/
+/nodeoutput/
+/dist/
+/unity/dist/
+/unityproject/
+/unityverify053/
+/unityverify060/
+
+# User-owned local source assets; keep them outside the repository
+/*.blend
+/*.blend1
+/*.blend2
+/*.fbx
+/*.zip
+/*.rar
+/*.pptx
+
+# Locally built release candidates (checked-in historical dist is preserved)
+artifacts/
+dist-local/
+.release-tmp/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+
+# Local superpowers scratch (do not commit transient state)
+.superpowers/sdd/

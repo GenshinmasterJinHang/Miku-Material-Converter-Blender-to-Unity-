@@ -1,0 +1,24 @@
+name: Unity EditMode
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unity-editmode-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unity-editmode:
+    runs-on: [self-hosted, Windows, X64, unity-6000.4.5f1]
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Run exact-version EditMode tests
+        shell: powershell
+        run: >-
+          ./tools/ci/run_unity_editmode.ps1
+          -UnityPath 'C:\Program Files\Unity\Hub\Editor\6000.4.5f1\Editor\Unity.exe'

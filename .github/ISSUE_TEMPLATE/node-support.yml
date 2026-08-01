@@ -1,0 +1,31 @@
+name: Blender node support
+description: Request a semantic node mapping
+title: "[Node]: "
+labels: [node-support]
+body:
+  - type: input
+    id: node
+    attributes:
+      label: Blender node and exact Blender version
+    validations:
+      required: true
+  - type: textarea
+    id: semantics
+    attributes:
+      label: Socket semantics
+      description: Inputs/outputs, defaults, value types, coordinate spaces, shader stages, and texture meaning.
+    validations:
+      required: true
+  - type: textarea
+    id: target
+    attributes:
+      label: Expected Unity behavior
+      description: Exact Unity/URP/Shader Graph version and acceptable translation quality.
+    validations:
+      required: true
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Minimal redistributable fixture or reproduction
+    validations:
+      required: true

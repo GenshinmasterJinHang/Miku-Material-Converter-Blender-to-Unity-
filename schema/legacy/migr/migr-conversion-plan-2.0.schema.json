@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://migr.dev/schema/migr-conversion-plan-2.0.schema.json",
+  "title": "MiGR Conversion Plan 2.0",
+  "type": "object",
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "toolVersion",
+    "id",
+    "canonicalHash",
+    "materialKey",
+    "targetProfile",
+    "mode",
+    "routePolicy",
+    "surfaceModel",
+    "surfaceBackend",
+    "surfaceModelPlan",
+    "closureGraph",
+    "weightedClosures",
+    "regions",
+    "bakeJobs",
+    "parameters",
+    "diagnostics",
+    "completionPolicy"
+  ],
+  "properties": {
+    "documentKind": {"const": "migr-conversion-plan-2.0"},
+    "schemaVersion": {"const": "2.0"},
+    "toolVersion": {"type": "string", "minLength": 1},
+    "id": {"type": "string", "minLength": 1},
+    "canonicalHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "materialKey": {"type": "string", "minLength": 1},
+    "targetProfile": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "mode": {"enum": ["Auto", "NativeOnly", "ReusableBakeOnly"]},
+    "routePolicy": {"const": "NativeThenReusableThenMesh"},
+    "surfaceModel": {
+      "enum": [
+        "OpaquePBR",
+        "CutoutPBR",
+        "TransparentLit",
+        "TransparentEmission",
+        "RefractiveGlass",
+        "CustomMultiLobe",
+        "UnsupportedSurface"
+      ]
+    },
+    "surfaceBackend": {"type": "string"},
+    "surfaceModelPlan": {"type": "object"},
+    "closureGraph": {"type": "object"},
+    "weightedClosures": {"type": "object"},
+    "regions": {"type": "array"},
+    "bakeJobs": {"type": "array"},
+    "parameters": {"type": "array"},
+    "diagnostics": {"type": "array"},
+    "completionPolicy": {"type": "object"}
+  },
+  "additionalProperties": false
+}

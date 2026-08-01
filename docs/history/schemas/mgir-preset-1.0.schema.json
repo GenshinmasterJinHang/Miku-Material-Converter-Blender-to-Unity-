@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mgir.local/schema/mgir-preset-1.0.schema.json",
+  "title": "MGIR Game Render Preset Manifest 1.0 (historical)",
+  "type": "object",
+  "required": ["schema", "preset", "materials"],
+  "properties": {
+    "schema": { "const": "mgir-preset-1.0" },
+    "preset": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "enum": ["hsr", "wuwa", "genshin", "endfield"] },
+        "displayName": { "type": "string" },
+        "version": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "materials": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["sourceMaterialName", "part", "shaderTemplate", "textures"],
+        "properties": {
+          "sourceMaterialName": { "type": "string" },
+          "unityMaterialName": { "type": "string" },
+          "part": {
+            "enum": ["UpperBody", "LowerBody", "Cloth", "Body", "Skin", "Hair", "Face", "Eye", "Effect", "BangsShadow", "EyeShadow", "Accessory"]
+          },
+          "shaderTemplate": {
+            "enum": [
+              "MGIR/HSR/Body",
+              "MGIR/HSR/Hair",
+              "MGIR/HSR/Face",
+              "MGIR/HSR/Eye",
+              "MGIR/Wuwa/Body",
+              "MGIR/Wuwa/Hair",
+              "MGIR/Wuwa/Face",
+              "MGIR/Wuwa/Eye",
+              "MGIR/Wuwa/Effect",
+              "MGIR/Genshin/Body",
+              "MGIR/Genshin/Hair",
+              "MGIR/Genshin/Face",
+              "MGIR/Genshin/Eye",
+              "MGIR/Endfield/Body",
+              "MGIR/Endfield/Skin",
+              "MGIR/Endfield/Face",
+              "MGIR/Endfield/Hair",
+              "MGIR/Endfield/Eye",
+              "MGIR/Endfield/BangsShadow",
+              "MGIR/Endfield/EyeShadow"
+            ]
+          },
+          "textures": {
+            "type": "object",
+            "properties": {
+              "Color": { "type": "string" },
+              "Normal": { "type": "string" },
+              "ID": { "type": "string" },
+              "FaceSDF": { "type": "string" },
+              "ORM": { "type": "string" },
+              "MaterialMask": { "type": "string" },
+              "Ramp": { "type": "string" },
+              "SpecularLut": { "type": "string" },
+              "RsMap": { "type": "string" },
+              "FaceRefine": { "type": "string" },
+              "Expression": { "type": "string" },
+              "HET": { "type": "string" },
+              "HairHM": { "type": "string" },
+              "EyeEG": { "type": "string" },
+              "SkinRamp": { "type": "string" },
+              "MatCap": { "type": "string" },
+              "IrisEmissionMatCap": { "type": "string" },
+              "HairMask": { "type": "string" },
+              "BangsShadowWeight": { "type": "string" },
+              "EyeShadowWeight": { "type": "string" },
+              "LightMap": { "type": "string" },
+              "FaceMap": { "type": "string" },
+              "BodyCoolRamp": { "type": "string" },
+              "BodyWarmRamp": { "type": "string" },
+              "HairCoolRamp": { "type": "string" },
+              "HairWarmRamp": { "type": "string" },
+              "ShadowRamp": { "type": "string" },
+              "HairRamp": { "type": "string" },
+              "HairSpec": { "type": "string" },
+              "MetalMap": { "type": "string" },
+              "Stockings": { "type": "string" },
+              "StockingLeft": { "type": "string" },
+              "StockingRight": { "type": "string" },
+              "StockingMask": { "type": "string" },
+              "Emission": { "type": "string" },
+              "DissolveMask": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "semanticConfidence": {
+            "type": "object",
+            "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "globalTextures": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "code", "message"],
+        "properties": {
+          "severity": { "enum": ["info", "warning", "error"] },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://migr.dev/schema/migr-bundle-2.0.schema.json",
+  "title": "MiGR Bundle 2.0",
+  "type": "object",
+  "required": [
+    "documentKind",
+    "schemaVersion",
+    "toolVersion",
+    "id",
+    "canonicalHash",
+    "materialKey",
+    "sourceName",
+    "persistentSourceId",
+    "persistentMaterialId",
+    "targetProfileHash",
+    "ir",
+    "plan",
+    "manifest",
+    "sourceMap",
+    "resources",
+    "sealedDigest"
+  ],
+  "properties": {
+    "documentKind": {"const": "migr-bundle-2.0"},
+    "schemaVersion": {"const": "2.0"},
+    "toolVersion": {"type": "string", "minLength": 1},
+    "id": {"type": "string", "minLength": 1},
+    "canonicalHash": {"$ref": "#/$defs/sha256"},
+    "materialKey": {"type": "string", "minLength": 1},
+    "sourceName": {"type": "string", "minLength": 1},
+    "persistentSourceId": {"type": "string", "minLength": 1},
+    "persistentMaterialId": {"type": "string", "minLength": 1},
+    "targetProfileHash": {"$ref": "#/$defs/sha256"},
+    "ir": {"$ref": "#/$defs/documentRef"},
+    "plan": {"$ref": "#/$defs/documentRef"},
+    "manifest": {"$ref": "#/$defs/documentRef"},
+    "sourceMap": {"$ref": "#/$defs/documentRef"},
+    "resources": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/resourceRef"}
+    },
+    "sealedDigest": {"$ref": "#/$defs/sha256"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"
+    },
+    "documentRef": {
+      "type": "object",
+      "required": ["relativePath", "sha256", "byteLength", "mediaType"],
+      "properties": {
+        "relativePath": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteLength": {"type": "integer", "minimum": 1, "maximum": 268435456},
+        "mediaType": {"const": "application/json"},
+        "editorOnly": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "resourceRef": {
+      "type": "object",
+      "required": [
+        "id",
+        "relativePath",
+        "sha256",
+        "byteLength",
+        "mediaType",
+        "semantic",
+        "channel",
+        "colorSpace",
+        "width",
+        "height",
+        "channelCount",
+        "componentBytes"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "relativePath": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "byteLength": {"type": "integer", "minimum": 1, "maximum": 268435456},
+        "mediaType": {"enum": ["image/png", "image/x-exr"]},
+        "semantic": {
+          "enum": [
+            "BaseColor",
+            "Metalness",
+            "Roughness",
+            "Normal",
+            "Emission",
+            "Alpha",
+            "AmbientOcclusion",
+            "ExpressionIsland"
+          ]
+        },
+        "channel": {"type": "string", "minLength": 1},
+        "colorSpace": {"enum": ["sRGB", "Linear"]},
+        "normalConvention": {"enum": ["TangentOpenGLPositiveY"]},
+        "bindingKey": {"type": "string", "minLength": 1},
+        "expressionId": {"type": "string", "minLength": 1},
+        "usage": {"enum": ["Color", "Scalar", "Normal"]},
+        "width": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "height": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "channelCount": {"type": "integer", "minimum": 1, "maximum": 4},
+        "componentBytes": {"type": "integer", "enum": [1, 2, 4]},
+        "meshBinding": {"type": "object"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

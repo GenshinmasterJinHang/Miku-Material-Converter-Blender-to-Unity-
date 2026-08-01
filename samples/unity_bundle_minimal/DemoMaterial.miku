@@ -1,0 +1,88 @@
+{
+  "version": "miku-3.0",
+  "schemaVersion": 3,
+  "metadata": {
+    "exportName": "DemoMaterial",
+    "mgirFileName": "DemoMaterial.miku",
+    "sourceMaterialName": "DemoMaterial",
+    "pluginVersion": "0.11.0"
+  },
+  "material": { "name": "DemoMaterial" },
+  "nodes": [
+    {
+      "id": "node_000_color",
+      "op": "Input.RGB",
+      "params": { "value": [0.95, 0.28, 0.12, 1.0] },
+      "inputs": [],
+      "outputs": [{
+        "id": "Color",
+        "name": "Color",
+        "dir": "out",
+        "valueType": "color4",
+        "semantic": "material_color",
+        "space": "none"
+      }],
+      "source": {
+        "blenderNodeName": "BaseColor",
+        "blenderNodeType": "ShaderNodeRGB",
+        "groupPath": ["Root"]
+      }
+    },
+    {
+      "id": "node_001_bsdf",
+      "op": "Shader.PrincipledBSDF",
+      "params": {},
+      "inputs": [
+        { "id": "Base Color", "name": "Base Color", "dir": "in", "valueType": "color4", "semantic": "none", "space": "none" },
+        { "id": "Metallic", "name": "Metallic", "dir": "in", "valueType": "float", "semantic": "none", "space": "none", "defaultValue": 0.0 },
+        { "id": "Roughness", "name": "Roughness", "dir": "in", "valueType": "float", "semantic": "none", "space": "none", "defaultValue": 0.35 }
+      ],
+      "outputs": [{
+        "id": "BSDF",
+        "name": "BSDF",
+        "dir": "out",
+        "valueType": "closure_bsdf",
+        "semantic": "none",
+        "space": "none"
+      }],
+      "source": {
+        "blenderNodeName": "Principled",
+        "blenderNodeType": "ShaderNodeBsdfPrincipled",
+        "groupPath": ["Root"]
+      }
+    }
+  ],
+  "edges": [{
+    "from": { "node": "node_000_color", "socket": "Color" },
+    "to": { "node": "node_001_bsdf", "socket": "Base Color" }
+  }],
+  "resources": {},
+  "entry": { "surface": { "node": "node_001_bsdf", "socket": "BSDF" } },
+  "diagnostics": [],
+  "standardPbrSemantic": {
+    "workflow": "Metallic",
+    "source": {
+      "shader": "PrincipledBSDF",
+      "blenderMaterial": "DemoMaterial",
+      "confidence": 1.0
+    },
+    "slots": {
+      "BaseColor": {
+        "color": [0.95, 0.28, 0.12, 1.0],
+        "source": "socket_default",
+        "confidence": 1.0,
+        "colorSpace": "sRGB"
+      },
+      "Metalness": { "scalar": 0.0, "source": "socket_default", "confidence": 1.0 },
+      "Roughness": {
+        "scalar": 0.35,
+        "source": "socket_default",
+        "confidence": 1.0,
+        "convertToSmoothness": true
+      },
+      "Alpha": { "scalar": 1.0, "alphaMode": "Opaque", "cutoff": 0.5 }
+    },
+    "packedTextures": {},
+    "diagnostics": []
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Miku.ShaderConverter.Runtime",
+  "rootNamespace": "Miku.ShaderConverter.Runtime",
+  "references": [
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ]
+}

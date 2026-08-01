@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:miku:schema:bake-result:1.0",
+  "type": "object",
+  "required": ["documentKind", "schemaVersion", "toolVersion", "id", "canonicalHash", "requestHash", "status", "resources", "diagnostics"],
+  "properties": {
+    "documentKind": { "const": "miku-bake-result-1.0" },
+    "schemaVersion": { "const": "1.0" },
+    "toolVersion": { "type": "string" },
+    "id": { "type": "string" },
+    "canonicalHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "requestHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "status": { "enum": ["completed", "failed"] },
+    "resources": { "type": "array", "maxItems": 64 },
+    "meshBinding": { "type": "object" },
+    "diagnostics": { "type": "array" }
+  },
+  "additionalProperties": false
+}

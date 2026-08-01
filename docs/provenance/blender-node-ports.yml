@@ -1,0 +1,607 @@
+# Blender Node Ports Provenance Manifest
+# =======================================
+# Records the provenance of every Blender-compatible HLSL implementation.
+#
+# port_type values:
+#   clean-room          — Independent implementation from public math references
+#   deprecated-source-port  — retired direct-source route; not shipped
+#   native-shader-graph — Uses Unity native Shader Graph node (no HLSL needed)
+#   expanded-native     — Uses Unity native node(s) with expanded configuration
+#
+# validation values:
+#   blender-ref-tested  — Validated against Blender 5.2.0 LTS headless reference output
+#   unity-tested        — Validated in Unity 6000.4.5f1 Shader Graph
+#   manual-reviewed     — Manually reviewed against Blender manual specification
+#   not-yet-validated   — Implementation exists but validation is pending
+
+nodes:
+  - blender_node: ShaderNodeLightPath (Is Camera Ray / Is Shadow Ray)
+    target_node: Miku Light Path pass classifier
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual - Light Path Node
+      - Unity URP 17.4 ShaderPass identifiers
+    algorithm_sources:
+      - Public raster pass classification semantics
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Inputs/MikuBlenderLightPath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - unity-tested
+
+  # === Math Nodes ===
+  - blender_node: ShaderNodeMath (SINE)
+    target_node: Miku Math Sine
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Sine operation)
+    algorithm_sources:
+      - Public math: trigonometric sin() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (COSINE)
+    target_node: Miku Math Cosine
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Cosine operation)
+    algorithm_sources:
+      - Public math: trigonometric cos() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (TANGENT)
+    target_node: Miku Math Tangent
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Tangent operation)
+    algorithm_sources:
+      - Public math: trigonometric tan() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (ARCSINE)
+    target_node: Miku Math Arcsine
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Arcsine operation)
+    algorithm_sources:
+      - Public math: inverse trigonometric asin() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (ARCCOSINE)
+    target_node: Miku Math Arccosine
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Arccosine operation)
+    algorithm_sources:
+      - Public math: inverse trigonometric acos() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (ARCTANGENT)
+    target_node: Miku Math Arctangent
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Arctangent operation)
+    algorithm_sources:
+      - Public math: inverse trigonometric atan() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (ARCTAN2)
+    target_node: Miku Math Arctan2
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Arctan2 operation)
+    algorithm_sources:
+      - Public math: atan2(y, x) function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (SINH)
+    target_node: Miku Math Hyperbolic Sine
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Hyperbolic Sine operation)
+    algorithm_sources:
+      - Public math: hyperbolic sinh() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (COSH)
+    target_node: Miku Math Hyperbolic Cosine
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Hyperbolic Cosine operation)
+    algorithm_sources:
+      - Public math: hyperbolic cosh() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (TANH)
+    target_node: Miku Math Hyperbolic Tangent
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Hyperbolic Tangent operation)
+    algorithm_sources:
+      - Public math: hyperbolic tanh() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (EXPONENT)
+    target_node: Miku Math Exponent
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Exponent operation)
+    algorithm_sources:
+      - Public math: exponential exp() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (LOGARITHM)
+    target_node: Miku Math Logarithm
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Logarithm operation)
+    algorithm_sources:
+      - Public math: natural logarithm log() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (SQRT)
+    target_node: Miku Math Square Root
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Square Root operation)
+    algorithm_sources:
+      - Public math: sqrt() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (INVERSESQRT)
+    target_node: Miku Math Inverse Square Root
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Inverse Square Root operation)
+    algorithm_sources:
+      - Public math: rsqrt() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (FLOOR)
+    target_node: Miku Math Floor
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Floor operation)
+    algorithm_sources:
+      - Public math: floor() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (CEIL)
+    target_node: Miku Math Ceil
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Ceil operation)
+    algorithm_sources:
+      - Public math: ceil() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (ROUND)
+    target_node: Miku Math Round
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Round operation)
+    algorithm_sources:
+      - Public math: round() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (TRUNC)
+    target_node: Miku Math Truncate
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Truncate operation)
+    algorithm_sources:
+      - Public math: trunc() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (FRACT)
+    target_node: Miku Math Fraction
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Fraction operation)
+      - GLSL fract() specification — returns x - floor(x)
+    algorithm_sources:
+      - Public math: fract(x) = x - floor(x)
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications:
+      - GLSL fract() returns value in [0, 1) for negative inputs (matching floor semantics)
+      - HLSL frac() may differ for negative values; use explicit x - floor(x)
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (SIGN)
+    target_node: Miku Math Sign
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Sign operation)
+    algorithm_sources:
+      - Public math: sign() function
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (PINGPONG)
+    target_node: Miku Math Ping-Pong
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Ping-Pong operation)
+    algorithm_sources:
+      - Public math: abs(fract((x - scale) / (scale * 2)) * scale * 2 - scale)
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (WRAP)
+    target_node: Miku Math Wrap
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Wrap operation)
+    algorithm_sources:
+      - Public math: modular arithmetic wrapping
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (SNAP)
+    target_node: Miku Math Snap
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Snap operation)
+    algorithm_sources:
+      - Public math: round-to-increment rounding
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (SMOOTH_MINIMUM)
+    target_node: Miku Math Smooth Minimum
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Smooth Minimum operation)
+    algorithm_sources:
+      - Inigo Quilez — smooth minimum formula (public domain reference)
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  - blender_node: ShaderNodeMath (SMOOTH_MAXIMUM)
+    target_node: Miku Math Smooth Maximum
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - Blender 5.2 Manual — Math Node (Smooth Maximum operation)
+    algorithm_sources:
+      - Inigo Quilez — smooth maximum formula (public domain reference)
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - not-yet-validated
+
+  # === Existing Legacy Helpers (B2UHelpers.hlsl) ===
+  - blender_node: Hash/Noise helpers
+    target_node: B2U Hash, Noise, Voronoi (legacy)
+    blender_version: 5.2.0
+    blender_tag: v5.2.0
+    blender_commit: fbe6228777e7
+    specification_sources:
+      - General procedural texture principles
+    algorithm_sources:
+      - Public math: value noise, simple hash, Euclidean voronoi
+    source_spdx: []
+    ported_files:
+      - unity/Packages/com.miku.shaderconverter/Runtime/B2UHelpers.hlsl
+    port_type: clean-room
+    modifications: []
+    validation:
+      - blender-ref-tested
+      - unity-tested
+
+# ============================================================================
+# M3: White Noise / Brick / Magic / Gabor — expanded native Shader Graph
+# ============================================================================
+# These four Blender 5.2 procedural textures are NOT implemented as new HLSL
+# files. Each is expanded to a graph of native Shader Graph 17.4 nodes
+# (GradientNoiseNode, VoronoiNode, FloorNode, ModuloNode, StepNode, LerpNode,
+# AddNode, MultiplyNode, SubtractNode, ColorNode, CombineNode, SplitNode,
+# SineNode, CosineNode) by BuildWhiteNoiseSource / BuildBrickSource /
+# BuildMagicSource / BuildGaborSource in B2UShaderGraph17UrpBackend.cs.
+# All algorithms are clean-room re-implementations derived from the Blender
+# 5.2.0 LTS manual (blender-v5.2-release, commit e74f0a2b) plus public
+# mathematics. Baked parity (Cycles) remains the pixel-exact reference;
+# the live Shader Graph implementation is Approximate for visual review.
+- blender_node: ShaderNodeTexWhiteNoise
+  target_node: Miku / Blender 5 / Texture / White Noise
+  blender_version: 5.2.0
+  blender_tag: v5.2.0
+  blender_commit: fbe6228777e7
+  declaration_sources:
+    - docs/provenance/_manual/blender-v5.2-release/tex_noise.html
+  algorithm_sources:
+    - Public math: Perlin-style gradient noise at maximum frequency
+      (gradient noise at scale 0.01 approximates uncorrelated per-pixel
+      white noise visually; no true hash node exists in Shader Graph 17.4)
+    - tri-planar projection (XY / XZ / YZ averages) for 3D/4D dimensions
+  source_spdx: []
+  ported_files:
+    - unity/Packages/com.miku.shaderconverter/Editor/ShaderGraph/B2UShaderGraph17UrpBackend.cs
+  port_type: expanded-native
+  translation: ExpandedNativeWhiteNoise
+  modifications:
+    - Tri-planar gradient noise approximation (no true hash node in SG 17.4)
+    - Remap [0,1] -> [Min, Max] or Color1/Color2 Lerp for the output
+    - Out-of-range clamp on dimension parameter to 1..4
+  validation:
+    - not-yet-validated
+
+- blender_node: ShaderNodeTexBrick
+  target_node: Miku / Blender 5 / Texture / Brick
+  blender_version: 5.2.0
+  blender_tag: v5.2.0
+  blender_commit: fbe6228777e7
+  declaration_sources:
+    - docs/provenance/_manual/blender-v5.2-release/tex_brick.html
+  algorithm_sources:
+    - floor + modulo pattern for alternating-row offsets
+    - step() mask for in-brick vs mortar regions
+    - row-parity stand-in for per-brick hash tint
+  source_spdx: []
+  ported_files:
+    - unity/Packages/com.miku.shaderconverter/Editor/ShaderGraph/B2UShaderGraph17UrpBackend.cs
+  port_type: expanded-native
+  translation: ExpandedNativeBrick
+  modifications:
+    - Row parity used as cheap stand-in for Blender's per-brick hash
+    - Squash factor applied to row height only
+  validation:
+    - not-yet-validated
+
+- blender_node: ShaderNodeTexMagic
+  target_node: Miku / Blender 5 / Texture / Magic
+  blender_version: 5.2.0
+  blender_tag: v5.2.0
+  blender_commit: fbe6228777e7
+  declaration_sources:
+    - docs/provenance/_manual/blender-v5.2-release/tex_magic.html
+  algorithm_sources:
+    - Chained Voronoi (Worley F1) octaves for cell clustering
+    - Noise-driven distortion of input coordinates
+  source_spdx: []
+  ported_files:
+    - unity/Packages/com.miku.shaderconverter/Editor/ShaderGraph/B2UShaderGraph17UrpBackend.cs
+  port_type: expanded-native
+  translation: ExpandedNativeMagic
+  modifications:
+    - Depth param maps to chained Voronoi octaves (depth 1..5)
+    - Distortion: NoiseNode output multiplied by Distortion and added
+  validation:
+    - not-yet-validated
+
+- blender_node: ShaderNodeTexGabor
+  target_node: Miku / Blender 5 / Texture / Gabor
+  blender_version: 5.2.0
+  blender_tag: v5.2.0
+  blender_commit: fbe6228777e7
+  declaration_sources:
+    - docs/provenance/_manual/blender-v5.2-release/tex_gabor.html
+  algorithm_sources:
+    - 2D rotation by Orientation radians applied to Vector
+    - Aspect ratio applied to Y axis
+    - Sinusoidal | Perlin noise carrier modulated by cosine (2*pi * x)
+    - Weighted sum: w1*carrier + w2*cosine + w3
+  source_spdx: []
+  ported_files:
+    - unity/Packages/com.miku.shaderconverter/Editor/ShaderGraph/B2UShaderGraph17UrpBackend.cs
+  port_type: expanded-native
+  translation: ExpandedNativeGabor
+  modifications:
+    - Orientation uses degrees converted via Mathf.Deg2Rad
+    - Type maps: SINUSOIDAL -> GradientNoiseNode, PERLIN -> NoiseNode
+  validation:
+    - not-yet-validated
+
+# Miku 1.0 migration override. The entries above are retained as provenance;
+# the active package exposes only independently implemented semantic helpers.
+current_license_decision:
+  mode: CLEAN_ROOM_SEMANTIC_ONLY
+  blender_commit: fbe6228777e7d9afefcd61a413844e790ae75db7
+  source_spdx:
+    - MIT-clean-room
+  validation:
+    - source-reviewed
+    - unity-compile-required
+  ported_files:
+    - unity/Packages/com.miku.shaderconverter/Runtime/Math/MikuBlenderMath.hlsl
+    - unity/Packages/com.miku.shaderconverter/Runtime/Vector/MikuBlenderVectorMath.hlsl
+    - unity/Packages/com.miku.shaderconverter/Runtime/Color/MikuBlenderColorRamp.hlsl
+    - unity/Packages/com.miku.shaderconverter/Runtime/Textures/MikuBlenderNoise.hlsl
+    - unity/Packages/com.miku.shaderconverter/Runtime/Textures/MikuBlenderVoronoi.hlsl
+    - unity/Packages/com.miku.shaderconverter/Runtime/Textures/MikuBlenderWave.hlsl
+    - unity/Packages/com.miku.shaderconverter/Runtime/Textures/MikuBlenderWhiteNoise.hlsl
+    - unity/Packages/com.miku.shaderconverter/Runtime/Textures/MikuBlenderBrick.hlsl
+    - unity/Packages/com.miku.shaderconverter/Runtime/Textures/MikuBlenderMagic.hlsl
+    - unity/Packages/com.miku.shaderconverter/Runtime/Textures/MikuBlenderGabor.hlsl

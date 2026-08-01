@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://b2u.local/schemas/mgir_v2.json",
+  "title": "B2U Material Graph IR v2 (historical)",
+  "type": "object",
+  "required": ["schemaVersion", "materialName", "preset", "materialType"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "materialName": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.]+$" },
+    "preset":        { "type": "string", "enum": ["Endfield", "Genshin", "Honkai", "GenericToon"] },
+    "materialType":  { "type": "string", "enum": ["Body", "Hair", "Cloth", "Face", "Eye", "Skin", "Outline", "EyeShadow"] },
+    "baseColorTexture": { "type": "string" },
+    "normalTexture":    { "type": "string" },
+    "dynamicEffects":   { "$ref": "../schema/mgir-dynamic-effects-1.0.schema.json" },
+    "nprFeatures": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mask":   { "$ref": "#/$defs/featureBlob" },
+        "colorRemap": {
+          "allOf": [
+            { "$ref": "#/$defs/featureBlob" },
+            {
+              "if": { "properties": { "enabled": { "const": true } } },
+              "then": { "required": ["rampTexture", "maskChannel"] }
+            }
+          ]
+        },
+        "alpha": {
+          "allOf": [
+            { "$ref": "#/$defs/featureBlob" },
+            {
+              "if": { "properties": { "enabled": { "const": true } } },
+              "then": {
+                "required": ["alphaSource", "blendMode"],
+                "properties": {
+                  "blendMode": { "enum": ["Opaque", "Cutout", "Transparent", "Fade"] }
+                }
+              }
+            }
+          ]
+        },
+        "sss":       { "$ref": "#/$defs/featureBlob" },
+        "anisoSpec": { "$ref": "#/$defs/featureBlob" },
+        "multiSpec": { "$ref": "#/$defs/featureBlob" }
+      }
+    }
+  },
+  "$defs": {
+    "featureBlob": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

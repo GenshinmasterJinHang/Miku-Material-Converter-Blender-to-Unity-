@@ -1,0 +1,29 @@
+flowchart LR
+  subgraph Authoring["Blender authoring boundary"]
+    B["Blender data via supported bpy APIs"]
+    BI["Miku Blender extensions"]
+  end
+
+  subgraph Core["Target-neutral core boundary"]
+    C["Miku semantics, normalization, validation"]
+    IR["Versioned MaterialIR and Bundle"]
+    S["schema/ public contracts"]
+  end
+
+  subgraph Unity["Unity editor boundary"]
+    UI["Miku ScriptedImporter and generators"]
+    SEL["Version-specific backend selector"]
+    SG["Shader Graph 17.4 URP adapter"]
+    AS["Generated Sub Graph plus user wrapper"]
+  end
+
+  B --> BI
+  BI --> C
+  C --> IR
+  S --> IR
+  IR --> UI
+  UI --> SEL
+  SEL -. "exact version match" .-> SG
+  SG -.-> AS
+  BI -. "must not depend on Unity" .-> IR
+  UI -. "must not leak Unity internals" .-> IR

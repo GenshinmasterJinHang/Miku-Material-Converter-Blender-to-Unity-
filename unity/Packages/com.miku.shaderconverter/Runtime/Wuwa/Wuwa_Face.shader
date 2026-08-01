@@ -1,0 +1,257 @@
+// SPDX-FileCopyrightText: 2026 Miku Project Authors
+// SPDX-License-Identifier: MIT
+Shader "MIKU/Wuwa/Face"
+{
+    Properties
+    {
+        [MainTexture] _BaseMap ("Base Map", 2D) = "white" {}
+        [HideInInspector] _MainTex ("Legacy MainTex, optional", 2D) = "white" {}
+        _FaceSDF ("Face SDF", 2D) = "white" {}
+        [HideInInspector] _MikuHeadForwardWS ("Miku Head Forward WS", Vector) = (0,0,1,0)
+        [HideInInspector] _MikuHeadRightWS ("Miku Head Right WS", Vector) = (1,0,0,0)
+        [HideInInspector] _MikuHeadUpWS ("Miku Head Up WS", Vector) = (0,1,0,0)
+        [HideInInspector] _MikuHeadAxesValid ("Miku Head Axes Valid", Float) = 0
+        _FaceID ("Face ID", 2D) = "white" {}
+        _FaceHET ("Face HET", 2D) = "white" {}
+        _SkinRamp ("Skin Ramp", 2D) = "white" {}
+        _EmissionMap ("Emission Map", 2D) = "black" {}
+        [MainColor] _BaseColorTint ("Base Color Tint", Color) = (1,1,1,1)
+        _LitTint ("Lit Tint", Color) = (1,1,1,1)
+        _ShadowTint ("Shadow Tint", Color) = (0.76,0.72,0.76,1)
+        [Toggle(_AREA_FACE)] _AreaFace ("Area Face", Float) = 1
+        _FaceSdfMainChannel ("Face SDF Main Channel 0R 1G 2B 3A", Range(0,3)) = 3
+        _FaceSdfSoftChannel ("Face SDF Soft Channel 0R 1G 2B 3A", Range(0,3)) = 2
+        _FaceShadowOffset ("Face Shadow Offset", Range(-1,1)) = -0.08
+        _FaceShadowSoftness ("Face Shadow Softness", Range(0.001,1)) = 0.067
+        _FaceThresholdBias ("Face Threshold Bias", Range(-1,1)) = -0.073
+        _FaceSoftChannelStrength ("Face Soft Channel Strength", Range(0,1)) = 0
+        _FaceShadowStrength ("Face SDF Shadow Strength", Range(0,1)) = 0.65
+        _FaceSdfDebugMode ("Face SDF Debug Mode", Range(0,5)) = 0
+        _SkinRampUV ("Skin Ramp UV", Vector) = (0.24,0.9,0,0)
+        _SkinRampSaturation ("Skin Ramp Saturation", Range(0,2)) = 0.77
+        _SkinRampBrightness ("Skin Ramp Brightness", Range(0,2)) = 1.36
+        _SkinRampCurvePower ("Skin Ramp Curve Power", Range(0.1,4)) = 2.04
+        _SkinRampStrength ("Skin Ramp Strength", Range(0,1)) = 0.42
+        _FaceBaseCurvePower ("Face Base Curve Power", Range(0.1,4)) = 1.69
+        _FaceBaseBrightness ("Face Base Brightness", Range(0,2)) = 1.5
+        _FaceFinalBrightness ("Face Final Brightness", Range(0,2)) = 1.012
+        _FaceBlushColor ("Face Blush Color", Color) = (1,0.78,0.82,1)
+        _FaceBlushStrength ("Face Blush Strength", Range(0,1)) = 0.24
+        _FaceBlushCenters ("Face Blush Centers", Vector) = (0.32,0.58,0.68,0.58)
+        _FaceBlushSize ("Face Blush Size", Vector) = (0.16,0.1,0,0)
+        _FaceExtraLightChannel ("Face HET Channel 0R 1G 2B 3A", Range(0,3)) = 0
+        _FaceExtraLightColor ("Face Extra Light Color", Color) = (1,0.72,0.68,1)
+        _FaceExtraLightStrength ("Face Extra Light Strength", Range(0,2)) = 0
+        _HairShadowStrength ("Hair Shadow Strength", Range(0,1)) = 0.45
+        _HairShadowDepthBias ("Hair Shadow Depth Bias", Range(-1,1)) = 0.02
+        _HairShadowSoftness ("Hair Shadow Softness", Range(0.001,1)) = 0.05
+        _HairShadowScreenOffset ("Hair Shadow Screen Offset", Range(-0.1,0.1)) = 0.015
+        [Toggle(_WUWA_HAIR_SHADOW_ON)] _UseHairShadow ("Use Hair Shadow", Float) = 0
+        _IndirectLightUsage ("Indirect Light Usage", Range(0,2)) = 0
+        _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 0
+        _RimLightBrightness ("Rim Brightness", Range(0,4)) = 0
+        _RimLightTintColor ("Rim Tint", Color) = (1,1,1,1)
+        _RimLightWidth ("Rim Width", Range(0,10)) = 1
+        _RimLightThreshold ("Rim Depth Threshold", Range(0,1)) = 0.03
+        _RimLightFadeout ("Rim Fadeout", Range(0.001,1)) = 0.2
+        _FresnelPower ("Fresnel Power", Range(0.1,8)) = 2
+        _FresnelClamp ("Fresnel Clamp", Range(0,1)) = 1
+        _OutlineWidth ("Outline Width", Range(0,0.1)) = 0.001
+        _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
+        _OutlineDistanceScale ("Outline Distance Scale", Range(0,1)) = 1
+        _OutlineColorTint ("Outline Color", Color) = (0.34,0.18,0.22,1)
+    }
+    SubShader
+    {
+        Tags { "RenderPipeline"="UniversalPipeline" "RenderType"="Opaque" "Queue"="Geometry" }
+        Pass
+        {
+            Name "UniversalForward"
+            Tags { "LightMode"="UniversalForward" }
+            Cull Back
+            ZWrite On
+            ZTest LEqual
+            Blend One Zero
+            ColorMask RGBA
+            HLSLPROGRAM
+            #pragma target 3.5
+            #pragma vertex WuwaFaceVert
+            #pragma fragment WuwaFaceFrag
+            #pragma shader_feature_local _WUWA_FACE_HET_ON
+            #pragma shader_feature_local _WUWA_ID_ON
+            #pragma shader_feature_local _WUWA_SKIN_RAMP_ON
+            #pragma shader_feature_local _WUWA_HAIR_SHADOW_ON
+            #pragma shader_feature_local _WUWA_EMISSION_ON
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "WuwaCommon.hlsl"
+            TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
+            TEXTURE2D(_FaceSDF); SAMPLER(sampler_FaceSDF);
+            TEXTURE2D(_FaceID); SAMPLER(sampler_FaceID);
+            TEXTURE2D(_FaceHET); SAMPLER(sampler_FaceHET);
+            TEXTURE2D(_SkinRamp); SAMPLER(sampler_SkinRamp);
+            TEXTURE2D(_EmissionMap); SAMPLER(sampler_EmissionMap);
+            TEXTURE2D(_WuwaHairShadowTexture); SAMPLER(sampler_WuwaHairShadowTexture);
+            float _WuwaHairShadowAvailable;
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float4 _BaseColorTint; float4 _LitTint; float4 _ShadowTint;
+                float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
+                float _FaceSdfMainChannel; float _FaceSdfSoftChannel; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceThresholdBias; float _FaceSoftChannelStrength; float _FaceShadowStrength; float _FaceSdfDebugMode;
+                float4 _SkinRampUV; float _SkinRampSaturation; float _SkinRampBrightness; float _SkinRampCurvePower; float _SkinRampStrength; float _FaceBaseCurvePower; float _FaceBaseBrightness; float _FaceFinalBrightness;
+                float4 _FaceBlushColor; float _FaceBlushStrength; float4 _FaceBlushCenters; float4 _FaceBlushSize; float _FaceExtraLightChannel; float4 _FaceExtraLightColor; float _FaceExtraLightStrength;
+                float _HairShadowStrength; float _HairShadowDepthBias; float _HairShadowSoftness; float _HairShadowScreenOffset; float _UseHairShadow;
+                float _IndirectLightUsage; float _MainLightColorUsage;
+                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
+                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float4 _OutlineColorTint;
+            CBUFFER_END
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float3 smoothNormalOS : TEXCOORD7; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float3 viewDirWS : TEXCOORD2; float2 uv : TEXCOORD3; float4 shadowCoord : TEXCOORD4; };
+            Varyings WuwaFaceVert(Attributes input)
+            {
+                Varyings output;
+                VertexPositionInputs pos = GetVertexPositionInputs(input.positionOS.xyz);
+                VertexNormalInputs normal = GetVertexNormalInputs(input.normalOS, input.tangentOS);
+                output.positionCS = pos.positionCS;
+                output.positionWS = pos.positionWS;
+                output.normalWS = normalize(normal.normalWS);
+                output.viewDirWS = normalize(GetWorldSpaceViewDir(pos.positionWS));
+                output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
+                output.shadowCoord = TransformWorldToShadowCoord(pos.positionWS);
+                return output;
+            }
+            half4 WuwaFaceFrag(Varyings input) : SV_Target
+            {
+                float4 baseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColorTint;
+                float4 faceSdf = SAMPLE_TEXTURE2D(_FaceSDF, sampler_FaceSDF, input.uv);
+                float4 faceID = 1.0.xxxx;
+                #if defined(_WUWA_ID_ON)
+                    faceID = SAMPLE_TEXTURE2D(_FaceID, sampler_FaceID, input.uv);
+                #endif
+                Light mainLight = GetMainLight(input.shadowCoord);
+                float3 lightDirWS = normalize(mainLight.direction);
+                float3 normalWS = normalize(input.normalWS);
+                float3 viewDirWS = normalize(input.viewDirWS);
+                float3x3 objectToWorld = (float3x3)GetObjectToWorldMatrix();
+                float3 fallbackForwardWS = normalize(mul(objectToWorld, float3(0.0, 0.0, 1.0)));
+                float3 fallbackUpWS = normalize(mul(objectToWorld, float3(0.0, 1.0, 0.0)));
+                float3 fallbackRightWS = normalize(cross(fallbackUpWS, fallbackForwardWS));
+                fallbackUpWS = normalize(cross(fallbackForwardWS, fallbackRightWS));
+                float3 headForwardWS, headRightWS, headUpWS;
+                Miku_ResolveFaceSdfHeadAxes(fallbackForwardWS, fallbackRightWS, fallbackUpWS, _MikuHeadForwardWS, _MikuHeadRightWS, _MikuHeadUpWS, _MikuHeadAxesValid, headForwardWS, headRightWS, headUpWS);
+                float faceLight = Wuwa_FaceSDFLight(input.uv, faceSdf, TEXTURE2D_ARGS(_FaceSDF, sampler_FaceSDF), lightDirWS, headForwardWS, headRightWS, headUpWS, _FaceSdfMainChannel, _FaceSdfSoftChannel, _FaceShadowOffset, _FaceShadowSoftness, _FaceThresholdBias, _FaceSoftChannelStrength) * mainLight.shadowAttenuation;
+                faceLight = lerp(1.0, faceLight, faceID.r);
+                #if defined(_WUWA_HAIR_SHADOW_ON)
+                    float hairShadow = Wuwa_HairShadowMask(TEXTURE2D_ARGS(_WuwaHairShadowTexture, sampler_WuwaHairShadowTexture), input.positionCS, lightDirWS, _HairShadowScreenOffset, _HairShadowDepthBias, _HairShadowSoftness, _HairShadowStrength, _WuwaHairShadowAvailable);
+                    faceLight *= 1.0 - hairShadow * _UseHairShadow;
+                #endif
+                float debugMode = round(_FaceSdfDebugMode);
+                if (debugMode == 1) return half4(faceSdf.rrr, 1.0);
+                if (debugMode == 2) return half4(faceSdf.ggg, 1.0);
+                if (debugMode == 3) return half4(faceSdf.bbb, 1.0);
+                if (debugMode == 4) return half4(faceSdf.aaa, 1.0);
+                if (debugMode == 5) return half4(faceLight.xxx, 1.0);
+                float3 mainLightColor = lerp(1.0.xxx, mainLight.color.rgb, _MainLightColorUsage);
+                float3 shadowTone = _ShadowTint.rgb;
+                #if defined(_WUWA_SKIN_RAMP_ON)
+                    float3 rampSample = SAMPLE_TEXTURE2D(_SkinRamp, sampler_SkinRamp, saturate(_SkinRampUV.xy)).rgb;
+                    rampSample = Wuwa_ApplyPowerCurve(rampSample, _SkinRampCurvePower, 1.0);
+                    rampSample = saturate(Wuwa_AdjustSaturation(rampSample, _SkinRampSaturation) * _SkinRampBrightness);
+                    shadowTone = lerp(1.0.xxx, rampSample, _SkinRampStrength);
+                #endif
+                float3 faceBase = saturate(Wuwa_ApplyPowerCurve(baseSample.rgb, _FaceBaseCurvePower, _FaceBaseBrightness));
+                float2 blushSize = max(_FaceBlushSize.xy, 1e-3.xx);
+                float2 leftBlushUV = (input.uv - _FaceBlushCenters.xy) / blushSize;
+                float2 rightBlushUV = (input.uv - _FaceBlushCenters.zw) / blushSize;
+                float2 noseCenter = float2((_FaceBlushCenters.x + _FaceBlushCenters.z) * 0.5, _FaceBlushCenters.y - blushSize.y * 0.12);
+                float2 noseBlushUV = (input.uv - noseCenter) / (blushSize * float2(0.48, 0.72));
+                float cheekMask = max(saturate(1.0 - dot(leftBlushUV, leftBlushUV)), saturate(1.0 - dot(rightBlushUV, rightBlushUV)));
+                float noseMask = saturate(1.0 - dot(noseBlushUV, noseBlushUV)) * 0.45;
+                float blushMask = saturate(max(cheekMask * cheekMask, noseMask * noseMask) * _FaceBlushStrength);
+                float3 blushTone = saturate(faceBase * _FaceBlushColor.rgb + _FaceBlushColor.rgb * 0.04);
+                faceBase = lerp(faceBase, blushTone, blushMask);
+                float3 faceLightingTone = lerp(shadowTone, _LitTint.rgb, faceLight);
+                float3 color = faceBase * lerp(1.0.xxx, faceLightingTone, saturate(_FaceShadowStrength)) * _FaceFinalBrightness * mainLightColor;
+                color += Wuwa_SampleSH_Indirect(normalWS, 0.0) * _IndirectLightUsage * baseSample.rgb;
+                #if defined(_WUWA_FACE_HET_ON)
+                    float4 het = SAMPLE_TEXTURE2D(_FaceHET, sampler_FaceHET, input.uv);
+                    float extraLightMask = Wuwa_SelectChannel(het, _FaceExtraLightChannel);
+                    color += extraLightMask * _FaceExtraLightColor.rgb * _FaceExtraLightStrength;
+                #endif
+                color += Wuwa_DepthFresnelRimLight(input.positionCS, normalWS, viewDirWS, mainLight.color.rgb, _RimLightTintColor.rgb, _RimLightBrightness, _RimLightWidth, _RimLightThreshold, _RimLightFadeout, _FresnelPower, _FresnelClamp);
+                #if defined(_WUWA_EMISSION_ON)
+                    color += SAMPLE_TEXTURE2D(_EmissionMap, sampler_EmissionMap, input.uv).rgb;
+                #endif
+                return half4(color, baseSample.a);
+            }
+            ENDHLSL
+        }
+        Pass
+        {
+            Name "Outline"
+            Tags { "LightMode"="SRPDefaultUnlit" }
+            Cull Front
+            ZWrite On
+            ZTest LEqual
+            Blend One Zero
+            ColorMask RGBA
+            HLSLPROGRAM
+            #pragma target 3.5
+            #pragma vertex OutlineVert
+            #pragma fragment OutlineFrag
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "WuwaCommon.hlsl"
+            TEXTURE2D(_FaceID); SAMPLER(sampler_FaceID);
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float4 _OutlineColorTint;
+            CBUFFER_END
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 uv : TEXCOORD0; float3 smoothNormalOS : TEXCOORD7; };
+            struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; };
+            Varyings OutlineVert(Attributes input)
+            {
+                Varyings output;
+                VertexPositionInputs pos = GetVertexPositionInputs(input.positionOS.xyz);
+                float3 outlineNormalOS = Wuwa_GetOutlineNormalOS(input.smoothNormalOS, input.normalOS);
+                float3 outlineNormalWS = normalize(TransformObjectToWorldNormal(outlineNormalOS));
+                float outlineWidth = Wuwa_DistanceCompensatedOutlineWidth(pos.positionWS, _OutlineWidth, _OutlineReferenceDistance, _OutlineDistanceScale);
+                output.positionCS = TransformWorldToHClip(pos.positionWS + outlineNormalWS * outlineWidth);
+                output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
+                return output;
+            }
+            half4 OutlineFrag(Varyings input) : SV_Target
+            {
+                float4 idMap = SAMPLE_TEXTURE2D(_FaceID, sampler_FaceID, input.uv);
+                return half4(Wuwa_IDOutlineColor(idMap, _OutlineColorTint.rgb), 1.0);
+            }
+            ENDHLSL
+        }
+        Pass
+        {
+            Name "ShadowCaster"
+            Tags { "LightMode"="ShadowCaster" }
+            HLSLPROGRAM
+            #pragma vertex DepthVert
+            #pragma fragment DepthFrag
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            struct Attributes { float4 positionOS : POSITION; };
+            struct Varyings { float4 positionCS : SV_POSITION; };
+            Varyings DepthVert(Attributes input) { Varyings output; output.positionCS = TransformObjectToHClip(input.positionOS.xyz); return output; }
+            half4 DepthFrag(Varyings input) : SV_Target { return 0; }
+            ENDHLSL
+        }
+        Pass
+        {
+            Name "DepthOnly"
+            Tags { "LightMode"="DepthOnly" }
+            HLSLPROGRAM
+            #pragma vertex DepthVert
+            #pragma fragment DepthFrag
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            struct Attributes { float4 positionOS : POSITION; };
+            struct Varyings { float4 positionCS : SV_POSITION; };
+            Varyings DepthVert(Attributes input) { Varyings output; output.positionCS = TransformObjectToHClip(input.positionOS.xyz); return output; }
+            half4 DepthFrag(Varyings input) : SV_Target { return 0; }
+            ENDHLSL
+        }
+    }
+    CustomEditor "Miku.ShaderConverter.Editor.MikuManualTextureShaderGUI"
+}

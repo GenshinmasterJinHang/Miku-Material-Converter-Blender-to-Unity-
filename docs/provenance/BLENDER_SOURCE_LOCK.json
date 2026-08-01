@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/blender/blender",
+  "upstreamVersion": "5.2.0",
+  "upstreamCommit": "fbe6228777e7d9afefcd61a413844e790ae75db7",
+  "retrievedAt": "2026-07-24",
+  "role": "behavioral-reference-only",
+  "implementationLicense": "MIT-clean-room",
+  "sourceCopied": false,
+  "notes": [
+    "Miku does not distribute Blender source or translated Blender shader code.",
+    "Semantic regions are derived from the public bpy data model and black-box behavior.",
+    "The Steam installation is used only by the Blender-side acceptance harness.",
+    "Any separately distributed Blender Extensions ZIP remains outside this repository license."
+  ],
+  "steamBlenderInstallation": {
+    "path": "C:/SteamLibrary/steamapps/common/Blender/blender.exe",
+    "version": "5.2.0 LTS",
+    "buildDate": "2026-07-14",
+    "purpose": "headless acceptance export",
+    "verifiedAt": "2026-07-27"
+  }
+}

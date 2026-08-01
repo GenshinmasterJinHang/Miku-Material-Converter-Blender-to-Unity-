@@ -1,0 +1,40 @@
+{
+  "version": "miku-3.0",
+  "material": { "name": "V2FaceSdfDirectionBindings" },
+  "nodes": [
+    { "id": "node_000_sun", "op": "Input.Attribute", "params": { "attributeName": "SUN", "semanticHint": "main_light_direction", "space": "world" }, "inputs": [], "outputs": [
+      { "id": "Vector", "name": "Vector", "dir": "out", "valueType": "float3", "semantic": "attribute_geometry", "space": "world" }
+    ], "source": { "blenderNodeName": "SUN", "blenderNodeType": "ShaderNodeAttribute", "groupPath": ["Root"] } },
+    { "id": "node_001_front", "op": "Input.Attribute", "params": { "attributeName": "FRONT", "semanticHint": "object_axis", "axis": "Z", "space": "world" }, "inputs": [], "outputs": [
+      { "id": "Vector", "name": "Vector", "dir": "out", "valueType": "float3", "semantic": "attribute_geometry", "space": "world" }
+    ], "source": { "blenderNodeName": "FRONT", "blenderNodeType": "ShaderNodeAttribute", "groupPath": ["Root"] } },
+    { "id": "node_002_right", "op": "Input.Attribute", "params": { "attributeName": "RIGHT", "semanticHint": "object_axis", "axis": "X", "space": "world" }, "inputs": [], "outputs": [
+      { "id": "Vector", "name": "Vector", "dir": "out", "valueType": "float3", "semantic": "attribute_geometry", "space": "world" }
+    ], "source": { "blenderNodeName": "RIGHT", "blenderNodeType": "ShaderNodeAttribute", "groupPath": ["Root"] } },
+    { "id": "node_003_front_dot", "op": "VectorMath", "params": { "operation": "DOT_PRODUCT" }, "inputs": [
+      { "id": "Vector", "name": "Vector", "dir": "in", "valueType": "float3", "semantic": "none", "space": "world" },
+      { "id": "Vector_001", "name": "Vector_001", "dir": "in", "valueType": "float3", "semantic": "none", "space": "world" }
+    ], "outputs": [
+      { "id": "Value", "name": "Value", "dir": "out", "valueType": "float", "semantic": "none", "space": "none" }
+    ], "source": { "blenderNodeName": "FaceLightDot", "blenderNodeType": "ShaderNodeVectorMath", "groupPath": ["Root"] } },
+    { "id": "node_004_side_dot", "op": "VectorMath", "params": { "operation": "DOT_PRODUCT" }, "inputs": [
+      { "id": "Vector", "name": "Vector", "dir": "in", "valueType": "float3", "semantic": "none", "space": "world" },
+      { "id": "Vector_001", "name": "Vector_001", "dir": "in", "valueType": "float3", "semantic": "none", "space": "world" }
+    ], "outputs": [
+      { "id": "Value", "name": "Value", "dir": "out", "valueType": "float", "semantic": "none", "space": "none" }
+    ], "source": { "blenderNodeName": "FaceSideDot", "blenderNodeType": "ShaderNodeVectorMath", "groupPath": ["Root"] } }
+  ],
+  "edges": [
+    { "from": { "node": "node_000_sun", "socket": "Vector" }, "to": { "node": "node_003_front_dot", "socket": "Vector" } },
+    { "from": { "node": "node_001_front", "socket": "Vector" }, "to": { "node": "node_003_front_dot", "socket": "Vector_001" } },
+    { "from": { "node": "node_000_sun", "socket": "Vector" }, "to": { "node": "node_004_side_dot", "socket": "Vector" } },
+    { "from": { "node": "node_002_right", "socket": "Vector" }, "to": { "node": "node_004_side_dot", "socket": "Vector_001" } }
+  ],
+  "resources": {},
+  "entry": { "surface": { "node": "node_003_front_dot", "socket": "Value" } },
+  "diagnostics": [
+    { "severity": "warning", "code": "semantic_binding_hint", "node": "SUN", "blenderNodeType": "ShaderNodeAttribute", "groupPath": ["Root"], "message": "Attribute(\"SUN\") is intended to bind to Unity main light direction." },
+    { "severity": "warning", "code": "semantic_binding_hint", "node": "FRONT", "blenderNodeType": "ShaderNodeAttribute", "groupPath": ["Root"], "message": "Attribute(\"FRONT\") is intended to bind to object +Z axis in world space." },
+    { "severity": "warning", "code": "semantic_binding_hint", "node": "RIGHT", "blenderNodeType": "ShaderNodeAttribute", "groupPath": ["Root"], "message": "Attribute(\"RIGHT\") is intended to bind to object +X axis in world space." }
+  ]
+}
