@@ -1,2 +1,2 @@
-df24dcdf90dbbdd2b92bae46ea8f653370eb177d0f36c60e80c0e026f09f4331  miku_shader_converter-2.2.8.zip
-752731c96eb20f66d513898628d1c39a65258ad15de6f98dc26c14708cf5c267  com.miku.shaderconverter-2.2.8.tgz
+c3fc830dc3c2c388940355462cd5da071607a73da7eb6cabd3e997dbe2b64a80  miku_shader_converter-2.2.8.zip
+0ef9b24e8f051779291b11484f2dd77c662f102426ed01fdcc7fab803730e15b  com.miku.shaderconverter-2.2.8.tgz
