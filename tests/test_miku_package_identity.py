@@ -72,7 +72,7 @@ class MikuPackageIdentityTests(unittest.TestCase):
         self.assertEqual(expected, actual)
 
     def test_semantic_lit_shader_keeps_pre_cutover_guid(self):
-        meta = PACKAGE / "Runtime" / "StandardPBR" / "MIKU_StandardPBR_SemanticLit.shader.meta"
+        meta = PACKAGE / "Runtime" / "StandardPBR" / "Miku_StandardPBR_SemanticLit.shader.meta"
         self.assertIn("guid: 10e4314ce3554d94a3d70d965890cbbc", meta.read_text(encoding="utf8"))
 
     def test_deterministic_tgz_preserves_complete_identity_manifest(self):

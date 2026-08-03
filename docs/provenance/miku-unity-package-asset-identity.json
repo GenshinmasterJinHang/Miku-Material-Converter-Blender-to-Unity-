@@ -105,7 +105,7 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "dad3d154519c0cf46fa02385031237c9ecb1aea19d8b21f2428af962a3e30780",
+      "contentSha256": "8255d6b302cd543e57cf0444ca5423649f366c8b13bed7639c63eb762d834eb6",
       "guid": "9f6d819bf7364b7e94df3e941a7ae020",
       "metaPath": "Editor/MikuGameToonMaterialTools.cs.meta",
       "path": "Editor/MikuGameToonMaterialTools.cs",
@@ -508,7 +508,7 @@
       "role": "Folder"
     },
     {
-      "contentSha256": "795d07d2dd535b2efc84df5040f0851fdb848f7f2169db57f1296311dd0ff64b",
+      "contentSha256": "b75e608aadefe1bfcb947cb1cd277665f138107d7693846c517ab4ee473a88f5",
       "guid": "b7b6bba7618c4b44dbdf18f40be6f986",
       "metaPath": "Runtime/Profiles/MikuAnimeGlobalVolumeProfile.asset.meta",
       "path": "Runtime/Profiles/MikuAnimeGlobalVolumeProfile.asset",
@@ -773,7 +773,7 @@
       "role": "CSharp"
     }
   ],
-  "canonicalHash": "d2aa13602832e3cd06034284d10d0da9730c5f3d5d8215e21f1acb4b4b665d15",
+  "canonicalHash": "4736ec79ab197c512b869f7a913314a4f9d3f8b6e0a278db57d5fadfdfe48beb",
   "package": "com.miku.shaderconverter",
   "schema": "miku-package-asset-identity-1.0"
 }
