@@ -9,16 +9,85 @@ from .contracts import DocumentValidationError, make_document, validate_document
 
 BLENDER_VERSION = "5.2.0 LTS"
 BLENDER_COMMIT = "fbe6228777e7d9afefcd61a413844e790ae75db7"
+SUPPORTED_BAKE_RESOLUTIONS = (512, 1024, 2048, 4096)
+DEFAULT_BAKE_RESOLUTION = 1024
+BAKE_REQUEST_KINDS = frozenset({"miku-bake-request-1.0", "miku-bake-request-1.1"})
 BAKE_SETTINGS = {
     "blenderVersion": BLENDER_VERSION,
     "blenderCommit": BLENDER_COMMIT,
     "engine": "CYCLES",
     "device": "CPU",
-    "resolution": 1024,
+    "resolution": DEFAULT_BAKE_RESOLUTION,
     "samples": 16,
     "margin": 16,
     "randomSeed": 0,
 }
+
+
+def normalize_bake_resolution(value: Any) -> int:
+    if isinstance(value, bool):
+        value = None
+    try:
+        resolution = int(value)
+    except (TypeError, ValueError) as exc:
+        raise DocumentValidationError(
+            "MIKU_BAKE_RESOLUTION_INVALID",
+            "Bake resolution must be one of 512, 1024, 2048, or 4096",
+            "$.settings.resolution",
+        ) from exc
+    if (isinstance(value, float) and value != resolution) or (
+        resolution not in SUPPORTED_BAKE_RESOLUTIONS
+    ):
+        raise DocumentValidationError(
+            "MIKU_BAKE_RESOLUTION_INVALID",
+            "Bake resolution must be one of 512, 1024, 2048, or 4096",
+            "$.settings.resolution",
+        )
+    return resolution
+
+
+def validate_bake_request(request: Mapping[str, Any]) -> dict[str, Any]:
+    value = validate_document(request)
+    kind = str(value.get("documentKind") or "")
+    if kind not in BAKE_REQUEST_KINDS:
+        raise DocumentValidationError(
+            "MIKU_BAKE_REQUEST_SCHEMA_UNSUPPORTED",
+            f"Unsupported bake request kind: {kind or '<missing>'}",
+        )
+    settings = value.get("settings")
+    if not isinstance(settings, Mapping):
+        raise DocumentValidationError(
+            "MIKU_BAKE_SETTINGS_MISSING",
+            "Bake request settings must be an object",
+            "$.settings",
+        )
+    setting_keys = set(settings)
+    expected_setting_keys = set(BAKE_SETTINGS)
+    if setting_keys != expected_setting_keys:
+        missing = sorted(expected_setting_keys - setting_keys)
+        unexpected = sorted(setting_keys - expected_setting_keys)
+        raise DocumentValidationError(
+            "MIKU_BAKE_SETTINGS_INVALID",
+            f"Missing settings: {missing}; unexpected settings: {unexpected}",
+            "$.settings",
+        )
+    resolution = normalize_bake_resolution(settings.get("resolution"))
+    if kind == "miku-bake-request-1.0" and resolution != DEFAULT_BAKE_RESOLUTION:
+        raise DocumentValidationError(
+            "MIKU_BAKE_RESOLUTION_INVALID",
+            "Bake request 1.0 requires a 1024 resolution",
+            "$.settings.resolution",
+        )
+    for key, expected in BAKE_SETTINGS.items():
+        if key == "resolution":
+            continue
+        if settings.get(key) != expected:
+            raise DocumentValidationError(
+                "MIKU_BAKE_SETTING_INVALID",
+                f"Certified bake setting {key} must be {expected!r}",
+                f"$.settings.{key}",
+            )
+    return value
 
 
 def make_bake_request(
@@ -30,9 +99,12 @@ def make_bake_request(
     source_snapshot: Mapping[str, Any],
     allow_appearance_approximation: bool = False,
     mesh_binding: Mapping[str, Any] | None = None,
+    resolution: int = DEFAULT_BAKE_RESOLUTION,
 ) -> dict[str, Any]:
     if not persistent_source_id or not persistent_material_id:
-        raise DocumentValidationError("MIKU_BAKE_IDENTITY_MISSING", "Persistent source and material IDs are required")
+        raise DocumentValidationError(
+            "MIKU_BAKE_IDENTITY_MISSING", "Persistent source and material IDs are required"
+        )
     if not jobs:
         raise DocumentValidationError("MIKU_BAKE_JOBS_MISSING", "At least one bake job is required")
     if not source_material_name or not isinstance(source_snapshot, Mapping):
@@ -40,6 +112,8 @@ def make_bake_request(
             "MIKU_BAKE_SOURCE_MISSING",
             "The Blender material selector and private source snapshot are required",
         )
+    settings = dict(BAKE_SETTINGS)
+    settings["resolution"] = normalize_bake_resolution(resolution)
     payload: dict[str, Any] = {
         "persistentSourceId": persistent_source_id,
         "persistentMaterialId": persistent_material_id,
@@ -47,11 +121,11 @@ def make_bake_request(
         "sourceSnapshot": dict(source_snapshot),
         "allowAppearanceApproximation": bool(allow_appearance_approximation),
         "jobs": [dict(item) for item in jobs],
-        "settings": dict(BAKE_SETTINGS),
+        "settings": settings,
     }
     if mesh_binding:
         payload["meshBinding"] = dict(mesh_binding)
-    return make_document("miku-bake-request-1.0", payload)
+    return make_document("miku-bake-request-1.1", payload)
 
 
 def make_bake_result(
@@ -62,11 +136,13 @@ def make_bake_result(
     diagnostics: list[Mapping[str, Any]] | None = None,
     mesh_binding: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    validate_document(request, "miku-bake-request-1.0")
+    validate_bake_request(request)
     if status not in {"completed", "failed"}:
         raise DocumentValidationError("MIKU_BAKE_STATUS_INVALID", status)
     if status == "completed" and not resources:
-        raise DocumentValidationError("MIKU_BAKE_RESOURCES_MISSING", "Completed bake results require resources")
+        raise DocumentValidationError(
+            "MIKU_BAKE_RESOURCES_MISSING", "Completed bake results require resources"
+        )
     payload: dict[str, Any] = {
         "requestHash": request["canonicalHash"],
         "status": status,
@@ -79,27 +155,27 @@ def make_bake_result(
 
 
 def validate_bake_result(result: Mapping[str, Any], request: Mapping[str, Any]) -> dict[str, Any]:
+    validate_bake_request(request)
     value = validate_document(result, "miku-bake-result-1.0")
     if value.get("requestHash") != request.get("canonicalHash"):
-        raise DocumentValidationError("MIKU_BAKE_REQUEST_HASH_MISMATCH", "Bake result belongs to another request")
+        raise DocumentValidationError(
+            "MIKU_BAKE_REQUEST_HASH_MISMATCH", "Bake result belongs to another request"
+        )
     status = value.get("status")
     resources = value.get("resources")
     if status != "completed":
         diagnostics = value.get("diagnostics")
         first = (
             diagnostics[0]
-            if isinstance(diagnostics, list)
-            and diagnostics
-            and isinstance(diagnostics[0], Mapping)
+            if isinstance(diagnostics, list) and diagnostics and isinstance(diagnostics[0], Mapping)
             else {}
         )
         raise DocumentValidationError(
             str(first.get("code") or "MIKU_BAKE_FAILED"),
-            str(
-                first.get("message")
-                or "Bake result is not completed"
-            ),
+            str(first.get("message") or "Bake result is not completed"),
         )
     if not isinstance(resources, list) or not resources:
-        raise DocumentValidationError("MIKU_BAKE_RESOURCES_MISSING", "Completed bake result has no resources")
+        raise DocumentValidationError(
+            "MIKU_BAKE_RESOURCES_MISSING", "Completed bake result has no resources"
+        )
     return value

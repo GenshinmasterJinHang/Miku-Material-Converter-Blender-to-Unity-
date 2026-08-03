@@ -41,21 +41,10 @@ def main() -> None:
 
     selected, diagnostic = miku_blender._active_material_slot_state(bpy.context)
     assert selected is active, diagnostic
-    assert (
-        miku_blender._migrate_material_workflow(
-            active,
-            bpy.context.scene.miku_settings,
-        )
-        == "hsr_toon"
-    )
-    bpy.context.scene.miku_settings.default_workflow = "standard_pbr"
-    assert (
-        miku_blender._migrate_material_workflow(
-            active,
-            bpy.context.scene.miku_settings,
-        )
-        == "hsr_toon"
-    )
+    assert miku_blender._material_workflow_preview(
+        active,
+        bpy.context.scene.miku_settings,
+    ) == "hsr_toon"
 
     captured = {}
     original_export = miku_blender.export_material_bundle
@@ -91,8 +80,8 @@ def main() -> None:
 
     assert result["materialKey"] == active.name
     assert captured["material"] is active
-    assert captured["workflow_kind"] == "hsr_toon"
-    assert captured["workflow_part"] == "Hair"
+    assert captured["workflow_kind"] == "standard_pbr"
+    assert captured["workflow_part"] == "Body"
     assert captured["persistent_material_id"]
     assert active.get("miku_material_id") == captured["persistent_material_id"]
     assert bpy.context.scene.get("miku_source_id")

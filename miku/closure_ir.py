@@ -129,6 +129,27 @@ def _normalize_socket(value: Any) -> str:
     )
 
 
+def _canonical_unconnected_closure_parameter(
+    name: str,
+    value: Any,
+) -> Any:
+    """Map Blender's unconnected closure-normal sentinel to neutral tangent space."""
+
+    if _normalize_socket(name) not in {"normal", "coatnormal"}:
+        return value
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        return value
+    try:
+        components = [float(component) for component in value]
+    except (TypeError, ValueError):
+        return value
+    if not all(math.isfinite(component) for component in components):
+        return value
+    if all(abs(component) <= 1.0e-12 for component in components):
+        return [0.0, 0.0, 1.0]
+    return value
+
+
 def _node_op(node: Mapping[str, Any]) -> str:
     return str(node.get("op") or node.get("type") or "")
 
@@ -706,7 +727,10 @@ class ClosureGraphBuilder:
                     "valueType": canonical_socket_type(
                         record.get("valueType") or "Float"
                     ),
-                    "value": record.get("default"),
+                    "value": _canonical_unconnected_closure_parameter(
+                        name,
+                        record.get("default"),
+                    ),
                     "source": {"nodeId": node_id, "socketId": name},
                 }
             else:

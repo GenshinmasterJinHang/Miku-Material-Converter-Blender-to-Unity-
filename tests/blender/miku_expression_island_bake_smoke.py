@@ -62,16 +62,44 @@ def main() -> None:
         for material_name in ("彩色镀层5", "彩色镀层8", "彩色镀层9"):
             material = bpy.data.materials[material_name]
             graph = miku_blender.snapshot_material(material)
-            material_ir = build_material_ir(
+            auto_ir = build_material_ir(
                 graph,
                 source_blend_id="colorful-coating-smoke",
                 material_key=material_name,
             )
+            auto_plan = ConversionPlanner().plan(auto_ir, mode="Auto")
+            if material_name == "彩色镀层8":
+                diagnostic_text = "\n".join(
+                    str(item.get("message") or "")
+                    for item in auto_ir.get("diagnostics", [])
+                )
+                if "Texture.Voronoi" not in diagnostic_text:
+                    raise RuntimeError(
+                        "MIKU_COLORFUL_COATING_DEEPEST_LEAF_MISSING:"
+                        + diagnostic_text
+                    )
+                if auto_plan.get("bakeJobs"):
+                    raise RuntimeError(
+                        "MIKU_AUTO_MUST_NOT_SCHEDULE_MESH_BOUND_ISLAND"
+                    )
+            material_ir = build_material_ir(
+                graph,
+                source_blend_id="colorful-coating-smoke",
+                material_key=material_name,
+                conversion_mode="AllowMeshBake",
+            )
             jobs = [
                 item
-                for item in ConversionPlanner().plan(material_ir)["bakeJobs"]
+                for item in ConversionPlanner().plan(
+                    material_ir,
+                    mode="AllowMeshBake",
+                )["bakeJobs"]
                 if item.get("scope") == "ExpressionIsland"
             ]
+            if material_name == "彩色镀层8" and not jobs:
+                raise RuntimeError(
+                    "MIKU_COLORFUL_COATING_STATIC_ISLAND_NOT_SCHEDULED"
+                )
             result = bake_expression_islands(
                 bpy.context,
                 list(bpy.data.objects),

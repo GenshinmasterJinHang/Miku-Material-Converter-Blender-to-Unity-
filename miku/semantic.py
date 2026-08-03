@@ -17,7 +17,13 @@ from .closure_ir import (
     FidelityPolicy,
     build_weighted_closure_set,
 )
-from .contracts import WORKFLOW_KINDS, canonical_hash, make_document, stable_uuid
+from .contracts import (
+    RETIRED_WORKFLOW_KINDS,
+    WORKFLOW_KINDS,
+    canonical_hash,
+    make_document,
+    stable_uuid,
+)
 from .socket_conversion import ColorManagementContext
 from .surface_models import build_surface_model_plan
 
@@ -68,6 +74,16 @@ _SOURCE_MESH_CONVERSION_MODES = {
     "FullPBRBake",
     "AppearanceSnapshot",
 }
+_REUSABLE_BAKE_CONVERSION_MODES = {
+    "PreferNative",
+    "ReusableBakeOnly",
+}
+_DEPENDENCY_DOMAIN_RANK = {
+    "Uniform": 0,
+    "UV0": 1,
+    "MeshSurface": 2,
+    "Runtime": 3,
+}
 _PURE_OP_PREFIXES = ("Math", "Vector", "Color", "Converter", "Texture", "Utility", "Input.")
 _PBR_SEMANTICS = (
     "BaseColor",
@@ -81,6 +97,7 @@ _PBR_SEMANTICS = (
     "TransmissionWeight",
     "IOR",
     "Thickness",
+    "Height",
     "Displacement",
 )
 _NORMAL_CONVENTIONS = {
@@ -206,6 +223,7 @@ class _RuntimeExpressionCompiler:
         self.diagnostics: list[dict[str, Any]] = []
         self._cache: dict[tuple[str, str, str], str] = {}
         self._visiting: set[tuple[str, str, str]] = set()
+        self._last_static_bake_leaf: dict[str, str] | None = None
         self._incoming: dict[tuple[str, str], Mapping[str, Any]] = {}
         for edge in graph.get("edges", []) or []:
             source = edge.get("from") or {}
@@ -227,10 +245,18 @@ class _RuntimeExpressionCompiler:
         key = (node_id, _normalize_socket(socket))
         node = self.nodes.get(node_id)
         if node is None:
+            self._last_static_bake_leaf = {
+                "node": node_id,
+                "socket": socket,
+            }
             return True
         if seen is None:
             seen = set()
         if key in seen:
+            self._last_static_bake_leaf = {
+                "node": node_id,
+                "socket": socket,
+            }
             return True
         seen.add(key)
         op = _node_op(node)
@@ -341,6 +367,14 @@ class _RuntimeExpressionCompiler:
         elif op == "Texture.Noise":
             native = _normalize_socket(socket) in {"fac", "factor"}
         if not native:
+            # Remember the exact unsupported endpoint reached through native
+            # wrappers. Portable-mode diagnostics can then name the actionable
+            # leaf (for example Voronoi Color), rather than an outer Color Ramp
+            # or HSV consumer.
+            self._last_static_bake_leaf = {
+                "node": node_id,
+                "socket": socket,
+            }
             return True
         for input_socket in node.get("inputs", []) or []:
             if not isinstance(input_socket, Mapping):
@@ -367,14 +401,111 @@ class _RuntimeExpressionCompiler:
         *,
         detail: str = "",
     ) -> ValueError:
-        node_id = str(source.get("node") or "")
-        socket = str(source.get("socket") or "")
+        consumer_node_id = str(source.get("node") or "")
+        consumer_socket = str(source.get("socket") or "")
+        leaf = self._last_static_bake_leaf or dict(source)
+        node_id = str(leaf.get("node") or consumer_node_id)
+        socket = str(leaf.get("socket") or consumer_socket)
         node = self.nodes.get(node_id, {})
         op = _node_op(node) or "Unknown"
+        path = ""
+        if (node_id, _normalize_socket(socket)) != (
+            consumer_node_id,
+            _normalize_socket(consumer_socket),
+        ):
+            path = (
+                ":consumerPath="
+                f"{consumer_node_id}.{consumer_socket}<-{node_id}.{socket}"
+            )
         suffix = f":{detail}" if detail else ""
+        code = (
+            "MIKU_PORTABLE_HYBRID_MESH_DEPENDENCY"
+            if self.conversion_mode == "PreferNative"
+            else "MIKU_SOURCE_MESH_FIDELITY_REQUIRED"
+        )
+        domain = self.static_dependency_domain(source)
         return ValueError(
-            "MIKU_SOURCE_MESH_FIDELITY_REQUIRED:"
-            f"{op}:{node_id}:{socket}{suffix}"
+            f"{code}:{op}:{node_id}:{socket}:dependencyDomain={domain}"
+            f"{path}{suffix}"
+        )
+
+    @property
+    def allows_reusable_bake(self) -> bool:
+        return self.conversion_mode in _REUSABLE_BAKE_CONVERSION_MODES
+
+    @staticmethod
+    def _combine_dependency_domains(domains: Iterable[str]) -> str:
+        values = [str(item or "Uniform") for item in domains]
+        return max(
+            values or ["Uniform"],
+            key=lambda item: _DEPENDENCY_DOMAIN_RANK.get(item, 2),
+        )
+
+    def static_dependency_domain(
+        self,
+        source: Mapping[str, Any],
+        seen: set[tuple[str, str]] | None = None,
+    ) -> str:
+        """Classify the source domain without treating UV pixels as mesh data."""
+
+        node_id = str(source.get("node") or "")
+        socket = str(source.get("socket") or "")
+        key = (node_id, _normalize_socket(socket))
+        node = self.nodes.get(node_id)
+        if node is None:
+            return "MeshSurface"
+        if seen is None:
+            seen = set()
+        if key in seen:
+            return "MeshSurface"
+        seen.add(key)
+        if self.depends_on_runtime(source):
+            return "Runtime"
+        op = _node_op(node)
+        normalized_socket = _normalize_socket(socket)
+        if op == "Input.TextureCoordinate":
+            if normalized_socket == "uv":
+                return "UV0"
+            if normalized_socket in {"camera", "reflection"}:
+                return "Runtime"
+            return "MeshSurface"
+        if op == "Input.UVMap":
+            return "UV0"
+        if op in _MESH_OPS or op in {
+            "Input.Normal",
+            "Input.Position",
+            "Input.Tangent",
+        }:
+            return "MeshSurface"
+
+        input_domains = []
+        has_linked_vector_input = False
+        for input_socket in node.get("inputs", []) or []:
+            if not isinstance(input_socket, Mapping):
+                continue
+            normalized_input = _normalize_socket(
+                input_socket.get("id") or input_socket.get("name")
+            )
+            incoming = self._incoming.get((node_id, normalized_input))
+            if incoming:
+                if normalized_input == "vector":
+                    has_linked_vector_input = True
+                input_domains.append(
+                    self.static_dependency_domain(incoming, set(seen))
+                )
+        if op == "Texture.Image" and not has_linked_vector_input:
+            input_domains.append("UV0")
+        if op.startswith("Texture.") and not input_domains:
+            # Blender procedural textures without an explicit vector use a
+            # generated surface coordinate and therefore are not reusable UV
+            # functions.
+            input_domains.append("MeshSurface")
+        return self._combine_dependency_domains(input_domains)
+
+    def can_reusable_bake(self, source: Mapping[str, Any]) -> bool:
+        return (
+            self.allows_reusable_bake
+            and self.static_dependency_domain(source) in {"Uniform", "UV0"}
         )
 
     def _baked_island(
@@ -383,10 +514,18 @@ class _RuntimeExpressionCompiler:
         *,
         value_type: str,
         usage: str,
+        coordinate_domain: str = "MeshSurface",
+        mesh_binding_required: bool = True,
     ) -> str:
         node_id = str(source.get("node") or "")
         socket = str(source.get("socket") or "")
-        cache_key = (node_id, _normalize_socket(socket), usage)
+        cache_key = (
+            node_id,
+            _normalize_socket(socket),
+            usage,
+            coordinate_domain,
+            bool(mesh_binding_required),
+        )
         for island in self.expression_islands:
             if tuple(island.get("_cacheKey") or ()) == cache_key:
                 return str(island["expressionId"])
@@ -409,7 +548,8 @@ class _RuntimeExpressionCompiler:
                 "channel": "RGB" if usage != "Scalar" else "R",
                 "colorSpace": "Linear",
                 "uvSet": "UV0",
-                "meshBindingRequired": True,
+                "coordinateDomain": coordinate_domain,
+                "meshBindingRequired": bool(mesh_binding_required),
             },
             source=source,
         )
@@ -423,6 +563,8 @@ class _RuntimeExpressionCompiler:
                 "usage": usage,
                 "valueType": value_type,
                 "referenceName": f"_MIKU_Baked_{reference_hash}",
+                "coordinateDomain": coordinate_domain,
+                "meshBindingRequired": bool(mesh_binding_required),
             }
         )
         return expression_id
@@ -476,6 +618,7 @@ class _RuntimeExpressionCompiler:
     def requires_static_bake(self, source: Mapping[str, Any]) -> bool:
         """Return whether Blender must evaluate a runtime-independent source."""
 
+        self._last_static_bake_leaf = None
         return (
             not self.depends_on_runtime(source)
             and self._static_source_requires_bake(source)
@@ -516,6 +659,8 @@ class _RuntimeExpressionCompiler:
         *,
         value_type: str,
         usage: str,
+        coordinate_domain: str = "MeshSurface",
+        mesh_binding_required: bool = True,
     ) -> str:
         """Represent one Blender-evaluated source as a baked expression."""
 
@@ -523,6 +668,8 @@ class _RuntimeExpressionCompiler:
             source,
             value_type=value_type,
             usage=usage,
+            coordinate_domain=coordinate_domain,
+            mesh_binding_required=mesh_binding_required,
         )
 
     def _emit(
@@ -645,6 +792,38 @@ class _RuntimeExpressionCompiler:
             (node_id, _normalize_socket(record_socket))
         )
         if incoming:
+            height_channel = (
+                self.graph.get("heightChannel")
+                if isinstance(self.graph.get("heightChannel"), Mapping)
+                else {}
+            )
+            height_source = (
+                height_channel.get("source")
+                if isinstance(height_channel.get("source"), Mapping)
+                else {}
+            )
+            if (
+                semantic in {"Height", "VertexHeight"}
+                and str(incoming.get("node") or "")
+                == str(height_source.get("node") or "")
+                and _normalize_socket(incoming.get("socket"))
+                == _normalize_socket(height_source.get("socket"))
+            ):
+                return self._emit(
+                    f"{node_id}:{socket}:material-height",
+                    "Input.MaterialChannel",
+                    value_type="Scalar",
+                    stage=(
+                        "Vertex" if semantic == "VertexHeight" else "Fragment"
+                    ),
+                    uniformity="Varying",
+                    params={
+                        "semantic": "Height",
+                        "uvSet": "UV0",
+                        "lod": 0,
+                    },
+                    source=incoming,
+                )
             incoming_node = self.nodes.get(
                 str(incoming.get("node") or ""), {}
             )
@@ -690,8 +869,6 @@ class _RuntimeExpressionCompiler:
                 not self.depends_on_runtime(incoming)
                 and self._static_source_requires_bake(incoming)
             ):
-                if not self.allows_source_mesh_bake:
-                    raise self._portable_mesh_bake_error(incoming)
                 if not bool(incoming_source.get("blenderNodeName")):
                     raise ValueError(
                         "MIKU_BAKE_SOURCE_UNAVAILABLE:"
@@ -701,6 +878,18 @@ class _RuntimeExpressionCompiler:
                 resolved_usage = usage or (
                     "Color" if value_type == "Color" else "Scalar"
                 )
+                if self.can_reusable_bake(incoming):
+                    return self._baked_island(
+                        incoming,
+                        value_type=value_type,
+                        usage=resolved_usage,
+                        coordinate_domain=self.static_dependency_domain(
+                            incoming
+                        ),
+                        mesh_binding_required=False,
+                    )
+                if not self.allows_source_mesh_bake:
+                    raise self._portable_mesh_bake_error(incoming)
                 return self._baked_island(
                     incoming,
                     value_type=value_type,
@@ -2518,6 +2707,8 @@ def normalize_workflow_kind(value: Any) -> str:
     if isinstance(value, Mapping):
         value = value.get("kind")
     normalized = str(value or "standard_pbr").strip().lower()
+    if normalized in RETIRED_WORKFLOW_KINDS:
+        raise ValueError(f"MIKU_WORKFLOW_RETIRED:{normalized}")
     if normalized not in WORKFLOW_KINDS:
         raise ValueError(f"MIKU_WORKFLOW_UNSUPPORTED:{normalized}")
     return normalized
@@ -2525,9 +2716,19 @@ def normalize_workflow_kind(value: Any) -> str:
 
 def normalize_workflow_part(value: Any) -> str:
     normalized = str(value or "Body").strip().title()
-    if normalized not in {"Body", "Hair", "Face", "Eye", "Effect"}:
+    if normalized not in {
+        "Body",
+        "Skin",
+        "Hair",
+        "Face",
+        "Eye",
+        "Mouth",
+        "Overlay",
+        "Effect",
+        "Hairshadow",
+    }:
         raise ValueError(f"MIKU_WORKFLOW_PART_UNSUPPORTED:{normalized}")
-    return normalized
+    return "HairShadow" if normalized == "Hairshadow" else normalized
 
 
 def _node_op(node: Mapping[str, Any]) -> str:
@@ -2883,7 +3084,32 @@ def _bind_closure_value_expressions(
             return
         endpoint = {"node": node_id, "socket": socket_id}
         if compiler.requires_static_bake(endpoint):
-            if not bake_static:
+            reusable = compiler.can_reusable_bake(endpoint)
+            if not reusable and not compiler.allows_source_mesh_bake:
+                record["requiresBake"] = True
+                error = compiler._portable_mesh_bake_error(endpoint)
+                message = str(error)
+                diagnostic_code = message.split(":", 1)[0]
+                diagnostic_key = (
+                    diagnostic_code,
+                    node_id,
+                    socket_id,
+                    message,
+                )
+                if diagnostic_key not in diagnostic_keys:
+                    diagnostic_keys.add(diagnostic_key)
+                    diagnostics.append(
+                        {
+                            "severity": "error",
+                            "code": diagnostic_code,
+                            "translationQuality": "Unsupported",
+                            "nodeId": node_id,
+                            "socketId": socket_id,
+                            "message": message,
+                        }
+                    )
+                return
+            if not bake_static and not reusable:
                 record["requiresBake"] = True
                 return
             raw_value_type = str(record.get("valueType") or "Scalar")
@@ -2900,6 +3126,12 @@ def _bind_closure_value_expressions(
                 endpoint,
                 value_type=value_type,
                 usage=resolved_usage,
+                coordinate_domain=(
+                    compiler.static_dependency_domain(endpoint)
+                    if reusable
+                    else "MeshSurface"
+                ),
+                mesh_binding_required=not reusable,
             )
             record.pop("requiresBake", None)
             return
@@ -3010,10 +3242,12 @@ def _bind_closure_value_expressions(
                         else None
                     ),
                     semantic=parameter_semantic,
-                    bake_static=(
-                        requires_closure_composite
-                        and normalized_parameter != "normal"
-                    ),
+                    # Closure parameters are authoritative consumers too. In
+                    # Source Mesh mode every runtime-independent unsupported
+                    # endpoint becomes a traceable expression-island sample,
+                    # including Normal/Bump inputs. Portable modes retain the
+                    # explicit requiresBake proof and fail before export.
+                    bake_static=compiler.allows_source_mesh_bake,
                 )
             else:
                 parameter["requiresBake"] = True
@@ -3126,6 +3360,148 @@ def build_material_ir(
 ) -> dict[str, Any]:
     graph = graph or {}
     material_key = material_key or str((graph.get("material") or {}).get("name") or graph.get("materialName") or "Material")
+    workflow_source = graph.get("workflow")
+    workflow_source = (
+        workflow_source if isinstance(workflow_source, Mapping) else {}
+    )
+    requested_workflow = normalize_workflow_kind(
+        workflow_kind if workflow_kind is not None else workflow_source
+    )
+    if (
+        requested_workflow
+        in {"genshin_toon", "wuwa_toon", "hsr_toon", "endfield_toon"}
+        and not bool(graph.get("_mikuFixedWorkflowSurrogate"))
+    ):
+        surrogate_workflow: dict[str, Any] = {"kind": requested_workflow}
+        if requested_workflow in {
+            "genshin_toon",
+            "wuwa_toon",
+            "hsr_toon",
+        }:
+            surrogate_workflow["part"] = normalize_workflow_part(
+                workflow_source.get("part")
+            )
+        base_color_slot = (
+            ((graph.get("standardPbrSemantic") or {}).get("slots") or {}).get(
+                "BaseColor"
+            )
+            if isinstance(graph.get("standardPbrSemantic"), Mapping)
+            else None
+        )
+        direct_base_color = (
+            base_color_slot.get("default")
+            if isinstance(base_color_slot, Mapping)
+            and not isinstance(base_color_slot.get("source"), Mapping)
+            else [1.0, 1.0, 1.0, 1.0]
+        )
+        if not (
+            isinstance(direct_base_color, (list, tuple))
+            and len(direct_base_color) >= 3
+        ):
+            direct_base_color = [1.0, 1.0, 1.0, 1.0]
+        surrogate = {
+            "_mikuFixedWorkflowSurrogate": True,
+            "material": {"name": material_key},
+            "workflow": surrogate_workflow,
+            "nodes": [
+                {"id": "miku-fixed-output", "op": "Output.Material"},
+                {
+                    "id": "miku-fixed-surface",
+                    "op": "Shader.PrincipledBSDF",
+                    "inputs": [
+                        {
+                            "id": "Base Color",
+                            "name": "Base Color",
+                            "valueType": "RGBA",
+                            "default": list(direct_base_color),
+                        }
+                    ],
+                },
+            ],
+            "edges": [
+                {
+                    "from": {
+                        "node": "miku-fixed-surface",
+                        "socket": "Closure",
+                    },
+                    "to": {
+                        "node": "miku-fixed-output",
+                        "socket": "Surface",
+                    },
+                }
+            ],
+            "standardPbrSemantic": {"slots": {}},
+        }
+        document = build_material_ir(
+            surrogate,
+            source_blend_id=source_blend_id,
+            material_key=material_key,
+            workflow_kind=requested_workflow,
+            fidelity_policy=fidelity_policy,
+            add_shader_energy_policy=add_shader_energy_policy,
+            closure_budget=closure_budget,
+            conversion_mode="Auto",
+        )
+        payload = {
+            key: value
+            for key, value in document.items()
+            if key
+            not in {
+                "documentKind",
+                "schemaVersion",
+                "toolVersion",
+                "id",
+                "canonicalHash",
+            }
+        }
+        payload["provenance"] = {
+            "sourceRefs": [
+                {"nodeId": str(node.get("id") or "")}
+                for node in sorted(
+                    (
+                        node
+                        for node in graph.get("nodes", []) or []
+                        if isinstance(node, Mapping) and node.get("id")
+                    ),
+                    key=lambda item: str(item.get("id") or ""),
+                )
+            ]
+        }
+        payload["diagnostics"] = [
+            {
+                "severity": "warning",
+                "code": "MIKU_FIXED_WORKFLOW_SOURCE_GRAPH_IGNORED",
+                "translationQuality": "Approximate",
+                "workflow": requested_workflow,
+                "message": (
+                    "The fixed shader workflow preserves exported images but "
+                    "does not translate the Blender closure/value graph."
+                ),
+            },
+            *(
+                [
+                    {
+                        "severity": "info",
+                        "code": (
+                            "MIKU_FIXED_WORKFLOW_CONVERSION_MODE_IGNORED"
+                        ),
+                        "translationQuality": "Equivalent",
+                        "mode": conversion_mode,
+                        "message": (
+                            "Fixed shader workflows always use the Native "
+                            "texture-binding route and never schedule baking."
+                        ),
+                    }
+                ]
+                if conversion_mode != "Auto"
+                else []
+            ),
+        ]
+        return make_document(
+            "miku-material-ir-2.0",
+            payload,
+            document_id=str(document["id"]),
+        )
     nodes = {str(node.get("id")): node for node in graph.get("nodes", []) or [] if node.get("id")}
     reachable = _reachable_nodes(graph)
     expression_compiler = _RuntimeExpressionCompiler(
@@ -3230,6 +3606,8 @@ def build_material_ir(
     fallback_region = regions[-1]["id"] if regions else stable_uuid("miku-region", f"{material_key}:empty")
     for semantic in _PBR_SEMANTICS:
         slot = semantic_slots.get(semantic) if isinstance(semantic_slots, Mapping) else None
+        if semantic == "Height" and not isinstance(slot, Mapping):
+            continue
         source = slot.get("source") if isinstance(slot, Mapping) and isinstance(slot.get("source"), Mapping) else None
         channel_default = slot.get("default") if isinstance(slot, Mapping) else None
         if source is None:
@@ -3256,12 +3634,71 @@ def build_material_ir(
         }
         if source:
             try:
+                if semantic == "Height" and expression_compiler.depends_on_runtime(source):
+                    raise ValueError(
+                        "MIKU_RUNTIME_INPUT_UNSUPPORTED:Height:"
+                        f"{source.get('node') or ''}:{source.get('socket') or ''}"
+                    )
                 if expression_compiler.requires_static_bake(source):
-                    if not expression_compiler.allows_source_mesh_bake:
-                        raise expression_compiler._portable_mesh_bake_error(
-                            source
+                    reusable = (
+                        semantic != "Displacement"
+                        and expression_compiler.can_reusable_bake(source)
+                    )
+                    if reusable:
+                        expression_id = expression_compiler.compile_baked(
+                            source,
+                            value_type=str(channel["valueType"]),
+                            usage=(
+                                "Normal"
+                                if semantic == "Normal"
+                                else (
+                                    "Color"
+                                    if semantic
+                                    in {
+                                        "BaseColor",
+                                        "Emission",
+                                        "TransmissionColor",
+                                    }
+                                    else "Scalar"
+                                )
+                            ),
+                            coordinate_domain=(
+                                expression_compiler.static_dependency_domain(
+                                    source
+                                )
+                            ),
+                            mesh_binding_required=False,
                         )
-                    if runtime_dependent:
+                        channel["value"] = {
+                            "kind": "Expression",
+                            "expressionId": expression_id,
+                        }
+                        channels.append(channel)
+                        continue
+                    if not expression_compiler.allows_source_mesh_bake:
+                        raise expression_compiler._portable_mesh_bake_error(source)
+                    source_op = _node_op(
+                        expression_compiler.nodes.get(
+                            str(source.get("node") or ""),
+                            {},
+                        )
+                    )
+                    uses_planned_height_channel = (
+                        semantic == "Displacement"
+                        and source_op == "Vector.Displacement"
+                        and isinstance(graph.get("heightChannel"), Mapping)
+                        and bool(graph.get("heightChannel"))
+                    )
+                    if uses_planned_height_channel:
+                        expression_id = expression_compiler.compile(
+                            source,
+                            semantic=semantic,
+                        )
+                        channel["value"] = {
+                            "kind": "Expression",
+                            "expressionId": expression_id,
+                        }
+                    elif runtime_dependent and semantic != "Height":
                         source_node = expression_compiler.nodes.get(
                             str(source.get("node") or ""),
                             {},
@@ -3500,7 +3937,12 @@ def build_material_ir(
             workflow_kind if workflow_kind is not None else workflow_source
         )
     }
-    if workflow["kind"] in {"genshin_toon", "wuwa_toon", "hsr_toon"}:
+    if workflow["kind"] in {
+        "genshin_toon",
+        "wuwa_toon",
+        "hsr_toon",
+        "endfield_toon",
+    }:
         workflow["part"] = normalize_workflow_part(workflow_source.get("part"))
     material_id = stable_uuid(
         "miku-material",
@@ -3606,6 +4048,14 @@ def build_material_ir(
     payload = {
         "materialKey": material_key,
         "workflow": workflow,
+        "displacementPolicy": str(
+            graph.get("displacementPolicy") or "FOLLOW_BLENDER"
+        ),
+        "heightChannel": (
+            dict(graph.get("heightChannel"))
+            if isinstance(graph.get("heightChannel"), Mapping)
+            else {}
+        ),
         "source": {"sourceBlendId": source_blend_id, "materialName": material_key},
         "regions": sorted(regions, key=lambda item: item["id"]),
         "valueGraph": {
@@ -3655,7 +4105,7 @@ def build_material_ir(
             )
         payload["surfaceContract"] = surface_contract
     return make_document(
-        "miku-material-ir-1.0",
+        "miku-material-ir-2.0",
         payload,
         document_id=material_id,
     )

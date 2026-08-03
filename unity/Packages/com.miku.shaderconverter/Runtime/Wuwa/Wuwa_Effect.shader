@@ -10,6 +10,7 @@ Shader "MIKU/Wuwa/Effect"
         [MainColor] _BaseColorTint ("Primary Tint", Color) = (1,1,1,1)
         _EffectLayerBlend ("Layer Blend", Range(0,1)) = 0
         _PrimaryOpacity ("Primary Opacity", Range(0,1)) = 1
+        _PrimaryEmissionStrength ("Primary Layer Brightness", Range(0,20)) = 1.4
         _AlphaPower ("Alpha Power", Range(0.1,8)) = 2
         _SecondaryEmissionStrength ("Color Layer Emission", Range(0,20)) = 1.05
     }
@@ -41,6 +42,7 @@ Shader "MIKU/Wuwa/Effect"
                 float4 _BaseColorTint;
                 float _EffectLayerBlend;
                 float _PrimaryOpacity;
+                float _PrimaryEmissionStrength;
                 float _AlphaPower;
                 float _SecondaryEmissionStrength;
             CBUFFER_END
@@ -72,7 +74,8 @@ Shader "MIKU/Wuwa/Effect"
                 float alphaPower = max(_AlphaPower, 0.1);
                 float primaryAlpha = pow(saturate(primary.a), alphaPower) * _PrimaryOpacity;
                 float secondaryAlpha = pow(saturate(secondary.a), alphaPower);
-                float3 primaryPremultiplied = primary.rgb * primaryAlpha;
+                float3 primaryPremultiplied = primary.rgb * primaryAlpha *
+                    _PrimaryEmissionStrength;
                 float3 secondaryPremultiplied = secondary.rgb * secondaryAlpha * _SecondaryEmissionStrength;
                 float layerBlend = saturate(_EffectLayerBlend);
                 float3 color = lerp(primaryPremultiplied, secondaryPremultiplied, layerBlend);

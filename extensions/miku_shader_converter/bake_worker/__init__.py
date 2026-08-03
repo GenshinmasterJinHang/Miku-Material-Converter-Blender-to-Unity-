@@ -29,9 +29,10 @@ try:
         BLENDER_COMMIT,
         BLENDER_VERSION,
         make_bake_result,
+        validate_bake_request,
     )
     from ..miku.bundle import make_file_reference
-    from ..miku.contracts import canonical_hash, validate_document
+    from ..miku.contracts import canonical_hash
 except ImportError:
     # Repository test layout. The release ZIP always uses the private
     # extension-local protocol package above.
@@ -39,9 +40,10 @@ except ImportError:
         BLENDER_COMMIT,
         BLENDER_VERSION,
         make_bake_result,
+        validate_bake_request,
     )
     from miku.bundle import make_file_reference
-    from miku.contracts import canonical_hash, validate_document
+    from miku.contracts import canonical_hash
 
 _REGISTERED_CLASSES: list[type] = []
 
@@ -56,9 +58,8 @@ def execute_request(request_path: str, output_root: str) -> str:
     request_file = Path(request_path).resolve()
     if request_file.parent != target:
         raise RuntimeError("MIKU_BAKE_REQUEST_PATH_INVALID")
-    request = validate_document(
-        json.loads(request_file.read_text(encoding="utf-8")),
-        "miku-bake-request-1.0",
+    request = validate_bake_request(
+        json.loads(request_file.read_text(encoding="utf-8"))
     )
     material_name = str(request.get("sourceMaterialName") or "")
     material = getattr(bpy.data, "materials", {}).get(material_name)
@@ -83,18 +84,32 @@ def execute_request(request_path: str, output_root: str) -> str:
         if isinstance(item, dict)
         and str(item.get("scope") or "") == "ExpressionIsland"
     ]
+    reusable_island_jobs = [
+        item
+        for item in island_jobs
+        if str(item.get("route") or "") == "ReusableBake"
+        and item.get("meshBindingRequired") is False
+        and str(item.get("coordinateDomain") or "") in {"Uniform", "UV0"}
+    ]
     region_jobs = [
         item for item in jobs if item not in channel_jobs and item not in island_jobs
     ]
-    channel_scoped = bool(channel_jobs)
+    material_jobs = [*channel_jobs, *region_jobs]
+    channel_scoped = bool(channel_jobs) and not region_jobs
     channel_specs = None
-    if channel_scoped:
+    if material_jobs:
         requested_semantics: set[str] = set()
-        for job in channel_jobs:
+        explicit_semantics = False
+        for job in material_jobs:
             semantics = job.get("semantics")
+            if semantics is None:
+                continue
             if not isinstance(semantics, list):
                 raise RuntimeError("MIKU_BAKE_CHANNEL_SEMANTICS_INVALID")
+            explicit_semantics = True
             requested_semantics.update(str(item) for item in semantics if str(item))
+        if not explicit_semantics:
+            requested_semantics = {item[0] for item in CHANNELS}
         known_semantics = {item[0] for item in CHANNELS}
         unknown_semantics = sorted(requested_semantics - known_semantics)
         if unknown_semantics:
@@ -108,6 +123,10 @@ def execute_request(request_path: str, output_root: str) -> str:
         if not channel_specs:
             raise RuntimeError("MIKU_BAKE_CHANNEL_SEMANTICS_MISSING")
     if region_jobs and (channel_jobs or island_jobs):
+        raise RuntimeError("MIKU_BAKE_JOB_SCOPE_CONFLICT")
+    if reusable_island_jobs and (
+        material_jobs or len(reusable_island_jobs) != len(island_jobs)
+    ):
         raise RuntimeError("MIKU_BAKE_JOB_SCOPE_CONFLICT")
     cycles = getattr(getattr(bpy.context, "scene", None), "cycles", None)
     original_device = getattr(cycles, "device", None)
@@ -240,6 +259,7 @@ def execute_request(request_path: str, output_root: str) -> str:
             + "; ".join(item["message"] for item in diagnostics)
         )
 
+    portable_result = bool(reusable_island_jobs) and not material_jobs
     mesh_items = list(
         (
             ((result or {}).get("dependencies") or {}).get("targetMeshes")
@@ -249,46 +269,49 @@ def execute_request(request_path: str, output_root: str) -> str:
             or []
         )
     )
-    mesh_binding = {
-        "kind": "MeshFingerprintSet",
-        "sha256": canonical_hash(mesh_items),
-        "meshes": mesh_items,
-        "coordinateConvention": "BlenderObjectToUnityObject",
-        "normalConvention": "TangentOpenGLPositiveY",
-    }
-    source_mesh_path = (
-        target
-        / "SourceMesh"
-        / f"{request['persistentMaterialId']}.glb"
-    )
-    source_mesh = export_source_mesh_glb(
-        bpy.context,
-        list(getattr(bpy.data, "objects", []) or []),
-        material,
-        source_mesh_path,
-        mesh_items,
-    )
-    source_mesh_reference = make_file_reference(
-        target,
-        source_mesh_path,
-        media_type="model/gltf-binary",
-    )
-    source_mesh_reference.update(
-        {
-            "id": (
-                f"miku_{request['persistentMaterialId']}_source_mesh"
-            ),
-            "kind": "SourceMesh",
-            "semantic": "SourceMesh",
-            "meshBinding": mesh_binding,
-            "rendererBindings": source_mesh["rendererBindings"],
-            "meshCount": source_mesh["meshCount"],
-            "vertexCount": source_mesh["vertexCount"],
-            "indexCount": source_mesh["indexCount"],
-            "hasUv0": source_mesh["hasUv0"],
+    mesh_binding = None
+    resources = []
+    if not portable_result:
+        mesh_binding = {
+            "kind": "MeshFingerprintSet",
+            "sha256": canonical_hash(mesh_items),
+            "meshes": mesh_items,
+            "coordinateConvention": "BlenderObjectToUnityObject",
+            "normalConvention": "TangentOpenGLPositiveY",
         }
-    )
-    resources = [source_mesh_reference]
+        source_mesh_path = (
+            target
+            / "SourceMesh"
+            / f"{request['persistentMaterialId']}.glb"
+        )
+        source_mesh = export_source_mesh_glb(
+            bpy.context,
+            list(getattr(bpy.data, "objects", []) or []),
+            material,
+            source_mesh_path,
+            mesh_items,
+        )
+        source_mesh_reference = make_file_reference(
+            target,
+            source_mesh_path,
+            media_type="model/gltf-binary",
+        )
+        source_mesh_reference.update(
+            {
+                "id": (
+                    f"miku_{request['persistentMaterialId']}_source_mesh"
+                ),
+                "kind": "SourceMesh",
+                "semantic": "SourceMesh",
+                "meshBinding": mesh_binding,
+                "rendererBindings": source_mesh["rendererBindings"],
+                "meshCount": source_mesh["meshCount"],
+                "vertexCount": source_mesh["vertexCount"],
+                "indexCount": source_mesh["indexCount"],
+                "hasUv0": source_mesh["hasUv0"],
+            }
+        )
+        resources.append(source_mesh_reference)
     for semantic, channel in sorted(
         (((result or {}).get("channels") or {}).items())
     ):
@@ -317,7 +340,7 @@ def execute_request(request_path: str, output_root: str) -> str:
                     channel.get("componentBytes")
                     or (2 if media_type == "image/x-exr" else 1)
                 ),
-                "meshBinding": mesh_binding,
+                **({"meshBinding": mesh_binding} if mesh_binding else {}),
             }
         )
         if semantic == "Normal":
@@ -367,7 +390,18 @@ def execute_request(request_path: str, output_root: str) -> str:
                     island.get("componentBytes")
                     or (2 if media_type == "image/x-exr" else 1)
                 ),
-                "meshBinding": mesh_binding,
+                "coordinateDomain": str(
+                    island.get("coordinateDomain") or "MeshSurface"
+                ),
+                "meshBindingRequired": bool(
+                    island.get("meshBindingRequired", True)
+                ),
+                **(
+                    {"meshBinding": mesh_binding}
+                    if bool(island.get("meshBindingRequired", True))
+                    and mesh_binding
+                    else {}
+                ),
             }
         )
         if usage == "Normal":
@@ -379,8 +413,14 @@ def execute_request(request_path: str, output_root: str) -> str:
             "code": "MIKU_BAKE_COMPLETED",
             "translationQuality": "Baked",
             "message": (
-                f"Generated {len(resources)} mesh-bound semantic channel "
-                "and expression-island resources."
+                f"Generated {len(resources)} "
+                + (
+                    "portable UV0 expression-island resources without source "
+                    "mesh binding."
+                    if portable_result
+                    else "mesh-bound semantic channel and expression-island "
+                    "resources."
+                )
             ),
         }
     ]

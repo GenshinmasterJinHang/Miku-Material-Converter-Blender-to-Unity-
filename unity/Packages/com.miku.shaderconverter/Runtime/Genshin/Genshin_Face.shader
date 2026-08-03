@@ -22,14 +22,24 @@ Shader "MIKU/Genshin/Face"
         _FaceSdfDebugMode ("Face SDF Debug 0Off 1Raw 2Mirrored 5Mask", Range(0,5)) = 0
         _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 0.15
         _IndirectLightUsage ("Indirect Light Usage", Range(0,2)) = 0.1
+        _HighlightCompression ("Highlight Compression", Range(0,1)) = 1
+        _HighlightKnee ("Highlight Knee", Range(0,1)) = 0.72
+        _HighlightCeiling ("Highlight Ceiling", Range(0,1)) = 0.98
+        _SkinSSSIntensity ("Skin SSS Intensity", Range(0,1)) = 0
+        _SSSColor ("SSS Color", Color) = (1,0.5,0.4,1)
+        _SSSArea ("SSS Area", Range(0,1)) = 0.35
+        _SkinToneBrightness ("Skin Tone Brightness", Range(0,2)) = 1
+        _SkinToneWhitening ("Skin Tone Whitening", Range(0,1)) = 0
+        _SkinToneTarget ("Skin Tone Target", Color) = (1,0.93,0.90,1)
+        _SkinMaskDebugMode ("Skin Mask Debug Mode", Range(0,1)) = 0
         _EmissionIntensity ("Emission Intensity", Range(0,4)) = 0
         _RimLightBrightness ("Rim Brightness", Range(0,4)) = 0.08
         _RimLightTintColor ("Rim Tint", Color) = (1,0.92,0.88,1)
         _RimLightWidth ("Rim Width", Range(0,10)) = 1
         _RimLightThreshold ("Rim Depth Threshold", Range(0,1)) = 0.03
         _RimLightFadeout ("Rim Fadeout", Range(0.001,1)) = 0.2
-        _FresnelPower ("Fresnel Power", Range(0.1,8)) = 2
-        _FresnelClamp ("Fresnel Clamp", Range(0,1)) = 1
+        [HideInInspector] _FresnelPower ("Legacy Fresnel Power", Range(0.1,8)) = 2
+        [HideInInspector] _FresnelClamp ("Legacy Fresnel Clamp", Range(0,1)) = 1
         _OutlineWidth ("Outline Width", Range(0,0.1)) = 0.0015
         _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
         _OutlineDistanceScale ("Outline Distance Scale", Range(0,1)) = 1
@@ -57,6 +67,7 @@ Shader "MIKU/Genshin/Face"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "GenshinCommon.hlsl"
+            #include "../GameToon/MikuGameToonSkin.hlsl"
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
             TEXTURE2D(_FaceSDFMap); SAMPLER(sampler_FaceSDFMap);
             TEXTURE2D(_ShadowRampMap); SAMPLER(sampler_ShadowRampMap);
@@ -65,6 +76,8 @@ Shader "MIKU/Genshin/Face"
                 float4 _BaseMap_ST; float4 _BaseColorTint;
                 float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
                 float _InNight; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceSdfFlipY; float _FaceSdfDebugMode; float _MainLightColorUsage; float _IndirectLightUsage; float _EmissionIntensity;
+                float _HighlightCompression; float _HighlightKnee; float _HighlightCeiling;
+                float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
@@ -86,7 +99,8 @@ Shader "MIKU/Genshin/Face"
             }
             half4 GenshinFrag(Varyings input) : SV_Target
             {
-                float4 baseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColorTint;
+                float4 rawBaseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
+                float4 baseSample = rawBaseSample * _BaseColorTint;
                 Light mainLight = GetMainLight(input.shadowCoord);
                 float3 normalWS = normalize(input.normalWS);
                 float3 viewDirWS = normalize(input.viewDirWS);
@@ -103,17 +117,46 @@ Shader "MIKU/Genshin/Face"
                 if (debugMode == 1) return half4(SAMPLE_TEXTURE2D(_FaceSDFMap, sampler_FaceSDFMap, input.uv).rrr, 1.0);
                 if (debugMode == 2) return half4(SAMPLE_TEXTURE2D(_FaceSDFMap, sampler_FaceSDFMap, float2(1.0 - input.uv.x, input.uv.y)).rrr, 1.0);
                 if (debugMode == 5) return half4(inLight.xxx, 1.0);
-                float3 diffuse = Genshin_FaceDiffuse(baseSample.rgb, inLight, mainLightColor, _InNight, TEXTURE2D_ARGS(_ShadowRampMap, sampler_ShadowRampMap));
-                float3 indirect = Genshin_SampleSH_Indirect(normalWS) * _IndirectLightUsage * baseSample.rgb;
+                float skinMask = MikuGameToonWarmPaleFaceMask(rawBaseSample.rgb);
+                float3 skinBase = MikuGameToonApplySkinTone(baseSample.rgb, skinMask, _SkinToneBrightness, _SkinToneWhitening, _SkinToneTarget.rgb);
+                if (_SkinMaskDebugMode > 0.5) return half4(skinMask.xxx, 1.0);
+                float3 diffuse = Genshin_FaceDiffuse(skinBase, inLight, mainLightColor, _InNight, _HighlightCompression, TEXTURE2D_ARGS(_ShadowRampMap, sampler_ShadowRampMap));
+                float3 indirect = Genshin_SampleSH_Indirect(normalWS) * _IndirectLightUsage * skinBase;
+                float3 sss = MikuGameToonSkinSSS(skinBase, skinMask, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, inLight, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb);
                 float3 emission = 0.0.xxx;
                 #if defined(_GENSHIN_EMISSION_ON)
                     emission += SAMPLE_TEXTURE2D(_EmissionMap, sampler_EmissionMap, input.uv).rgb * _EmissionIntensity;
                 #endif
-                float3 rim = Genshin_DepthRimLight(input.positionCS, normalWS, viewDirWS, mainLight.color.rgb, _RimLightTintColor.rgb, _RimLightBrightness, _RimLightWidth, _RimLightThreshold, _RimLightFadeout, _FresnelPower, _FresnelClamp);
-                return half4(indirect + diffuse + emission + rim, 1.0);
+                float3 nonEmissive = Genshin_CompressNonEmissive(indirect + diffuse + sss, _HighlightCompression, _HighlightKnee, _HighlightCeiling);
+                return half4(nonEmissive + emission, 1.0);
             }
             ENDHLSL
         }
+        Pass
+        {
+            Name "MikuToonCharacterMask"
+            Tags { "LightMode"="MikuToonCharacterMask" }
+            Cull Back
+            ZWrite Off
+            ZTest Equal
+            HLSLPROGRAM
+            #pragma target 4.5
+            #pragma vertex MikuGameScreenRimVertex
+            #pragma fragment MikuGameScreenRimFragment
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float4 _BaseColorTint;
+                float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
+                float _InNight; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceSdfFlipY; float _FaceSdfDebugMode; float _MainLightColorUsage; float _IndirectLightUsage; float _EmissionIntensity;
+                float _HighlightCompression; float _HighlightKnee; float _HighlightCeiling;
+                float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
+                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
+                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
+            CBUFFER_END
+            #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonScreenRimPass.hlsl"
+            ENDHLSL
+        }
+
         Pass
         {
             Name "Outline"

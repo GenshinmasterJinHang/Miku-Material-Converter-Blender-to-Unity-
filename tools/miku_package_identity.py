@@ -10,6 +10,17 @@ from pathlib import Path
 
 
 GUID_RE = re.compile(r"^guid:\s*([0-9a-f]{32})$", re.MULTILINE)
+TEXT_HASH_SUFFIXES = {
+    ".asmdef",
+    ".asset",
+    ".cs",
+    ".hlsl",
+    ".json",
+    ".md",
+    ".shader",
+    ".shadergraph",
+    ".shadersubgraph",
+}
 
 
 def _sha256(path: Path) -> str:
@@ -33,6 +44,12 @@ def _content_sha256(path: Path, relative_asset: str) -> str:
             separators=(",", ":"),
         )
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    if path.suffix.lower() in TEXT_HASH_SUFFIXES:
+        # Git may materialize text assets with CRLF on Windows. Hash the
+        # canonical LF representation so the identity manifest is portable
+        # and the same checkout passes on Windows and Linux CI.
+        payload = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        return hashlib.sha256(payload).hexdigest()
     return _sha256(path)
 
 

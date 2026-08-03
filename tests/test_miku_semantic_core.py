@@ -27,7 +27,7 @@ def graph_with_anisotropy():
 class MikuSemanticCoreTests(unittest.TestCase):
     def test_ir_has_regions_not_source_node_translation(self):
         ir = build_material_ir(graph_with_anisotropy(), source_blend_id="blend", material_key="金属")
-        self.assertEqual("miku-material-ir-1.0", ir["documentKind"])
+        self.assertEqual("miku-material-ir-2.0", ir["documentKind"])
         self.assertTrue(any(item["kind"] == "AnisotropicClosure" for item in ir["regions"]))
         self.assertTrue(any(item["kind"] == "OpaqueSemanticRegion" for item in ir["regions"]))
         self.assertFalse(any("bl_idname" in item for item in ir["regions"]))

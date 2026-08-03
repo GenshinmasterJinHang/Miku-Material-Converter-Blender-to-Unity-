@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import pathlib
 import sys
 
@@ -12,8 +13,12 @@ from mathutils import Color
 
 
 REPOSITORY_ROOT = pathlib.Path(__file__).resolve().parents[2]
-CORPUS_PATH = pathlib.Path(
-    r"C:\Users\22687\Desktop\项目4\材质库\石头\彩色镀层\彩色镀层.blend"
+MATERIAL_LIBRARY_ROOT = pathlib.Path(
+    os.environ.get("MIKU_MATERIAL_LIBRARY_ROOT")
+    or REPOSITORY_ROOT / "材质库"
+)
+CORPUS_PATH = (
+    MATERIAL_LIBRARY_ROOT / "石头" / "彩色镀层" / "彩色镀层.blend"
 )
 CORPUS_SHA256 = (
     "b02d5d317af2787023a71993d90ceaceb2066917637338fefd95157f9abd7942"

@@ -5,7 +5,6 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "../NPR/NPR_FaceSDF.hlsl"
 
 float3 Wuwa_Desaturate(float3 color)
@@ -135,36 +134,6 @@ float Wuwa_HairShadowMask(
     float faceDepth01 = LinearEyeDepth(positionCS.z, _ZBufferParams) / max(_ProjectionParams.z, 1e-5);
     float shadow = saturate((faceDepth01 - sampledDepth01 - depthBias) / max(softness, 1e-5));
     return saturate(shadow * strength * step(0.5, available));
-}
-
-float3 Wuwa_DepthFresnelRimLight(
-    float4 positionCS,
-    float3 normalWS,
-    float3 viewDirWS,
-    float3 mainLightColor,
-    float3 rimLightTintColor,
-    float rimLightBrightness,
-    float rimLightWidth,
-    float rimLightThreshold,
-    float rimLightFadeout,
-    float fresnelPower,
-    float fresnelClamp)
-{
-    float linearEyeDepth = LinearEyeDepth(positionCS.z, _ZBufferParams);
-    float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalize(normalWS));
-    float2 uvOffset = float2(sign(normalVS.x), 0.0) * rimLightWidth / (1.0 + linearEyeDepth) / 100.0;
-    int2 loadTexPos = int2(positionCS.xy + uvOffset * _ScaledScreenParams.xy);
-    int2 maxTexPos = max(int2(_ScaledScreenParams.xy) - 1, int2(0, 0));
-    loadTexPos = min(max(loadTexPos, int2(0, 0)), maxTexPos);
-
-    float offsetSceneDepth = LoadSceneDepth(loadTexPos);
-    float offsetLinearEyeDepth = LinearEyeDepth(offsetSceneDepth, _ZBufferParams);
-    float rimLight = saturate((offsetLinearEyeDepth - (linearEyeDepth + rimLightThreshold)) / max(rimLightFadeout, 1e-5));
-
-    float NoV = dot(normalize(normalWS), normalize(viewDirWS));
-    float fresnel = pow(1.0 - saturate(NoV), fresnelPower);
-    fresnel = fresnel * saturate(fresnelClamp) + (1.0 - saturate(fresnelClamp));
-    return rimLight * fresnel * rimLightTintColor * mainLightColor * rimLightBrightness;
 }
 
 float3 Wuwa_GetOutlineNormalOS(float3 smoothNormalOS, float3 fallbackNormalOS)

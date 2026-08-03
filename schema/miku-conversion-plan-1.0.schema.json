@@ -32,8 +32,24 @@
     "canonicalHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "materialKey": {"type": "string", "minLength": 1},
     "targetProfile": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "mode": {"enum": ["Auto", "NativeOnly", "ReusableBakeOnly"]},
-    "routePolicy": {"const": "NativeThenReusableThenMesh"},
+    "mode": {
+      "enum": [
+        "Auto",
+        "NativeOnly",
+        "PreferNative",
+        "ReusableBakeOnly",
+        "AllowMeshBake",
+        "FullPBRBake",
+        "AppearanceSnapshot"
+      ]
+    },
+    "routePolicy": {
+      "enum": [
+        "NativeThenReusableThenMesh",
+        "ExplicitSourceMeshFidelity",
+        "FixedWorkflowTextureBinding"
+      ]
+    },
     "surfaceModel": {
       "enum": [
         "OpaquePBR",

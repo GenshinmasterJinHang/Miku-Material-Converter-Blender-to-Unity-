@@ -29,6 +29,13 @@ Shader "MIKU/HSR/Body"
         _SpecularBrightness ("Specular Brightness", Range(0,4)) = 1
         _MetallicLightMapTarget ("Metallic LightMap A Target", Range(0,1)) = 0.52
         _MetallicLightMapWidth ("Metallic LightMap A Width", Range(0.001,1)) = 0.08
+        _SkinSSSIntensity ("Skin SSS Intensity", Range(0,1)) = 0
+        _SSSColor ("SSS Color", Color) = (1,0.5,0.4,1)
+        _SSSArea ("SSS Area", Range(0,1)) = 0.30
+        _SkinToneBrightness ("Skin Tone Brightness", Range(0,2)) = 1
+        _SkinToneWhitening ("Skin Tone Whitening", Range(0,1)) = 0
+        _SkinToneTarget ("Skin Tone Target", Color) = (1,0.93,0.90,1)
+        _SkinMaskDebugMode ("Skin Mask Debug Mode", Range(0,1)) = 0
         _StockingsTransitionPower ("Stockings Transition Power", Range(0.1,8)) = 1
         _StockingsTransitionHardness ("Stockings Transition Hardness", Range(0,1)) = 0
         _StockingsTextureUsage ("Stockings Texture Usage", Range(0,1)) = 0.2
@@ -44,8 +51,8 @@ Shader "MIKU/HSR/Body"
         _RimLightWidth ("Rim Width", Range(0,10)) = 1
         _RimLightThreshold ("Rim Depth Threshold", Range(0,1)) = 0.03
         _RimLightFadeout ("Rim Fadeout", Range(0.001,1)) = 0.2
-        _FresnelPower ("Fresnel Power", Range(0.1,8)) = 3
-        _FresnelClamp ("Fresnel Clamp", Range(0,1)) = 1
+        [HideInInspector] _FresnelPower ("Legacy Fresnel Power", Range(0.1,8)) = 3
+        [HideInInspector] _FresnelClamp ("Legacy Fresnel Clamp", Range(0,1)) = 1
         _OutlineWidth ("Outline Width", Range(0,0.1)) = 0.001
         _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
         _OutlineDistanceScale ("Outline Distance Scale", Range(0,1)) = 1
@@ -74,6 +81,7 @@ Shader "MIKU/HSR/Body"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "HSRCommon.hlsl"
+            #include "../GameToon/MikuGameToonSkin.hlsl"
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
             TEXTURE2D(_LightMap); SAMPLER(sampler_LightMap);
             TEXTURE2D(_BodyCoolRamp); SAMPLER(sampler_BodyCoolRamp);
@@ -84,6 +92,7 @@ Shader "MIKU/HSR/Body"
                 float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal;
                 float _ShadowThresholdCenter; float _ShadowThresholdSoftness; float _ShadowRampOffset; float _BodyRampRowCount; float _MainLightColorUsage;
                 float _SpecularExponent; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness; float _MetallicLightMapTarget; float _MetallicLightMapWidth;
+                float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float _StockingsTransitionPower; float _StockingsTransitionHardness; float _StockingsTextureUsage; float _StockingsDetailStrength; float _StockingsDetailMin; float4 _StockingsDarkColor; float4 _StockingsTransitionColor; float4 _StockingsLightColor; float _StockingsTransitionThreshold; float _StockingsDebugMode;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
@@ -100,6 +109,7 @@ Shader "MIKU/HSR/Body"
                 float3 normalWS = normalize(input.normalWS);
                 float3 viewDirWS = normalize(input.viewDirWS);
                 float3 baseColor = baseSample.rgb;
+                float skinMask = MikuGameToonStarRailBodySkinMask(lightMap.a, baseSample.rgb);
                 #if defined(_HSR_STOCKINGS_ON)
                     float4 stockingsMap = SAMPLE_TEXTURE2D(_StockingsMap, sampler_StockingsMap, input.uvStocking);
                     float stockingsFac = 1.0;
@@ -111,6 +121,7 @@ Shader "MIKU/HSR/Body"
                     if (stockingsDebugMode == 4) return half4(stockingsFac.xxx, 1.0);
                     baseColor *= stockingsEffect;
                 #endif
+                baseColor = MikuGameToonApplySkinTone(baseColor, skinMask, _SkinToneBrightness, _SkinToneWhitening, _SkinToneTarget.rgb);
                 float mainLightShadow = HSR_BodyMainShadow(normalWS, lightDirWS, lightMap, _ShadowThresholdCenter, _ShadowThresholdSoftness) * mainLight.shadowAttenuation;
                 float3 rampColor = HSR_SampleRamp(mainLightShadow, lightMap.a, lightDirWS, TEXTURE2D_ARGS(_BodyCoolRamp, sampler_BodyCoolRamp), TEXTURE2D_ARGS(_BodyWarmRamp, sampler_BodyWarmRamp), _BodyRampRowCount, _ShadowRampOffset);
                 float3 indirect = HSR_SampleSH_Indirect(normalWS, _IndirectLightFlattenNormal) * _IndirectLightUsage;
@@ -123,18 +134,39 @@ Shader "MIKU/HSR/Body"
                 float3 specular = HSR_ComputeSpecular(baseColor, lightMap, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, _SpecularExponent, _SpecularKsNonMetal, _SpecularKsMetal, _SpecularBrightness, metallic);
                 float3 mainLightColor = lerp(HSR_Desaturate(mainLight.color.rgb), mainLight.color.rgb, _MainLightColorUsage);
                 float3 direct = mainLightColor * baseColor * rampColor;
-                float3 rim = HSR_FresnelRimLight(
-                    normalWS,
-                    viewDirWS,
-                    _RimLightTintColor.rgb,
-                    _RimLightBrightness,
-                    _FresnelPower,
-                    _FresnelClamp);
-                float3 finalColor = indirect + direct + specular + rim;
+                float3 sss = MikuGameToonSkinSSS(baseColor, skinMask, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, mainLightShadow, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb);
+                if (_SkinMaskDebugMode > 0.5) return half4(skinMask.xxx, 1.0);
+                float3 finalColor = indirect + direct + specular + sss;
                 return half4(finalColor, 1.0);
             }
             ENDHLSL
         }
+        Pass
+        {
+            Name "MikuToonCharacterMask"
+            Tags { "LightMode"="MikuToonCharacterMask" }
+            Cull Back
+            ZWrite Off
+            ZTest Equal
+            HLSLPROGRAM
+            #pragma target 4.5
+            #pragma vertex MikuGameScreenRimVertex
+            #pragma fragment MikuGameScreenRimFragment
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float4 _StockingsMap_ST; float4 _BaseColorTint;
+                float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal;
+                float _ShadowThresholdCenter; float _ShadowThresholdSoftness; float _ShadowRampOffset; float _BodyRampRowCount; float _MainLightColorUsage;
+                float _SpecularExponent; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness; float _MetallicLightMapTarget; float _MetallicLightMapWidth;
+                float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
+                float _StockingsTransitionPower; float _StockingsTransitionHardness; float _StockingsTextureUsage; float _StockingsDetailStrength; float _StockingsDetailMin; float4 _StockingsDarkColor; float4 _StockingsTransitionColor; float4 _StockingsLightColor; float _StockingsTransitionThreshold; float _StockingsDebugMode;
+                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
+                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
+            CBUFFER_END
+            #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonScreenRimPass.hlsl"
+            ENDHLSL
+        }
+
         Pass
         {
             Name "Outline"

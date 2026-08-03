@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 import bpy
@@ -106,7 +107,7 @@ view_tree.links.new(geometry.outputs["Incoming"], view_surface.inputs["Base Colo
 assert_dynamic(view_material, {"Input.ViewDirection"})
 
 backface_material, backface_tree, backface_surface = new_material(
-    "Miku Generic Toon Backfacing"
+    "Miku Standard PBR Backfacing"
 )
 backface_output = next(
     node
@@ -137,7 +138,7 @@ backface_tree.links.new(
 backface_graph, backface_ir = assert_dynamic(
     backface_material,
     {"Input.IsFrontFace", "Math.OneMinus"},
-    workflow_kind="generic_toon",
+    workflow_kind="standard_pbr",
 )
 backface_snapshot = next(
     item
@@ -260,6 +261,47 @@ time_graph, time_ir = assert_dynamic(time_material, {"Input.Time.Sine"})
 time_snapshot = next(item for item in time_graph["nodes"] if item["op"] == "Input.Time")
 assert time_snapshot["params"]["contract"] == "miku_time_v1"
 assert time_snapshot["params"]["sourceFps"] > 0
+for conversion_mode in (
+    "Auto",
+    "NativeOnly",
+    "PreferNative",
+    "ReusableBakeOnly",
+    "AllowMeshBake",
+    "FullPBRBake",
+    "AppearanceSnapshot",
+):
+    with tempfile.TemporaryDirectory() as output_root:
+        try:
+            miku_blender.export_material_bundle(
+                time_material,
+                output_root,
+                source_blend_id="runtime-smoke-source",
+                persistent_material_id="runtime-smoke-time-" + conversion_mode,
+                mode=conversion_mode,
+            )
+        except RuntimeError as error:
+            assert str(error).startswith("MIKU_TIME_INPUT_UNSUPPORTED:"), (
+                conversion_mode,
+                error,
+            )
+        else:
+            raise AssertionError(
+                "reachable time input was exported in " + conversion_mode
+            )
+        assert not any(Path(output_root).iterdir())
+
+disconnected_time_material, disconnected_time_tree, _ = new_material(
+    "Miku Disconnected Time"
+)
+miku_blender.create_miku_time_node(disconnected_time_material)
+with tempfile.TemporaryDirectory() as output_root:
+    result = miku_blender.export_material_bundle(
+        disconnected_time_material,
+        output_root,
+        source_blend_id="runtime-smoke-source",
+        persistent_material_id="runtime-smoke-disconnected-time",
+    )
+    assert Path(result["bundlePath"]).is_file()
 
 driver_material, driver_tree, driver_surface = new_material("Miku Driver")
 driver = driver_tree.nodes.new("ShaderNodeValue")
@@ -272,6 +314,23 @@ driver_snapshot = next(
     item for item in driver_graph["nodes"] if item["op"] == "Input.Value"
 )
 assert driver_snapshot["outputs"][0]["driver"]["kind"] == "TimeAffine"
+driver_ir = build_material_ir(driver_graph, conversion_mode="Auto")
+assert any(
+    item["op"] == "Input.Time.Frame" for item in driver_ir["expressions"]
+)
+with tempfile.TemporaryDirectory() as output_root:
+    try:
+        miku_blender.export_material_bundle(
+            driver_material,
+            output_root,
+            source_blend_id="runtime-smoke-source",
+            persistent_material_id="runtime-smoke-driver",
+        )
+    except RuntimeError as error:
+        assert str(error).startswith("MIKU_TIME_INPUT_UNSUPPORTED:")
+    else:
+        raise AssertionError("frame-driven time input was exported")
+    assert not any(Path(output_root).iterdir())
 
 external_material, external_tree, external_surface = new_material(
     "Miku Externalized Driver"

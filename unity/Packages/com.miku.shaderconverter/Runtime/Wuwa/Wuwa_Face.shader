@@ -7,6 +7,11 @@ Shader "MIKU/Wuwa/Face"
         [MainTexture] _BaseMap ("Base Map", 2D) = "white" {}
         [HideInInspector] _MainTex ("Legacy MainTex, optional", 2D) = "white" {}
         _FaceSDF ("Face SDF", 2D) = "white" {}
+        [Toggle] _UseFaceBasis ("Use Material Face Basis", Float) = 1
+        _FaceRight ("Face Right (Object Space)", Vector) = (1,0,0,0)
+        _FaceUp ("Face Up (Object Space)", Vector) = (0,0,1,0)
+        _FaceForward ("Face Forward (Object Space)", Vector) = (0,-1,0,0)
+        _FaceFlatness ("Face Normal Flatness", Range(0,1)) = 1
         [HideInInspector] _MikuHeadForwardWS ("Miku Head Forward WS", Vector) = (0,0,1,0)
         [HideInInspector] _MikuHeadRightWS ("Miku Head Right WS", Vector) = (1,0,0,0)
         [HideInInspector] _MikuHeadUpWS ("Miku Head Up WS", Vector) = (0,1,0,0)
@@ -32,9 +37,16 @@ Shader "MIKU/Wuwa/Face"
         _SkinRampBrightness ("Skin Ramp Brightness", Range(0,2)) = 1.36
         _SkinRampCurvePower ("Skin Ramp Curve Power", Range(0.1,4)) = 2.04
         _SkinRampStrength ("Skin Ramp Strength", Range(0,1)) = 0.42
-        _FaceBaseCurvePower ("Face Base Curve Power", Range(0.1,4)) = 1.69
-        _FaceBaseBrightness ("Face Base Brightness", Range(0,2)) = 1.5
-        _FaceFinalBrightness ("Face Final Brightness", Range(0,2)) = 1.012
+        _FaceBaseCurvePower ("Face Base Curve Power", Range(0.1,4)) = 1.2
+        _FaceBaseBrightness ("Face Base Brightness", Range(0,2)) = 1
+        _FaceFinalBrightness ("Face Final Brightness", Range(0,2)) = 1
+        _SkinSSSIntensity ("Skin SSS Intensity", Range(0,1)) = 0
+        _SSSColor ("SSS Color", Color) = (1,0.5,0.4,1)
+        _SSSArea ("SSS Area", Range(0,1)) = 0.35
+        _SkinToneBrightness ("Skin Tone Brightness", Range(0,2)) = 1
+        _SkinToneWhitening ("Skin Tone Whitening", Range(0,1)) = 0
+        _SkinToneTarget ("Skin Tone Target", Color) = (1,0.93,0.90,1)
+        _SkinMaskDebugMode ("Skin Mask Debug Mode", Range(0,1)) = 0
         _FaceBlushColor ("Face Blush Color", Color) = (1,0.78,0.82,1)
         _FaceBlushStrength ("Face Blush Strength", Range(0,1)) = 0.24
         _FaceBlushCenters ("Face Blush Centers", Vector) = (0.32,0.58,0.68,0.58)
@@ -54,8 +66,8 @@ Shader "MIKU/Wuwa/Face"
         _RimLightWidth ("Rim Width", Range(0,10)) = 1
         _RimLightThreshold ("Rim Depth Threshold", Range(0,1)) = 0.03
         _RimLightFadeout ("Rim Fadeout", Range(0.001,1)) = 0.2
-        _FresnelPower ("Fresnel Power", Range(0.1,8)) = 2
-        _FresnelClamp ("Fresnel Clamp", Range(0,1)) = 1
+        [HideInInspector] _FresnelPower ("Legacy Fresnel Power", Range(0.1,8)) = 2
+        [HideInInspector] _FresnelClamp ("Legacy Fresnel Clamp", Range(0,1)) = 1
         _OutlineWidth ("Outline Width", Range(0,0.1)) = 0.001
         _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
         _OutlineDistanceScale ("Outline Distance Scale", Range(0,1)) = 1
@@ -85,6 +97,7 @@ Shader "MIKU/Wuwa/Face"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "WuwaCommon.hlsl"
+            #include "../GameToon/MikuGameToonSkin.hlsl"
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
             TEXTURE2D(_FaceSDF); SAMPLER(sampler_FaceSDF);
             TEXTURE2D(_FaceID); SAMPLER(sampler_FaceID);
@@ -95,9 +108,11 @@ Shader "MIKU/Wuwa/Face"
             float _WuwaHairShadowAvailable;
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST; float4 _BaseColorTint; float4 _LitTint; float4 _ShadowTint;
+                float _UseFaceBasis; float4 _FaceRight; float4 _FaceUp; float4 _FaceForward; float _FaceFlatness;
                 float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
                 float _FaceSdfMainChannel; float _FaceSdfSoftChannel; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceThresholdBias; float _FaceSoftChannelStrength; float _FaceShadowStrength; float _FaceSdfDebugMode;
                 float4 _SkinRampUV; float _SkinRampSaturation; float _SkinRampBrightness; float _SkinRampCurvePower; float _SkinRampStrength; float _FaceBaseCurvePower; float _FaceBaseBrightness; float _FaceFinalBrightness;
+                float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float4 _FaceBlushColor; float _FaceBlushStrength; float4 _FaceBlushCenters; float4 _FaceBlushSize; float _FaceExtraLightChannel; float4 _FaceExtraLightColor; float _FaceExtraLightStrength;
                 float _HairShadowStrength; float _HairShadowDepthBias; float _HairShadowSoftness; float _HairShadowScreenOffset; float _UseHairShadow;
                 float _IndirectLightUsage; float _MainLightColorUsage;
@@ -119,25 +134,82 @@ Shader "MIKU/Wuwa/Face"
                 output.shadowCoord = TransformWorldToShadowCoord(pos.positionWS);
                 return output;
             }
+            float3 WuwaFaceSafeNormalize(float3 value, float3 fallback)
+            {
+                float lengthSquared = dot(value, value);
+                return lengthSquared > 1e-8
+                    ? value * rsqrt(lengthSquared)
+                    : fallback;
+            }
             half4 WuwaFaceFrag(Varyings input) : SV_Target
             {
-                float4 baseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColorTint;
+                float4 rawBaseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
+                float4 baseSample = rawBaseSample * _BaseColorTint;
                 float4 faceSdf = SAMPLE_TEXTURE2D(_FaceSDF, sampler_FaceSDF, input.uv);
                 float4 faceID = 1.0.xxxx;
                 #if defined(_WUWA_ID_ON)
                     faceID = SAMPLE_TEXTURE2D(_FaceID, sampler_FaceID, input.uv);
                 #endif
+                float skinMask;
+                #if defined(_WUWA_ID_ON)
+                    skinMask = MikuGameToonHighValueMask(faceID.r);
+                #else
+                    skinMask = MikuGameToonWarmPaleFaceMask(rawBaseSample.rgb);
+                #endif
+                float3 skinBase = MikuGameToonApplySkinTone(baseSample.rgb, skinMask, _SkinToneBrightness, _SkinToneWhitening, _SkinToneTarget.rgb);
                 Light mainLight = GetMainLight(input.shadowCoord);
                 float3 lightDirWS = normalize(mainLight.direction);
                 float3 normalWS = normalize(input.normalWS);
                 float3 viewDirWS = normalize(input.viewDirWS);
                 float3x3 objectToWorld = (float3x3)GetObjectToWorldMatrix();
-                float3 fallbackForwardWS = normalize(mul(objectToWorld, float3(0.0, 0.0, 1.0)));
-                float3 fallbackUpWS = normalize(mul(objectToWorld, float3(0.0, 1.0, 0.0)));
-                float3 fallbackRightWS = normalize(cross(fallbackUpWS, fallbackForwardWS));
-                fallbackUpWS = normalize(cross(fallbackForwardWS, fallbackRightWS));
+                float useFaceBasis = saturate(_UseFaceBasis);
+                float3 faceForwardOS = lerp(
+                    float3(0.0, 0.0, 1.0),
+                    _FaceForward.xyz,
+                    useFaceBasis);
+                float3 faceRightOS = lerp(
+                    float3(1.0, 0.0, 0.0),
+                    _FaceRight.xyz,
+                    useFaceBasis);
+                float3 faceUpOS = lerp(
+                    float3(0.0, 1.0, 0.0),
+                    _FaceUp.xyz,
+                    useFaceBasis);
+                float3 defaultForwardWS = normalize(mul(
+                    objectToWorld,
+                    float3(0.0, 0.0, 1.0)));
+                float3 defaultRightWS = normalize(mul(
+                    objectToWorld,
+                    float3(1.0, 0.0, 0.0)));
+                float3 defaultUpWS = normalize(mul(
+                    objectToWorld,
+                    float3(0.0, 1.0, 0.0)));
+                float3 fallbackForwardWS = WuwaFaceSafeNormalize(
+                    mul(objectToWorld, faceForwardOS),
+                    defaultForwardWS);
+                float3 rawRightWS = WuwaFaceSafeNormalize(
+                    mul(objectToWorld, faceRightOS),
+                    defaultRightWS);
+                float3 rawUpWS = WuwaFaceSafeNormalize(
+                    mul(objectToWorld, faceUpOS),
+                    defaultUpWS);
+                float3 projectedRightWS = rawRightWS - fallbackForwardWS *
+                    dot(rawRightWS, fallbackForwardWS);
+                float3 fallbackRightWS = WuwaFaceSafeNormalize(
+                    projectedRightWS,
+                    defaultRightWS);
+                float handedness = dot(
+                    cross(fallbackForwardWS, fallbackRightWS),
+                    rawUpWS) < 0.0 ? -1.0 : 1.0;
+                fallbackRightWS *= handedness;
+                float3 fallbackUpWS = normalize(
+                    cross(fallbackForwardWS, fallbackRightWS));
                 float3 headForwardWS, headRightWS, headUpWS;
                 Miku_ResolveFaceSdfHeadAxes(fallbackForwardWS, fallbackRightWS, fallbackUpWS, _MikuHeadForwardWS, _MikuHeadRightWS, _MikuHeadUpWS, _MikuHeadAxesValid, headForwardWS, headRightWS, headUpWS);
+                float3 faceShadingNormalWS = normalize(lerp(
+                    normalWS,
+                    headForwardWS,
+                    saturate(_FaceFlatness)));
                 float faceLight = Wuwa_FaceSDFLight(input.uv, faceSdf, TEXTURE2D_ARGS(_FaceSDF, sampler_FaceSDF), lightDirWS, headForwardWS, headRightWS, headUpWS, _FaceSdfMainChannel, _FaceSdfSoftChannel, _FaceShadowOffset, _FaceShadowSoftness, _FaceThresholdBias, _FaceSoftChannelStrength) * mainLight.shadowAttenuation;
                 faceLight = lerp(1.0, faceLight, faceID.r);
                 #if defined(_WUWA_HAIR_SHADOW_ON)
@@ -150,6 +222,7 @@ Shader "MIKU/Wuwa/Face"
                 if (debugMode == 3) return half4(faceSdf.bbb, 1.0);
                 if (debugMode == 4) return half4(faceSdf.aaa, 1.0);
                 if (debugMode == 5) return half4(faceLight.xxx, 1.0);
+                if (_SkinMaskDebugMode > 0.5) return half4(skinMask.xxx, 1.0);
                 float3 mainLightColor = lerp(1.0.xxx, mainLight.color.rgb, _MainLightColorUsage);
                 float3 shadowTone = _ShadowTint.rgb;
                 #if defined(_WUWA_SKIN_RAMP_ON)
@@ -158,7 +231,7 @@ Shader "MIKU/Wuwa/Face"
                     rampSample = saturate(Wuwa_AdjustSaturation(rampSample, _SkinRampSaturation) * _SkinRampBrightness);
                     shadowTone = lerp(1.0.xxx, rampSample, _SkinRampStrength);
                 #endif
-                float3 faceBase = saturate(Wuwa_ApplyPowerCurve(baseSample.rgb, _FaceBaseCurvePower, _FaceBaseBrightness));
+                float3 faceBase = saturate(Wuwa_ApplyPowerCurve(skinBase, _FaceBaseCurvePower, _FaceBaseBrightness));
                 float2 blushSize = max(_FaceBlushSize.xy, 1e-3.xx);
                 float2 leftBlushUV = (input.uv - _FaceBlushCenters.xy) / blushSize;
                 float2 rightBlushUV = (input.uv - _FaceBlushCenters.zw) / blushSize;
@@ -171,13 +244,13 @@ Shader "MIKU/Wuwa/Face"
                 faceBase = lerp(faceBase, blushTone, blushMask);
                 float3 faceLightingTone = lerp(shadowTone, _LitTint.rgb, faceLight);
                 float3 color = faceBase * lerp(1.0.xxx, faceLightingTone, saturate(_FaceShadowStrength)) * _FaceFinalBrightness * mainLightColor;
-                color += Wuwa_SampleSH_Indirect(normalWS, 0.0) * _IndirectLightUsage * baseSample.rgb;
+                color += Wuwa_SampleSH_Indirect(faceShadingNormalWS, 0.0) * _IndirectLightUsage * skinBase;
+                color += MikuGameToonSkinSSS(faceBase, skinMask, faceShadingNormalWS, viewDirWS, lightDirWS, mainLight.color.rgb, faceLight, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb);
                 #if defined(_WUWA_FACE_HET_ON)
                     float4 het = SAMPLE_TEXTURE2D(_FaceHET, sampler_FaceHET, input.uv);
                     float extraLightMask = Wuwa_SelectChannel(het, _FaceExtraLightChannel);
                     color += extraLightMask * _FaceExtraLightColor.rgb * _FaceExtraLightStrength;
                 #endif
-                color += Wuwa_DepthFresnelRimLight(input.positionCS, normalWS, viewDirWS, mainLight.color.rgb, _RimLightTintColor.rgb, _RimLightBrightness, _RimLightWidth, _RimLightThreshold, _RimLightFadeout, _FresnelPower, _FresnelClamp);
                 #if defined(_WUWA_EMISSION_ON)
                     color += SAMPLE_TEXTURE2D(_EmissionMap, sampler_EmissionMap, input.uv).rgb;
                 #endif
@@ -185,6 +258,35 @@ Shader "MIKU/Wuwa/Face"
             }
             ENDHLSL
         }
+        Pass
+        {
+            Name "MikuToonCharacterMask"
+            Tags { "LightMode"="MikuToonCharacterMask" }
+            Cull Back
+            ZWrite Off
+            ZTest Equal
+            HLSLPROGRAM
+            #pragma target 4.5
+            #pragma vertex MikuGameScreenRimVertex
+            #pragma fragment MikuGameScreenRimFragment
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float4 _BaseColorTint; float4 _LitTint; float4 _ShadowTint;
+                float _UseFaceBasis; float4 _FaceRight; float4 _FaceUp; float4 _FaceForward; float _FaceFlatness;
+                float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
+                float _FaceSdfMainChannel; float _FaceSdfSoftChannel; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceThresholdBias; float _FaceSoftChannelStrength; float _FaceShadowStrength; float _FaceSdfDebugMode;
+                float4 _SkinRampUV; float _SkinRampSaturation; float _SkinRampBrightness; float _SkinRampCurvePower; float _SkinRampStrength; float _FaceBaseCurvePower; float _FaceBaseBrightness; float _FaceFinalBrightness;
+                float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
+                float4 _FaceBlushColor; float _FaceBlushStrength; float4 _FaceBlushCenters; float4 _FaceBlushSize; float _FaceExtraLightChannel; float4 _FaceExtraLightColor; float _FaceExtraLightStrength;
+                float _HairShadowStrength; float _HairShadowDepthBias; float _HairShadowSoftness; float _HairShadowScreenOffset; float _UseHairShadow;
+                float _IndirectLightUsage; float _MainLightColorUsage;
+                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
+                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float4 _OutlineColorTint;
+            CBUFFER_END
+            #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonScreenRimPass.hlsl"
+            ENDHLSL
+        }
+
         Pass
         {
             Name "Outline"

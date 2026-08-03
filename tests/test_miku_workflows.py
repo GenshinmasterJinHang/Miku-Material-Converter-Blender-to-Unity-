@@ -32,13 +32,29 @@ class MikuWorkflowTests(unittest.TestCase):
             "standardPbrSemantic": {"slots": {}},
         }
 
-    def test_all_five_workflows_are_concrete_and_valid(self):
+    def test_five_current_workflows_are_concrete_and_valid(self):
         self.assertEqual(5, len(WORKFLOW_KINDS))
         for workflow in sorted(WORKFLOW_KINDS):
             with self.subTest(workflow=workflow):
                 document = build_material_ir(self._graph(workflow))
                 self.assertEqual(workflow, document["workflow"]["kind"])
-                validate_document(document, "miku-material-ir-1.0")
+                validate_document(document, "miku-material-ir-2.0")
+
+    def test_generic_workflow_is_explicitly_retired(self):
+        with self.assertRaisesRegex(ValueError, r"MIKU_WORKFLOW_RETIRED:generic_toon"):
+            build_material_ir(self._graph("generic_toon"))
+
+    def test_material_ir_2_schema_rejects_generic_without_execution_fallback(self):
+        document = build_material_ir(self._graph("standard_pbr"))
+        document["workflow"] = {"kind": "generic_toon"}
+        from miku.contracts import canonical_hash
+
+        document["canonicalHash"] = canonical_hash(
+            {key: value for key, value in document.items() if key != "canonicalHash"}
+        )
+        with self.assertRaises(DocumentValidationError) as raised:
+            validate_document(document, "miku-material-ir-2.0")
+        self.assertEqual("MIKU_WORKFLOW_INVALID", raised.exception.code)
 
     def test_unknown_workflow_is_rejected_before_export(self):
         with self.assertRaises(ValueError):
@@ -72,7 +88,7 @@ class MikuWorkflowTests(unittest.TestCase):
         first_bytes = first.read_bytes()
         second = build()
         self.assertEqual(first_bytes, second.read_bytes())
-        self.assertEqual("miku_shader_converter-1.0.1.zip", first.name)
+        self.assertEqual("miku_shader_converter-2.2.8.zip", first.name)
         with zipfile.ZipFile(first) as archive:
             names = set(archive.namelist())
             self.assertIn("bake_worker/automatic_bake.py", names)

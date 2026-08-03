@@ -6,17 +6,30 @@ and may be expanded as code is normalized.
 
 | Code | Severity | Meaning / action |
 | --- | --- | --- |
+| `MIKU_SKIN_MASK_TEXTURE_MISSING:<shader>:<property>` | Warning | A Body material was opted into the recommended skin profile without its required authored LightMap/IDMap. Miku leaves Body SSS disabled; bind the named texture and reapply the profile. |
 | `unsupported_version` | Error | Miku/schema version is unknown; use a supported exporter/importer pairing |
 | `unsupported_node` | Error or Warning | Required node stops the material; safely pruned node may warn |
 | `invalid_numeric_value` | Error | NaN or Infinity found; correct source/default data |
 | `coordinate_space_conflict` | Error | Connected sockets have incompatible explicit spaces; add a valid transform |
 | `shader_stage_conflict` | Error | Fragment-only expression reached a vertex chain |
 | `MIKU_RUNTIME_INPUT_PRESERVED` | Info | A supported view, camera, geometry Backfacing, time, Fresnel, or Layer Weight chain was retained as native runtime Shader Graph expressions; no whole-material bake was created |
-| `MIKU_RUNTIME_INPUT_UNSUPPORTED` | Error | A required runtime-dependent chain contains an operation the selected backend cannot lower; simplify it or add backend support |
+| `MIKU_RUNTIME_INPUT_UNSUPPORTED` | Error | A required runtime-dependent chain contains an operation the selected backend cannot lower, or a requested Height bake depends on view/camera/time data that cannot be encoded in UVs; simplify it or add backend support |
+| `MIKU_TIME_INPUT_UNSUPPORTED` | Error | A new Blender export reaches an effective output through `Input.Time.*`; remove the time dependency or keep it disconnected. Historical time-dependent Bundles remain importable |
+| `MIKU_PORTABLE_UV_BAKE_SCHEDULED` | Info | Portable Hybrid scheduled a statically proven UV0 expression island on the canonical 0-1 bake plane; the generated Texture2D has no source-mesh binding |
+| `MIKU_PORTABLE_HYBRID_MESH_DEPENDENCY` | Error | A required Portable Hybrid chain still depends on Generated/Object coordinates, surface geometry, topology, AO, Wireframe, or another source-mesh domain; use a UV0 source, simplify the chain, or explicitly choose a mesh-bound mode |
+| `MIKU_PORTABLE_RESOURCE_MESH_BOUND` | Error | A `PreferNative` bundle or plan illegally contains SourceMesh, `meshBinding`, or a mesh-bound bake job; export/import is rejected rather than treating it as portable |
+| `MIKU_FIXED_WORKFLOW_SOURCE_GRAPH_IGNORED` | Warning | A fixed Toon workflow preserved the Blender graph in Source Map but exported only static images and deterministic minimal Material IR |
+| `MIKU_FIXED_WORKFLOW_CONVERSION_MODE_IGNORED` | Info | A fixed Toon workflow ignored conversion mode because it never schedules Shader Graph or bake jobs |
+| `MIKU_FIXED_TEXTURE_NOT_EXPORTABLE` | Warning | An Image Texture is missing, dynamic/generated, unreadable, or unsupported and was skipped without failing the material |
+| `MIKU_FIXED_TEXTURE_ROLE_AMBIGUOUS` | Warning | Equally authoritative images claim one role, so that role remains unbound |
+| `MIKU_FIXED_TEXTURE_INACTIVE_PRIMARY_IGNORED` | Warning | An inactive image claimed BaseMap or EmissionMap, but the unique active Surface-chain image was selected instead |
+| `MIKU_FIXED_TEXTURE_UNASSIGNED` | Warning | The image imported with a stable GUID but has no recognized role |
+| `MIKU_WUWA_STOCKINGS_ID_SOURCE_MISMATCH` | Error | Wuwa Body received different textures for IDMap and StockingsMap; bind the same authored linear ID resource to both roles |
+| `MIKU_TOON_SCREEN_RIM_RENDERER_FEATURE_REQUIRED` | Warning / RequiresProjectSetup | Fixed Toon materials imported, but screen-space depth rim requires explicit installation on the active Renderer Data |
 | `MIKU_STANDARD_PBR_SEMANTIC_EXTRACTION_FAILED` | Error | Standard PBR semantic extraction failed; closure-derived slots are retained, but texture binding may be incomplete and the material should be re-exported after fixing the source graph |
 | `MIKU_SOCKET_AMBIGUOUS` | Error | More than one active Blender socket still matches after exact-identifier and value-type resolution; update the node mapping instead of relying on socket order |
 | `MIKU_REQUIRED_CHANNEL_UNSUPPORTED` | Error | NativeOnly cannot preserve a required channel |
-| `MIKU_SOURCE_MESH_FIDELITY_REQUIRED` | Error | The requested portable mode would require a topology/UV-bound Texture2D or a static surface projection. Select Source Mesh Fidelity or simplify the source; Auto never upgrades itself |
+| `MIKU_SOURCE_MESH_FIDELITY_REQUIRED` | Error | The requested portable mode would require a topology/UV-bound Texture2D or a static surface projection. The diagnostic includes the deepest unsupported source and its active consumer path. Select Source Mesh Fidelity or simplify the source; Auto never upgrades itself |
 | `MIKU_FULL_PBR_BAKE_REQUIRED` | Error | Source Mesh Fidelity cannot safely split the complete static closure surface into independent channels. Select Full PBR Bake explicitly; neither Auto nor Source Mesh Fidelity upgrades itself |
 | `MIKU_SOURCE_MESH_FIDELITY_SCHEDULED` | Info | The caller explicitly selected Source Mesh Fidelity and Miku scheduled deterministic lighting-independent PBR channel baking against the bound source mesh |
 | `MIKU_SOURCE_MESH_CLOSURE_FALLBACK` | Warning | A malformed legacy closure branch required a descriptive IR fallback for Full PBR planning; the isolated worker still evaluates the original Blender material |
@@ -27,6 +40,7 @@ and may be expanded as code is normalized.
 | `MIKU_MESH_BINDING_MISMATCH` | Error | GLB hash, mesh/vertex/index/UV data, renderer slots, or the selected Renderer fingerprint does not match the sealed source binding; the import or apply operation is rolled back/refused |
 | `MIKU_SOURCE_MESH_DEFORM_UNSUPPORTED` | Error | Source Mesh Fidelity encountered an armature, animation, or unsupported runtime-deformed mesh; only static evaluated Mesh is supported |
 | `MIKU_SOURCE_MESH_FIDELITY_PREFAB:<path>` | Info | Unity generated the authoritative Prefab for a mesh-bound material; use this Prefab or the fingerprint-checked apply operation |
+| `MIKU_NON_AUTHORITATIVE_COMPATIBILITY_RESOURCE_SKIPPED:<semantic>` | Info | A bundle carried a top-level compatibility bake not consumed by its `CustomMultiLobe` graph. Unity skipped only this proven unreachable resource; reachable missing properties still fail |
 | `MIKU_COAT_URP_APPROXIMATION` | Warning/Error | Auto maps the safe Principled Coat subset to URP 17.4 Clear Coat and records Approximate; Strict rejects the BRDF mismatch |
 | `MIKU_COAT_PROFILE_REEXPORT_REQUIRED_2_0_2` | Error | A bundle claims a 2.0.0/2.0.1 target profile while declaring Clear Coat; re-export with the coordinated 2.0.2 exporter |
 | `MIKU_TARGET_PROFILE_2_0_X_COMPATIBILITY` | Info | Unity 2.0.3 imported a known 2.0.2 profile, or a non-Coat 2.0.0/2.0.1 profile, through the bounded compatibility path |
@@ -46,6 +60,9 @@ and may be expanded as code is normalized.
 | `MIKU_DISPLACEMENT_NORMAL_INPUT_UNSUPPORTED` | Error | The Displacement node's Normal input is linked; Miku 2.2 supports only the unlinked geometry-normal direction |
 | `MIKU_DISPLACEMENT_MIDLEVEL_DYNAMIC_UNSUPPORTED` / `MIKU_DISPLACEMENT_SCALE_DYNAMIC_UNSUPPORTED` | Error | Midlevel or Scale is linked; Miku 2.2 requires finite constants |
 | `MIKU_DISPLACEMENT_PARAMETER_NONFINITE` | Error | Midlevel or Scale is NaN/Infinity |
+| `MIKU_BUMP_VERTEX_PROMOTION_PARAMETER_UNSUPPORTED` | Warning | `ALWAYS_VERTEX` could not promote Bump to vertex displacement because Strength or Distance is dynamic or non-finite; the normal path remains available but no vertex Height contract is invented |
+| `MIKU_MULTIPLE_HEIGHT_SOURCES_NOT_COMBINED` | Warning | Active displacement consumers use different raw Height endpoints. Miku does not guess a primary source or combine them; independent normal bakes remain and no shared Height map is emitted |
+| `MIKU_HEIGHT_SOURCE_ENDPOINT_MISSING` / `MIKU_HEIGHT_SOURCE_SOCKET_MISSING` | Error | The isolated worker could not resolve the stable node/socket endpoint requested for the raw Height bake |
 | `MIKU_VERTEX_DISPLACEMENT_REQUIRES_SUBDIVIDED_MESH` | Warning / RequiresProjectSetup | The graph writes Vertex Position, but visual displacement requires a sufficiently subdivided model |
 | `MIKU_JPEG_REQUIRES_BUNDLE_2_2` / `MIKU_HEIGHT_REQUIRES_BUNDLE_2_2` | Error | A JPEG or Height resource was placed in an older bundle contract; re-export as Bundle 2.2 |
 | `MIKU_COLORED_TRANSPARENCY_APPROXIMATE` | Warning | Colored Transparent BSDF cannot preserve background tint exactly, especially with Dithered depth coverage |
@@ -82,6 +99,8 @@ and may be expanded as code is normalized.
 | `MIKU_STANDARD_PBR_ALPHA_IGNORED_OPAQUE` | Warning | Alpha data was retained where possible but the current Standard wrapper is fixed Opaque and does not use it |
 | `MIKU_STANDARD_PBR_AO_TEXTURE_UNSUPPORTED` | Warning | The Standard wrapper supports a scalar Occlusion value but no AO texture input |
 | `MIKU_LEGACY_ZERO_NORMAL_NORMALIZED` | Info | A pre-fix Miku 1.1.1 bundle carried Blender's unconnected closure Normal sentinel `[0, 0, 0]`; Unity used neutral tangent normal `[0, 0, 1]`, left `_BumpMap` unset, and retained `_NormalStrength = 1` |
+| `MIKU_LEGACY_CLOSURE_ZERO_NORMAL_NORMALIZED` | Info | A supported Miku 1.0.3 bundle carried an unconnected closure `Normal` or `Coat Normal` as `[0, 0, 0]`; Unity normalized only that constant closure parameter to neutral tangent normal `[0, 0, 1]` in memory before graph generation |
+| `MIKU_CLOSURE_NONFINITE_VALUE_SANITIZED` | Warning | A `CustomMultiLobe` material contains zero/near-zero roughness or overlapping coat inputs that require the finite-safe 1.0.5 lighting path. Import remains source-compatible, while validation mode treats any non-finite rendered pixel as a failure |
 | `MIKU_STANDARD_PBR_NORMAL_CONSTANT_UNSUPPORTED` | Warning | A non-flat constant tangent normal cannot be represented by the Standard normal-map control |
 | `MIKU_TARGET_PROFILE_LEGACY_PRESENTATION_COMPATIBILITY` | Info | The bundle uses the one explicitly supported pre-presentation target profile and is imported through the bounded compatibility path |
 | `MIKU_LEGACY_IDENTITY_SOURCE_MISMATCH` | Warning | A legacy root registry belongs to another Source ID; it is ignored and export continues |
@@ -137,6 +156,12 @@ and may be expanded as code is normalized.
 | `MIKU_CRYSTAL_THIN_SURFACE_CONFIGURED` | Info | Artist selected the ThinSurface shape; closed-volume behavior is not required and the wrapper renders both faces |
 | `MIKU_URP_OPAQUE_TEXTURE_REQUIRED` | Warning | Generated Scene Color refraction needs URP Opaque Texture before visual success can be claimed |
 | `MIKU_LINEAR_COLOR_SPACE_RECOMMENDED` | Warning | Beer-Lambert composition is authored for Linear color space |
+| `MIKU_WUWA_EYE_HET_INHERITED` | Info | The current Eye material had no HET node and inherited the unique HET image from another material on the same mesh |
+| `MIKU_WUWA_EYE_UV_MAPPING_UNSUPPORTED` | Warning | An authored Eye highlight uses a linked, animated, non-Point, or non-UV0 coordinate chain; the role is left unbound instead of misaligned |
+| `MIKU_WUWA_EYE_2_2_6_REIMPORT_REQUIRED` | Warning | A 2.2.6 Eye recipe now uses HET as emission and must be re-imported to receive HDMF, upper/lower highlights, and UV transforms |
+| `MIKU_FIXED_TEXTURE_UV_TRANSFORM_INVALID` | Error | A fixed-workflow material binding contains a malformed UV transform object |
+| `MIKU_FIXED_TEXTURE_UV_TRANSFORM_UNSUPPORTED` | Error | A fixed-workflow UV transform is not the supported UV0 Affine2D contract |
+| `MIKU_FIXED_TEXTURE_UV_MATRIX_INVALID` | Error | An Affine2D binding does not contain exactly six finite numeric coefficients |
 
 Diagnostics should include severity, material, source node/socket and group path,
 translation quality, and remediation where available. Do not parse localized log

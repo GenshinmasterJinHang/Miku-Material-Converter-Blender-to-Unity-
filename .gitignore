@@ -95,3 +95,6 @@ Thumbs.db
 
 # Local superpowers scratch (do not commit transient state)
 .superpowers/sdd/
+
+# External reference repositories are local-only and must not be published.
+.ref_repos/

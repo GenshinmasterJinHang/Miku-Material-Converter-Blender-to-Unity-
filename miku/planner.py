@@ -85,15 +85,15 @@ class TargetProfile:
                     "alphaBlendWrapper": "8b959dfeb5d1f684b897c074647078789fc6fcd3113ee178374d9aaf86e5f845",
                     "ditheredWrapper": "c51786632f1b712e8e25060357940b5daa127942346d9f093c251df282cb7d2a",
                     "dielectricWrapper": "8694e3bb49c2ce279aff157ce722ec15c4e7793b970e64cb8100cd2c409d67df",
-                    "genericToonCommon": "b0a922b9b9c512469294d33f90f88f56bb318fd4aaf7c7cdfade1e193028aca9",
-                    "genericToonShaderFamily": "6db815a735bf72c11c5d385820226f7bb05425062542ff9ca88912a0140ec073",
+                    "gameToonScreenRim": "86ec8bba65081ee680adfbcefb6f605c1c0b6bb17c4d6a72cd06584386850275",
+                    "wuwaEyeBackend": "2ee5788d7e2c62f4f5ce1bf84edfd1af2c6094ac0776b6376e73025f5abd3f97",
                     "generatedSubGraph": "b83e1588103b7ae6ecfaddaed453d7eebbacbce4d08063903c1e8a0db70c0e1c",
-                    "runtimeStructuredBackend": "7ae5f6cc6505ff27652e4e584603d296a9cde89b78717f309d97070ddf883eee",
+                    "runtimeStructuredBackend": "55ae46b385ae4ed8c8c870f3d87c9702bd3f1de3e791f0ba700c0a64c495fbc4",
                     "blenderLightPathRuntime": "3cdccb562f0521bf9b28fa0e91a32a499e1642cc350df72f9ff076d0e0322504",
                     "blenderNoiseRuntime": "f861da2f3fbdaaf998a31914604eb7e4c4ed54e38efb26da78a2359bb1de5669",
                     "sourceMeshGlbWriter": "e23d26499cf91b4617c6e6af9844a68431fcbe73693b25a4c2751df6b3e5ed4c",
-                    "surfaceModelRegistry": "de61d2dbeabb25daf8aac2a4bca08658075806039cdbd2305ad3f3afa777f235",
-                    "multiLobeLighting": "54ce8c98fe8d21b3ebc0aeab2593593aba218e6e7017c061b5abc7fed4c7c2e4",
+                    "surfaceModelRegistry": "80253c7ddfc5a4102adb5170eae4c497cab6ae17c5f796658a4edcb960c08cb3",
+                    "multiLobeLighting": "685f019fb73e655ddcc4d9272b6f6c88f11363ebcf836e965791bfaf8a463901",
                 },
             },
         )
@@ -103,6 +103,67 @@ def default_target_profile() -> dict[str, Any]:
     return TargetProfile().to_document()
 
 
+def _nested_requires_bake_records(
+    value: Any,
+    path: tuple[str, ...] = (),
+) -> list[tuple[tuple[str, ...], Mapping[str, Any]]]:
+    """Return unresolved bake records at any authoritative closure depth."""
+
+    records: list[tuple[tuple[str, ...], Mapping[str, Any]]] = []
+    if isinstance(value, Mapping):
+        if bool(value.get("requiresBake")):
+            records.append((path, value))
+        for key, child in value.items():
+            records.extend(
+                _nested_requires_bake_records(child, (*path, str(key)))
+            )
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            records.extend(
+                _nested_requires_bake_records(child, (*path, str(index)))
+            )
+    return records
+
+
+def _nested_expression_ids(value: Any) -> set[str]:
+    result: set[str] = set()
+    if isinstance(value, Mapping):
+        expression_id = str(value.get("expressionId") or "")
+        if expression_id:
+            result.add(expression_id)
+        for child in value.values():
+            result.update(_nested_expression_ids(child))
+    elif isinstance(value, list):
+        for child in value:
+            result.update(_nested_expression_ids(child))
+    return result
+
+
+def _reachable_expression_ids(
+    expressions: list[Mapping[str, Any]],
+    roots: set[str],
+) -> set[str]:
+    by_id = {
+        str(expression.get("id") or ""): expression
+        for expression in expressions
+        if str(expression.get("id") or "")
+    }
+    reachable: set[str] = set()
+    pending = list(roots)
+    while pending:
+        expression_id = pending.pop()
+        if expression_id in reachable:
+            continue
+        reachable.add(expression_id)
+        expression = by_id.get(expression_id)
+        if expression is None:
+            continue
+        pending.extend(
+            sorted(_nested_expression_ids(expression.get("inputs") or {}))
+        )
+    return reachable
+
+
 class ConversionPlanner:
     """Plan routes without importing Blender or Unity."""
 
@@ -110,6 +171,74 @@ class ConversionPlanner:
         profile = dict(target_profile or default_target_profile())
         regions = list(ir.get("regions") or [])
         diagnostics = list(ir.get("diagnostics") or [])
+        workflow_kind = str(
+            ((ir.get("workflow") or {}).get("kind") or "")
+            if isinstance(ir.get("workflow"), Mapping)
+            else ""
+        )
+        if workflow_kind == "generic_toon":
+            raise ValueError("MIKU_WORKFLOW_RETIRED:generic_toon")
+        if workflow_kind in {
+            "genshin_toon",
+            "wuwa_toon",
+            "hsr_toon",
+            "endfield_toon",
+        }:
+            if mode != "Auto" and not any(
+                str(item.get("code") or "")
+                == "MIKU_FIXED_WORKFLOW_CONVERSION_MODE_IGNORED"
+                for item in diagnostics
+                if isinstance(item, Mapping)
+            ):
+                diagnostics.append(
+                    {
+                        "severity": "info",
+                        "code": "MIKU_FIXED_WORKFLOW_CONVERSION_MODE_IGNORED",
+                        "translationQuality": "Equivalent",
+                        "mode": mode,
+                        "message": (
+                            "Fixed shader workflows always use the Native "
+                            "texture-binding route and never schedule baking."
+                        ),
+                    }
+                )
+            return make_document(
+                "miku-conversion-plan-1.0",
+                {
+                    "materialKey": ir.get("materialKey", ""),
+                    "targetProfile": profile.get("canonicalHash", ""),
+                    "mode": mode,
+                    "routePolicy": "FixedWorkflowTextureBinding",
+                    "surfaceModel": "OpaquePBR",
+                    "surfaceBackend": "MikuStaticWorkflowBackend",
+                    "surfaceModelPlan": ir.get("surfaceModelPlan") or {},
+                    "closureGraph": ir.get("closureGraph") or {},
+                    "weightedClosures": ir.get("weightedClosures") or {},
+                    "regions": [
+                        {
+                            "regionId": region.get("id"),
+                            "route": Route.NATIVE.value,
+                            "fidelity": Fidelity.EQUIVALENT.value,
+                            "backend": "MikuStaticWorkflowBackend",
+                            "required": True,
+                            "sourceRegionId": region.get("sourceRegionId"),
+                            "scope": "FixedShaderMaterial",
+                        }
+                        for region in sorted(
+                            regions,
+                            key=lambda item: str(item.get("id") or ""),
+                        )
+                    ],
+                    "bakeJobs": [],
+                    "parameters": list(ir.get("parameters") or []),
+                    "diagnostics": diagnostics,
+                    "completionPolicy": {
+                        "requireExitCodeZero": True,
+                        "requireCompletionMarker": True,
+                        "requireArtifactHashes": True,
+                    },
+                },
+            )
         portable_mode = mode in {
             "Auto",
             "NativeOnly",
@@ -124,6 +253,58 @@ class ConversionPlanner:
         surface_model = str(
             surface_model_plan.get("kind") or "UnsupportedSurface"
         )
+        full_pbr_runtime_dependencies = set()
+        for expression in ir.get("expressions") or []:
+            if not isinstance(expression, Mapping):
+                continue
+            operation = str(expression.get("op") or "")
+            if operation == "Input.ViewDirection":
+                full_pbr_runtime_dependencies.add("ViewDirection")
+            elif operation.startswith("Input.Camera."):
+                full_pbr_runtime_dependencies.add("Camera")
+            elif operation.startswith("Input.Time."):
+                full_pbr_runtime_dependencies.add("Time")
+            elif operation.startswith("Input.LightPath."):
+                full_pbr_runtime_dependencies.add("LightPath")
+        full_pbr_runtime_dependencies = sorted(full_pbr_runtime_dependencies)
+        if mode == "FullPBRBake" and full_pbr_runtime_dependencies:
+            diagnostics.append(
+                {
+                    "severity": "error",
+                    "code": "MIKU_RUNTIME_INPUT_UNSUPPORTED",
+                    "translationQuality": "Unsupported",
+                    "runtimeDependencies": full_pbr_runtime_dependencies,
+                    "message": (
+                        "Full PBR Bake is source-mesh-bound and cannot encode "
+                        "runtime view, camera, light-path, or time data in UV "
+                        "textures. Select Portable Hybrid (Prefer Native) to "
+                        "preserve supported runtime expressions."
+                    ),
+                }
+            )
+            return make_document(
+                "miku-conversion-plan-1.0",
+                {
+                    "materialKey": ir.get("materialKey", ""),
+                    "targetProfile": profile.get("canonicalHash", ""),
+                    "mode": mode,
+                    "routePolicy": "ExplicitSourceMeshFidelity",
+                    "surfaceModel": surface_model,
+                    "surfaceBackend": "",
+                    "surfaceModelPlan": surface_model_plan,
+                    "closureGraph": ir.get("closureGraph") or {},
+                    "weightedClosures": ir.get("weightedClosures") or {},
+                    "regions": [],
+                    "bakeJobs": [],
+                    "parameters": list(ir.get("parameters") or []),
+                    "diagnostics": diagnostics,
+                    "completionPolicy": {
+                        "requireExitCodeZero": True,
+                        "requireCompletionMarker": True,
+                        "requireArtifactHashes": True,
+                    },
+                },
+            )
         blocking_errors = [
             item
             for item in diagnostics
@@ -132,6 +313,20 @@ class ConversionPlanner:
             and str(item.get("code") or "")
             not in SOURCE_MESH_RESOLVABLE_DIAGNOSTIC_CODES
         ]
+        full_pbr_semantics = [
+            "Alpha",
+            "BaseColor",
+            "Emission",
+            "Metalness",
+            "Normal",
+            "Roughness",
+        ]
+        if any(
+            isinstance(channel, Mapping)
+            and str(channel.get("semantic") or "") == "Height"
+            for channel in ir.get("channels") or []
+        ):
+            full_pbr_semantics.append("Height")
         if mode == "FullPBRBake" and not blocking_errors:
             resolved_codes = sorted(
                 {
@@ -216,20 +411,17 @@ class ConversionPlanner:
                             "regionId": source_region_id,
                             "route": Route.FULL_PBR_BAKE.value,
                             "scope": "Material",
-                            "semantics": [
-                                "Alpha",
-                                "BaseColor",
-                                "Emission",
-                                "Metalness",
-                                "Normal",
-                                "Roughness",
-                            ],
+                            "semantics": full_pbr_semantics,
                             "resolution": 1024,
                             "supersampling": 2,
                             "padding": 16,
                             "samples": 16,
                             "randomSeed": 0,
                             "sourceRegionId": source_region_id,
+                            "heightSource": dict(ir.get("heightChannel") or {}),
+                            "displacementPolicy": str(
+                                ir.get("displacementPolicy") or "FOLLOW_BLENDER"
+                            ),
                         }
                     ],
                     "parameters": parameters,
@@ -449,10 +641,19 @@ class ConversionPlanner:
                 )
             if route == Route.UNSUPPORTED:
                 diagnostics.append({"severity": "error", "code": "MIKU_REQUIRED_REGION_UNSUPPORTED", "regionId": region.get("id"), "message": f"No safe route for semantic region {kind}."})
+        # Standard PBR channels are compatibility projections for a custom
+        # multi-lobe surface. Its weighted-closure parameters are the only
+        # authoritative consumers, so baking those top-level projections would
+        # create unused resources (notably an `_MIKU_IOR` texture).
+        authoritative_channels = (
+            []
+            if surface_model == "CustomMultiLobe"
+            else list(ir.get("channels") or [])
+        )
         static_channel_semantics = sorted(
             {
                 str(channel.get("semantic") or "")
-                for channel in ir.get("channels") or []
+                for channel in authoritative_channels
                 if isinstance(channel, Mapping)
                 and bool(channel.get("requiresBake"))
                 and str(channel.get("semantic") or "")
@@ -486,7 +687,7 @@ class ConversionPlanner:
                 source_region_ids = sorted(
                     {
                         str(channel.get("regionId") or "")
-                        for channel in ir.get("channels") or []
+                        for channel in authoritative_channels
                         if isinstance(channel, Mapping)
                         and bool(channel.get("requiresBake"))
                         and str(channel.get("regionId") or "")
@@ -510,6 +711,10 @@ class ConversionPlanner:
                         "randomSeed": 0,
                         "sourceRegionId": source_region_ids[0] if source_region_ids else str(ir.get("id") or ""),
                         "sourceRegionIds": source_region_ids,
+                        "heightSource": dict(ir.get("heightChannel") or {}),
+                        "displacementPolicy": str(
+                            ir.get("displacementPolicy") or "FOLLOW_BLENDER"
+                        ),
                     }
                 )
                 diagnostics.append(
@@ -524,6 +729,39 @@ class ConversionPlanner:
                         ),
                     }
                 )
+        unresolved_closure_records = _nested_requires_bake_records(
+            ir.get("weightedClosures") or {},
+            ("weightedClosures",),
+        )
+        if unresolved_closure_records and not has_runtime_error:
+            consumer_paths = [
+                ".".join(path) for path, _ in unresolved_closure_records
+            ]
+            if portable_mode:
+                diagnostics.append(
+                    {
+                        "severity": "error",
+                        "code": "MIKU_SOURCE_MESH_FIDELITY_REQUIRED",
+                        "consumerPaths": consumer_paths,
+                        "message": (
+                            f"{mode} cannot resolve active weighted-closure "
+                            "parameters that require a source-mesh bake."
+                        ),
+                    }
+                )
+            else:
+                diagnostics.append(
+                    {
+                        "severity": "error",
+                        "code": "MIKU_CLOSURE_PARAMETER_BAKE_UNRESOLVED",
+                        "translationQuality": "Unsupported",
+                        "consumerPaths": consumer_paths,
+                        "message": (
+                            "An active closure parameter still has requiresBake "
+                            "after Source Mesh expression compilation."
+                        ),
+                    }
+                )
         expression_islands = sorted(
             (
                 expression
@@ -534,15 +772,52 @@ class ConversionPlanner:
             ),
             key=lambda item: str(item.get("id") or ""),
         )
+        if surface_model == "CustomMultiLobe":
+            closure_roots = _nested_expression_ids(
+                ir.get("weightedClosures") or {}
+            )
+            closure_reachable = _reachable_expression_ids(
+                [
+                    expression
+                    for expression in expressions
+                    if isinstance(expression, Mapping)
+                ],
+                closure_roots,
+            )
+            expression_islands = [
+                expression
+                for expression in expression_islands
+                if str(expression.get("id") or "") in closure_reachable
+            ]
         if expression_islands and not has_runtime_error:
-            if portable_mode:
+            reusable_expression_islands = [
+                expression
+                for expression in expression_islands
+                if isinstance(expression.get("params"), Mapping)
+                and expression["params"].get("meshBindingRequired") is False
+                and str(
+                    expression["params"].get("coordinateDomain") or ""
+                )
+                in {"Uniform", "UV0"}
+            ]
+            mesh_expression_islands = [
+                expression
+                for expression in expression_islands
+                if expression not in reusable_expression_islands
+            ]
+            reusable_mode = mode in {"PreferNative", "ReusableBakeOnly"}
+            if portable_mode and mesh_expression_islands:
                 diagnostics.append(
                     {
                         "severity": "error",
-                        "code": "MIKU_SOURCE_MESH_FIDELITY_REQUIRED",
+                        "code": (
+                            "MIKU_PORTABLE_HYBRID_MESH_DEPENDENCY"
+                            if mode == "PreferNative"
+                            else "MIKU_SOURCE_MESH_FIDELITY_REQUIRED"
+                        ),
                         "expressionIds": [
                             str(item.get("id") or "")
-                            for item in expression_islands
+                            for item in mesh_expression_islands
                         ],
                         "message": (
                             f"{mode} cannot emit mesh-bound expression "
@@ -550,8 +825,12 @@ class ConversionPlanner:
                         ),
                     }
                 )
-            else:
-                for expression in expression_islands:
+            scheduled_islands = (
+                reusable_expression_islands
+                if reusable_mode
+                else ([] if portable_mode else expression_islands)
+            )
+            for expression in scheduled_islands:
                     params = (
                         expression.get("params")
                         if isinstance(expression.get("params"), Mapping)
@@ -567,7 +846,12 @@ class ConversionPlanner:
                         {
                             "jobId": f"bake-expression-{expression_id}",
                             "regionId": str(ir.get("id") or ""),
-                            "route": Route.MESH_BAKE.value,
+                            "route": (
+                                Route.REUSABLE_BAKE.value
+                                if expression
+                                in reusable_expression_islands
+                                else Route.MESH_BAKE.value
+                            ),
                             "scope": "ExpressionIsland",
                             "expressionId": expression_id,
                             "resourceId": str(
@@ -582,6 +866,13 @@ class ConversionPlanner:
                                 params.get("colorSpace") or "Linear"
                             ),
                             "uvSet": str(params.get("uvSet") or "UV0"),
+                            "coordinateDomain": str(
+                                params.get("coordinateDomain")
+                                or "MeshSurface"
+                            ),
+                            "meshBindingRequired": bool(
+                                params.get("meshBindingRequired", True)
+                            ),
                             "sourceNodeId": str(
                                 source.get("nodeId") or ""
                             ),
@@ -595,6 +886,24 @@ class ConversionPlanner:
                             "randomSeed": 0,
                         }
                     )
+            if reusable_expression_islands and reusable_mode:
+                diagnostics.append(
+                    {
+                        "severity": "info",
+                        "code": "MIKU_PORTABLE_UV_BAKE_SCHEDULED",
+                        "translationQuality": "Baked",
+                        "expressionIds": [
+                            str(item.get("id") or "")
+                            for item in reusable_expression_islands
+                        ],
+                        "message": (
+                            "Scheduled maximal runtime-independent expression "
+                            "islands for canonical UV0 baking without source "
+                            "mesh binding."
+                        ),
+                    }
+                )
+            if not portable_mode and mesh_expression_islands:
                 diagnostics.append(
                     {
                         "severity": "info",
@@ -602,7 +911,7 @@ class ConversionPlanner:
                         "translationQuality": "Baked",
                         "expressionIds": [
                             str(item.get("id") or "")
-                            for item in expression_islands
+                            for item in mesh_expression_islands
                         ],
                         "message": (
                             "Scheduled maximal runtime-independent expression "

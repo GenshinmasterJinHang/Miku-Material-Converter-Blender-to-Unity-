@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "contentSha256": "49a7a002a4d901ac6d61ab19bf2f14ca12c6ce491d2442726768d5396ef15fc2",
+      "contentSha256": "7dde157cbfedc643c2c790e4311128d325ae09a1b51f287118541252554c16fa",
       "guid": "373ba2e3f1125c24fa9413f3ee20a183",
       "metaPath": "CHANGELOG.md.meta",
       "path": "CHANGELOG.md",
@@ -28,6 +28,13 @@
       "role": "AssemblyDefinition"
     },
     {
+      "contentSha256": "cb8998ba4ec3214a5b58e44fb25e38a7e8fd48d4c7bd522eaa237a839ef4b393",
+      "guid": "750018b8f36b4b5a84cb679ed6312486",
+      "metaPath": "Editor/MikuAnimeVolumeProfileFactory.cs.meta",
+      "path": "Editor/MikuAnimeVolumeProfileFactory.cs",
+      "role": "CSharp"
+    },
+    {
       "contentSha256": "205882e84b34f35a13b2adefb4ecfc030fb4e6f649c49bbee46376082ae8e3d7",
       "guid": "30e97ec1212f806c043c9ffef980e716",
       "metaPath": "Editor/MikuAtomicAssetWriter.cs.meta",
@@ -42,35 +49,70 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "ce062664d49f695f1c93661447637245d6d700061730b1936ffbdde842795383",
+      "contentSha256": "618edcb53e0353ca1cdaf179a5ef49f2a5ed2546737cf885579c51bab1bd515a",
       "guid": "052af08bb7bd32547a2ef798fe0457d7",
       "metaPath": "Editor/MikuBundleImporter.cs.meta",
       "path": "Editor/MikuBundleImporter.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "ea59ca88a5bbadddbd77facc59b021603e28c7c3f7f79bc756c8d01ca3533b7a",
+      "contentSha256": "ba31bbef78ac76ade0fa4acb1310e37de526069d0242ef26a348bf957cec101c",
       "guid": "198228af216ca759b577bb31a212d848",
       "metaPath": "Editor/MikuBundleScriptedImporter.cs.meta",
       "path": "Editor/MikuBundleScriptedImporter.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "68f6b80e1c3525ee0f9faff2c20806cbc5b70227401a6eeaf801e35cbd9e8a27",
-      "guid": "3aa517930c39c816480e428478e160da",
-      "metaPath": "Editor/MikuGenericToonMaterialBuilder.cs.meta",
-      "path": "Editor/MikuGenericToonMaterialBuilder.cs",
+      "contentSha256": "bd6cd62fbea1c528625d6c918efb78f1847512b468c24a904ab4ad5b4a24c488",
+      "guid": "bc08c36482674586aa6a0ddd4011edc0",
+      "metaPath": "Editor/MikuEditorLocalization.cs.meta",
+      "path": "Editor/MikuEditorLocalization.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "557169f536e4e128c4640ecece744378c50fa9d92963987525e543984fd06a24",
-      "guid": "d5a044e1104529b3080adf77c2de78b0",
-      "metaPath": "Editor/MikuGenericToonShaderGUI.cs.meta",
-      "path": "Editor/MikuGenericToonShaderGUI.cs",
+      "contentSha256": "d2ca72e6c471d231939cdcde8ff719c3cec231834a66a04d9066bd535ca73069",
+      "guid": "b080b2fb96e54db0b224174528462463",
+      "metaPath": "Editor/MikuEndfieldHeadSpace.cs.meta",
+      "path": "Editor/MikuEndfieldHeadSpace.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "4a51f99cd26b6e6babc483a9e195272244c772af2ea8c2d5b483deeeb4e77d46",
+      "contentSha256": "573536b065f5449437fef96f37987e9a5a52ac20c86836a24f5bc856c7a521d9",
+      "guid": "2cb49bb3cbca4f5480bb591cc5194b50",
+      "metaPath": "Editor/MikuEndfieldShaderMath.cs.meta",
+      "path": "Editor/MikuEndfieldShaderMath.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "0c60fc52ee842d7c6d9060110539ebabd796291812c100548e1c3c50dae0754d",
+      "guid": "d8e4a65c5fd34ea8b96942c63f519a12",
+      "metaPath": "Editor/MikuFixedWorkflowTextureBindings.cs.meta",
+      "path": "Editor/MikuFixedWorkflowTextureBindings.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "c72ca18c5ad44d2721f53ae83fea3fdaf3e9b8ea18931cc59f46e64b378a08bf",
+      "guid": "c9bd9d0d8cf2418ab1e4176b46913fa5",
+      "metaPath": "Editor/MikuGameToonCpuMath.cs.meta",
+      "path": "Editor/MikuGameToonCpuMath.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "49c504d94940c40b88373e08c0f5e5db20403aad5da911d2500154b9bc719c23",
+      "guid": "4472f0e618ad4faeb76cd3cdf5657f5c",
+      "metaPath": "Editor/MikuGameToonMaterialProfiles.cs.meta",
+      "path": "Editor/MikuGameToonMaterialProfiles.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "8255d6b302cd543e57cf0444ca5423649f366c8b13bed7639c63eb762d834eb6",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae020",
+      "metaPath": "Editor/MikuGameToonMaterialTools.cs.meta",
+      "path": "Editor/MikuGameToonMaterialTools.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "2a8d4c9663c0d7ff378675689e435d06cff8510b263476fa20b583f01520ea9e",
       "guid": "2cd5e5d172e640c9bb45e14dff567125",
       "metaPath": "Editor/MikuLegacyAssetMigration.cs.meta",
       "path": "Editor/MikuLegacyAssetMigration.cs",
@@ -84,14 +126,14 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "ed828d9b087d950b11e4503d41a81ecda6715367253bbdb6128c0d19a27eed55",
+      "contentSha256": "9e3d08dd600fc5a9eafffbf848bb7401635979ff5d1beab09900bf294cf531c9",
       "guid": "cee8dc49d1056a2893f59cd411928bf9",
       "metaPath": "Editor/MikuManualTextureShaderGUI.cs.meta",
       "path": "Editor/MikuManualTextureShaderGUI.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "9c80a8f48f42fca1242aa690d162a6293772624fc049fb210fd5d49f2b0eae37",
+      "contentSha256": "75d65e47d7da965e255604787992251b44388cf8cf3bf3854c2321be8b9cd221",
       "guid": "7b80a85c03fd4c8cb341861ff5bab57d",
       "metaPath": "Editor/MikuMeshBindingDescriptionEditor.cs.meta",
       "path": "Editor/MikuMeshBindingDescriptionEditor.cs",
@@ -105,42 +147,42 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "b620042ee01887349c480fcd29bcbfddf999c47bbf3a3c7b3690638c95e186b5",
+      "contentSha256": "55ae46b385ae4ed8c8c870f3d87c9702bd3f1de3e791f0ba700c0a64c495fbc4",
       "guid": "2dc5b04675694e58be04f4acfbf95455",
       "metaPath": "Editor/MikuShaderGraph17RuntimeBackend.cs.meta",
       "path": "Editor/MikuShaderGraph17RuntimeBackend.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "de61d2dbeabb25daf8aac2a4bca08658075806039cdbd2305ad3f3afa777f235",
+      "contentSha256": "80253c7ddfc5a4102adb5170eae4c497cab6ae17c5f796658a4edcb960c08cb3",
       "guid": "d17e07b4c0f9448aad7f540a4ca94e5e",
       "metaPath": "Editor/MikuSurfaceModelBackends.cs.meta",
       "path": "Editor/MikuSurfaceModelBackends.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "8f1d60c65c6088f7cac3deac2b58036e16a07e209daabcb5cf476cd9b24e1f7a",
+      "contentSha256": "70d47e77251aa155074396990c5854214c8bfb9a9deaeea520cd289b1edbbae6",
       "guid": "890649e01fed1423ee24e258f4a12a3f",
       "metaPath": "Editor/MikuToonMaterialRecipe.cs.meta",
       "path": "Editor/MikuToonMaterialRecipe.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "30fe54503e4bac03651e95585db4abdd525b6ace4489e31cfc66403fdfccb786",
+      "contentSha256": "0a9b39b5b6c31edee69dfff06192f7839473ba2d60a06d6006e9448e2bf8a37b",
       "guid": "7e998b092173a48cd1f3ee649f1c30c6",
       "metaPath": "Editor/MikuToonMeshDataTool.cs.meta",
       "path": "Editor/MikuToonMeshDataTool.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "e3e4a3ca42fd4a8cd14645443e63c2b36279b34c9736fe0a6ea58c8e28a305df",
+      "contentSha256": "7c7126b51cd521923f96027ac97613e490640be77ffd3262d26bf0a7e5432450",
       "guid": "0698656e2ee70d977a330a89a260f7d4",
       "metaPath": "Editor/MikuToonRendererFeatureInstaller.cs.meta",
       "path": "Editor/MikuToonRendererFeatureInstaller.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "1f903428ef3a0f5e6e27538a76bea21556cf700c343b12b9b403cf457ff0248d",
+      "contentSha256": "ee70e8d8bddf1635bfd12f170cf596f2a2ffa2145427fd1a70740a2b189f3ddf",
       "guid": "51aee6bfbc73e35d5b3ab5c5ecde677c",
       "metaPath": "Editor/MikuWorkflowBackends.cs.meta",
       "path": "Editor/MikuWorkflowBackends.cs",
@@ -154,14 +196,14 @@
       "role": "Documentation"
     },
     {
-      "contentSha256": "66bcd0f06ac8fc70112617ace8203a59da56ae62364801004723bdf413093d68",
+      "contentSha256": "62da928bbe26302b40380a2d53b59c061c007e4fe0c26511d3f27f36013a3746",
       "guid": "9624d6292afa4432b49ad6a32334cbf1",
       "metaPath": "package.json.meta",
       "path": "package.json",
       "role": "Json"
     },
     {
-      "contentSha256": "a8a65c1c82ae2a975a5d6e2b9439dac540cbc5467c45afc7287aa385a0a55b1a",
+      "contentSha256": "44e9f413a161b2f940a93ef480ec39a74c03a1af8496a710d3573a45a251b821",
       "guid": "7fcfbb738c6246c48a756fe61b42d0fe",
       "metaPath": "README.md.meta",
       "path": "README.md",
@@ -187,86 +229,127 @@
       "role": "Hlsl"
     },
     {
-      "guid": "d2cb35e570c44785ab464f8b91af401c",
-      "metaPath": "Runtime/GenericToon.meta",
-      "path": "Runtime/GenericToon",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae001",
+      "metaPath": "Runtime/Endfield.meta",
+      "path": "Runtime/Endfield",
       "role": "Folder"
     },
     {
-      "contentSha256": "a37c49baf0a1ef3151086869a653d55f09baf9e93f4254c25ac4dcac1fe9fb1a",
-      "guid": "64c35266ba16ef455f811e5dc4585fba",
-      "metaPath": "Runtime/GenericToon/MikuBodySkin.shader.meta",
-      "path": "Runtime/GenericToon/MikuBodySkin.shader",
+      "contentSha256": "3d52c4dff4960b8397553b2468b5d1ce249de0d64ba76bbe6b10e89a88578253",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae010",
+      "metaPath": "Runtime/Endfield/Endfield_Body.shader.meta",
+      "path": "Runtime/Endfield/Endfield_Body.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "3fe4f28eec85ef7f6780fba464bcfef75327133c43bc0ace256f4ce14b8816d5",
-      "guid": "ac173f2b3f5b4acccd8d79c4708a8790",
-      "metaPath": "Runtime/GenericToon/MikuCloth.shader.meta",
-      "path": "Runtime/GenericToon/MikuCloth.shader",
+      "contentSha256": "b2b5c5d5d12e2272016fe9753d25026da7cc0c02cf0113eb5046ba4998264c4f",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae017",
+      "metaPath": "Runtime/Endfield/Endfield_Effect.shader.meta",
+      "path": "Runtime/Endfield/Endfield_Effect.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "df78ef4cb45bcaac658eb288feb8dc7bc3671be847e347a5a58d4e0e48d5aded",
-      "guid": "773896365fc9dcf7808e2d64d44b9ab5",
-      "metaPath": "Runtime/GenericToon/MikuEye.shader.meta",
-      "path": "Runtime/GenericToon/MikuEye.shader",
+      "contentSha256": "ee933a27cfc53b46791c22c4569647bd4439bc20ab57225c23b42789aeb8b518",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae014",
+      "metaPath": "Runtime/Endfield/Endfield_Eye.shader.meta",
+      "path": "Runtime/Endfield/Endfield_Eye.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "f59138d9e6f7e2d4c6e0631b35ce5e8133740a30f1b374f5d780cb9044595b10",
-      "guid": "2025aa631b7767ef9930c50375884406",
-      "metaPath": "Runtime/GenericToon/MikuFace.shader.meta",
-      "path": "Runtime/GenericToon/MikuFace.shader",
+      "contentSha256": "5e515f533c48d65de298479cbb96b7b7bae84c569e2c1d61e83c78d1486b96eb",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae013",
+      "metaPath": "Runtime/Endfield/Endfield_Face.shader.meta",
+      "path": "Runtime/Endfield/Endfield_Face.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "25516ecc8793f5ed2181b65d07210c95a72fa1ed05aa24ee92c643f18f020294",
-      "guid": "1c20fccb31ff4bb3b45c6391295f6816",
-      "metaPath": "Runtime/GenericToon/MikuGenericOpaque.shader.meta",
-      "path": "Runtime/GenericToon/MikuGenericOpaque.shader",
+      "contentSha256": "e9b9bdd08d38434b7aec4ffd7712c7b98de15a5c3bb4b24d85282ca2584be83f",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae012",
+      "metaPath": "Runtime/Endfield/Endfield_Hair.shader.meta",
+      "path": "Runtime/Endfield/Endfield_Hair.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "b0a922b9b9c512469294d33f90f88f56bb318fd4aaf7c7cdfade1e193028aca9",
-      "guid": "85786728eaaf18451e94c5b4e06f463b",
-      "metaPath": "Runtime/GenericToon/MikuGenericToonCommon.hlsl.meta",
-      "path": "Runtime/GenericToon/MikuGenericToonCommon.hlsl",
+      "contentSha256": "2f86fa9625138526d1ec42ce5c8315917e5d6a192cf208839852344ff8010237",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae018",
+      "metaPath": "Runtime/Endfield/Endfield_HairShadow.shader.meta",
+      "path": "Runtime/Endfield/Endfield_HairShadow.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "a70fcdc9bfeff39a070297e01af84b8301611bdd98be278ab2d290e29b4ca25a",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae015",
+      "metaPath": "Runtime/Endfield/Endfield_Mouth.shader.meta",
+      "path": "Runtime/Endfield/Endfield_Mouth.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "5140e15afd1868a9c32fc324d50f4fe02777d727bdcada68378b7710ba0cd565",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae016",
+      "metaPath": "Runtime/Endfield/Endfield_Overlay.shader.meta",
+      "path": "Runtime/Endfield/Endfield_Overlay.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "e20d4fe9ef61cd4327523abb92033433e67512911856f4fd49ed945875f11cf3",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae011",
+      "metaPath": "Runtime/Endfield/Endfield_Skin.shader.meta",
+      "path": "Runtime/Endfield/Endfield_Skin.shader",
+      "role": "Shader"
+    },
+    {
+      "contentSha256": "51cb3c285e1f687fdcd6f942f9adc5805df5ecf11ca948e16be7b57383617a1d",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae002",
+      "metaPath": "Runtime/Endfield/EndfieldCommon.hlsl.meta",
+      "path": "Runtime/Endfield/EndfieldCommon.hlsl",
       "role": "Hlsl"
     },
     {
-      "contentSha256": "7af7bfa991b54039d672edc291b8e6ee03289106abafc8ac17e73b0a55068a75",
-      "guid": "e1d5ab5392353102365ad42667ed8775",
-      "metaPath": "Runtime/GenericToon/MikuHair.shader.meta",
-      "path": "Runtime/GenericToon/MikuHair.shader",
+      "contentSha256": "031467187613a1a0a399e9d3fd30f07870847e0dc491c8c3776a152e5ddaed65",
+      "guid": "9f6d819bf7364b7e94df3e941a7ae003",
+      "metaPath": "Runtime/Endfield/EndfieldPassLibrary.shader.meta",
+      "path": "Runtime/Endfield/EndfieldPassLibrary.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "c5eaee2ef61e3e27d550a01c567dd96f5b1504b2b59f46d9b2724f0186e54efc",
-      "guid": "b442fbae21d977a24682419498978562",
-      "metaPath": "Runtime/GenericToon/MikuMetalAccessory.shader.meta",
-      "path": "Runtime/GenericToon/MikuMetalAccessory.shader",
-      "role": "Shader"
+      "guid": "d2cb35e570c44785ab464f8b91af401c",
+      "metaPath": "Runtime/GameToon.meta",
+      "path": "Runtime/GameToon",
+      "role": "Folder"
     },
     {
-      "contentSha256": "b692df65e9d7c80c200a8b408d05137291383c2cc957bb416cd01ad06a0f3555",
-      "guid": "c8f0eb94015d8ef31118ca02bc0c84c2",
-      "metaPath": "Runtime/GenericToon/MikuMouth.shader.meta",
-      "path": "Runtime/GenericToon/MikuMouth.shader",
-      "role": "Shader"
+      "contentSha256": "8b3204cf0d2b03f017bd627e5231b83679d5ad6d44e8f83a132964036105e567",
+      "guid": "f30444977f1b4b82bf768560ad5aeb73",
+      "metaPath": "Runtime/GameToon/MikuGameToonScreenRimPass.hlsl.meta",
+      "path": "Runtime/GameToon/MikuGameToonScreenRimPass.hlsl",
+      "role": "Hlsl"
     },
     {
-      "contentSha256": "a36efb4187496c607438fc8b278f61bc7b402f1db36dad5463df799f85090896",
+      "contentSha256": "a8304d3b75dc406a3f9250caf9456a7a12464243f8dad41b0b8eca1edcfe0642",
+      "guid": "54b63210bdaf4c8a94e5fb46b172c741",
+      "metaPath": "Runtime/GameToon/MikuGameToonSkin.hlsl.meta",
+      "path": "Runtime/GameToon/MikuGameToonSkin.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "5c3eb54e5d01b68fc72633b52a9a06744738652cab3c3146f8e8effe69007e73",
       "guid": "91abf3451e9b57093b29c8a3a299594e",
-      "metaPath": "Runtime/GenericToon/MikuToonScreenRimComposite.shader.meta",
-      "path": "Runtime/GenericToon/MikuToonScreenRimComposite.shader",
+      "metaPath": "Runtime/GameToon/MikuToonScreenRimComposite.shader.meta",
+      "path": "Runtime/GameToon/MikuToonScreenRimComposite.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "19005130b1ca07db1239eb3468a479951a319ed4485fff372a93616076df998f",
+      "contentSha256": "644558b93d1f63a64f551fce64decd0baf149e5dd5597ea69ff4065c698b1a6a",
+      "guid": "8c2e59c05b114de1ad91a8b395effd86",
+      "metaPath": "Runtime/GameToon/MikuToonScreenRimMask.hlsl.meta",
+      "path": "Runtime/GameToon/MikuToonScreenRimMask.hlsl",
+      "role": "Hlsl"
+    },
+    {
+      "contentSha256": "6c33a94df0b23d525e5a405ce51256b712f0e8abf62faeaf9c1c93f63928bc01",
       "guid": "0dc97432aa734e51f11f580b446aef5e",
-      "metaPath": "Runtime/GenericToon/MikuToonScreenRimRendererFeature.cs.meta",
-      "path": "Runtime/GenericToon/MikuToonScreenRimRendererFeature.cs",
+      "metaPath": "Runtime/GameToon/MikuToonScreenRimRendererFeature.cs.meta",
+      "path": "Runtime/GameToon/MikuToonScreenRimRendererFeature.cs",
       "role": "CSharp"
     },
     {
@@ -276,7 +359,7 @@
       "role": "Folder"
     },
     {
-      "contentSha256": "7cc51e6f8daf6200fbbaab2d4156da3c7941463d9632e32fc062bb54f9628064",
+      "contentSha256": "0882a01f39f33f18310502fcf478e96a6847f75fe124de9af6e9184ee661345b",
       "guid": "79d1182f9cbb48c2bf5ce1730a26d1af",
       "metaPath": "Runtime/Genshin/Genshin_Body.shader.meta",
       "path": "Runtime/Genshin/Genshin_Body.shader",
@@ -290,21 +373,21 @@
       "role": "Shader"
     },
     {
-      "contentSha256": "dc5f6b12eb52328f34990728658dc701b8b6f814104a5417a8df0c77b1c68558",
+      "contentSha256": "3c509bf749027002d0494d0a2ca6c05a1b27c336b208e76b83372a03b6579bba",
       "guid": "9833ba6271bc411e85bf5440b681d13d",
       "metaPath": "Runtime/Genshin/Genshin_Face.shader.meta",
       "path": "Runtime/Genshin/Genshin_Face.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "f307bbd5b8ecceac1c0f3a174f9c9ed15661e47cb72e79f0eaa7a83cf3a18a40",
+      "contentSha256": "a914756c813f1f01c78ed8ac915d60a22132847914aa022e04737b193e4a1144",
       "guid": "2e14637eb6d1479cb1e5b4bfc1b61d66",
       "metaPath": "Runtime/Genshin/Genshin_Hair.shader.meta",
       "path": "Runtime/Genshin/Genshin_Hair.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "76da5f50b908314911d769d46af97d48c3c7c64a6bf22a390d82c0eec54d36a0",
+      "contentSha256": "082a589f46bc9763fb25abbe5d1d33a07f11ae1ee126cfe2b9c889f3a78e3bf5",
       "guid": "86f97db884ae449ea9026ce15b94e3a0",
       "metaPath": "Runtime/Genshin/GenshinCommon.hlsl.meta",
       "path": "Runtime/Genshin/GenshinCommon.hlsl",
@@ -317,7 +400,7 @@
       "role": "Folder"
     },
     {
-      "contentSha256": "d6aadbf98aa231791343bd44e1c665da2a1eda813b35ea6c8572df7fa70466d1",
+      "contentSha256": "bd1f5eecc37671553e2182db5a7cab7ec30f566a96a2409a4491e0ceace14391",
       "guid": "3b76efcfd9f54d0884c2bb187bc0b001",
       "metaPath": "Runtime/HSR/HSR_Body.shader.meta",
       "path": "Runtime/HSR/HSR_Body.shader",
@@ -331,21 +414,21 @@
       "role": "Shader"
     },
     {
-      "contentSha256": "708493ef3937bcdc3b2e1f18257a2824c8419a3444c198b1c332a5c7197fb991",
+      "contentSha256": "a0dae4698dcbc769cc355393f5033c81c534d692f1c16732fcb3703a2cf63419",
       "guid": "772940e80a6844d8b0d2c3314be8f001",
       "metaPath": "Runtime/HSR/HSR_Face.shader.meta",
       "path": "Runtime/HSR/HSR_Face.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "fd7b1e8e6a5865edacc83deed5506dd13dd5b40f1e2e97f5142a9a6a62ff134e",
+      "contentSha256": "598bdf8d775f4862a9b0ae33b4efdf51b0faf4d3fdafe62b8e2b7c8e244e5231",
       "guid": "d430a5be5808422b8475a2d78e3dd001",
       "metaPath": "Runtime/HSR/HSR_Hair.shader.meta",
       "path": "Runtime/HSR/HSR_Hair.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "679ea316aec584a5c12a24ed0ccd1eb26683edd5f96317bea58a6c6f7467b9c7",
+      "contentSha256": "72c8f673084b51f1e7a9ee8f06369e676b4f681efbdb7606fe64106b5c8052a6",
       "guid": "58c9e81d1b3a4f7a945c2248d71ac001",
       "metaPath": "Runtime/HSR/HSRCommon.hlsl.meta",
       "path": "Runtime/HSR/HSRCommon.hlsl",
@@ -419,6 +502,19 @@
       "role": "Hlsl"
     },
     {
+      "guid": "8b21041506124a7b9a3636e13dded6e6",
+      "metaPath": "Runtime/Profiles.meta",
+      "path": "Runtime/Profiles",
+      "role": "Folder"
+    },
+    {
+      "contentSha256": "795d07d2dd535b2efc84df5040f0851fdb848f7f2169db57f1296311dd0ff64b",
+      "guid": "b7b6bba7618c4b44dbdf18f40be6f986",
+      "metaPath": "Runtime/Profiles/MikuAnimeGlobalVolumeProfile.asset.meta",
+      "path": "Runtime/Profiles/MikuAnimeGlobalVolumeProfile.asset",
+      "role": "Asset"
+    },
+    {
       "guid": "31e85f79339849d78ee6d9e389877720",
       "metaPath": "Runtime/StandardPBR.meta",
       "path": "Runtime/StandardPBR",
@@ -452,7 +548,7 @@
       "role": "Folder"
     },
     {
-      "contentSha256": "54ce8c98fe8d21b3ebc0aeab2593593aba218e6e7017c061b5abc7fed4c7c2e4",
+      "contentSha256": "685f019fb73e655ddcc4d9272b6f6c88f11363ebcf836e965791bfaf8a463901",
       "guid": "8ce39b4252824e4bbd28e2cf5dfcd3a5",
       "metaPath": "Runtime/SurfaceModels/MikuMultiLobeLighting.hlsl.meta",
       "path": "Runtime/SurfaceModels/MikuMultiLobeLighting.hlsl",
@@ -540,42 +636,42 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "e72cf4cad3a912136e56fa9d4ed19a8ab7ca9e841815ce3c833003808d91d121",
+      "contentSha256": "8c1111d7fed54003050b20b766a0829ceb76768197e3cd71e89f66def78c8fc5",
       "guid": "018960d4608f4600b9157796a272fe9d",
       "metaPath": "Runtime/Wuwa/Wuwa_Body.shader.meta",
       "path": "Runtime/Wuwa/Wuwa_Body.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "076e0cf64d2aa9e32d755300ae4ab258c7222d3343b9825f82ccaae1df3ba9d3",
+      "contentSha256": "e560e080250bfbecef1f63bd006bc89acfe0db7ba9e71029c613e862d6c36b82",
       "guid": "8d3f6a2c9b7e4f18a0d5c6e1b2f34970",
       "metaPath": "Runtime/Wuwa/Wuwa_Effect.shader.meta",
       "path": "Runtime/Wuwa/Wuwa_Effect.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "19f3045c7587330034134101157ae62ba50da7d24e289e884f3f7a94b176d56f",
+      "contentSha256": "2ee5788d7e2c62f4f5ce1bf84edfd1af2c6094ac0776b6376e73025f5abd3f97",
       "guid": "3b47f0d273cf4ca284f9f9c68cd199c6",
       "metaPath": "Runtime/Wuwa/Wuwa_Eye.shader.meta",
       "path": "Runtime/Wuwa/Wuwa_Eye.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "78c48f163a989aa46f66a95984c655c8c65d5e98c2048ceaaebb279927792777",
+      "contentSha256": "3ebe54341fc9549e0473b388c441fe413dc4704645206725defdc6835ee1c197",
       "guid": "e8b6d35f80384792bd5522f74650479a",
       "metaPath": "Runtime/Wuwa/Wuwa_Face.shader.meta",
       "path": "Runtime/Wuwa/Wuwa_Face.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "7b774d2965d22261548c25bda4e3462c19876bc78807c703c215a97c2e90ded1",
+      "contentSha256": "6b89ae429466f7c696d1835766fe6e81a9bcea6236f9b0475e20baf8545f650f",
       "guid": "cd0a97c31b1047a4a41f8a51e58f05d8",
       "metaPath": "Runtime/Wuwa/Wuwa_Hair.shader.meta",
       "path": "Runtime/Wuwa/Wuwa_Hair.shader",
       "role": "Shader"
     },
     {
-      "contentSha256": "f04699e956bd2155ba945e7c6e9b3e79d7c3f09125b07260c20f5d8a0538e647",
+      "contentSha256": "bacb9f875aa2124702a9d8b5ba2cf606832e42e5bc0f5e8446bf4cdb568d085d",
       "guid": "67d8b1212f0142ccbba8e61f3d8afcd5",
       "metaPath": "Runtime/Wuwa/WuwaCommon.hlsl.meta",
       "path": "Runtime/Wuwa/WuwaCommon.hlsl",
@@ -649,21 +745,35 @@
       "role": "AssemblyDefinition"
     },
     {
-      "contentSha256": "d706ffe96f4780590941a9bcd38ba9ef0c473f040e6cccceb1e2fd54882688ad",
+      "contentSha256": "7fffc69f3f1b72f551ff6e20a97c9e4d452097b79b10a01eca37d08bf9b86073",
       "guid": "e39817a7271b4a3db2107fc9f49d8813",
       "metaPath": "Tests/Editor/MikuBundleImporterTests.cs.meta",
       "path": "Tests/Editor/MikuBundleImporterTests.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "5f4f135267ee9a85307e40bf843d5588f3322eedf479c46ddf928bcf23bb2b7d",
-      "guid": "11c9fd870659447fb37986e3f6dc660a",
-      "metaPath": "Tests/Editor/MikuGenericToonTests.cs.meta",
-      "path": "Tests/Editor/MikuGenericToonTests.cs",
+      "contentSha256": "80a46f3f48c73cbaa9e861b128d75061ca6492ceaf0713b739cf5d77ddba228f",
+      "guid": "8c6ce5f0e7a842b4a4b3328a86e8e9a2",
+      "metaPath": "Tests/Editor/MikuEditorLocalizationTests.cs.meta",
+      "path": "Tests/Editor/MikuEditorLocalizationTests.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "0f050239d64fe7b35cae68019cbfcff5c3b8d353b38517dad228b6867b214959",
+      "guid": "4ed631a174f14964a388e422f022102b",
+      "metaPath": "Tests/Editor/MikuGameToon225Tests.cs.meta",
+      "path": "Tests/Editor/MikuGameToon225Tests.cs",
+      "role": "CSharp"
+    },
+    {
+      "contentSha256": "da8ed24fd7d2201654399b1a328cb47bd3949a6a2dfe5193fc144ea21cadc4ab",
+      "guid": "8b3c8c91d5b14a02aebc9f47b8f51c20",
+      "metaPath": "Tests/Editor/MikuGameToonTests.cs.meta",
+      "path": "Tests/Editor/MikuGameToonTests.cs",
       "role": "CSharp"
     }
   ],
-  "canonicalHash": "2f753b47b89dfe1924f006016f3c62deb5d18940bf3a52decaebd06c886c934d",
+  "canonicalHash": "0de980d41cc4cc062b96e4f1541896e8b4af07541a9ba18680d2b248d1fab240",
   "package": "com.miku.shaderconverter",
   "schema": "miku-package-asset-identity-1.0"
 }

@@ -36,7 +36,7 @@ class EeveeCorpusAuditTests(unittest.TestCase):
         material_ir = {
             "documentKind": "miku-material-ir-1.0",
             "schemaVersion": "1.0",
-            "toolVersion": "1.0.1",
+            "toolVersion": "1.0.3",
             "materialKey": "Material",
             "workflow": {"kind": "standard_pbr"},
             "closureGraph": {"root": {"kind": "Principled"}},

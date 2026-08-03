@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,6 +22,7 @@ class MikuEnvironmentTests(unittest.TestCase):
     def test_canonical_checkout_and_ids_pass(self):
         validate_source_boundary(ROOT)
 
+    @unittest.skipUnless(sys.platform == "win32", "the certified Blender path is Windows-only")
     def test_fixed_blender_path_is_the_steam_52_install(self):
         self.assertEqual(
             Path(r"C:\SteamLibrary\steamapps\common\Blender"),

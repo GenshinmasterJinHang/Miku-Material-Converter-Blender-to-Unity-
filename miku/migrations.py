@@ -1,4 +1,4 @@
-"""Explicit, deterministic MiGR 1.x/2.x to Miku 1.0 migrations."""
+"""Explicit, deterministic MiGR 1.x/2.x to Miku 2.0 migrations."""
 
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ from .surface_models import build_surface_model_plan
 _LEGACY_KIND_TO_MIKU_1 = {
     "migr-target-profile-1.0": "miku-target-profile-1.0",
     "migr-target-profile-2.0": "miku-target-profile-1.0",
-    "migr-material-ir-1.0": "miku-material-ir-1.0",
-    "migr-material-ir-2.0": "miku-material-ir-1.0",
+    "migr-material-ir-1.0": "miku-material-ir-2.0",
+    "migr-material-ir-2.0": "miku-material-ir-2.0",
     "migr-conversion-plan-1.0": "miku-conversion-plan-1.0",
     "migr-conversion-plan-2.0": "miku-conversion-plan-1.0",
     "migr-conversion-manifest-1.0": "miku-conversion-manifest-1.0",
@@ -97,10 +97,21 @@ def validate_legacy_document(document: Mapping[str, Any]) -> dict[str, Any]:
 def normalize_legacy_document(
     document: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Normalize one validated MiGR document into a newly hashed Miku 1.0 document."""
+    """Normalize one validated MiGR document into a newly hashed Miku document."""
 
     source = validate_legacy_document(document)
     kind = str(source["documentKind"])
+    if kind.startswith("migr-material-ir-"):
+        workflow = source.get("workflow")
+        workflow_kind = (
+            workflow.get("kind") if isinstance(workflow, Mapping) else ""
+        )
+        if workflow_kind == "generic_toon":
+            raise DocumentValidationError(
+                "MIKU_WORKFLOW_RETIRED",
+                "The Generic Toon workflow was retired in Miku 2.0",
+                "$.workflow.kind",
+            )
     if kind == "migr-material-ir-1.0":
         return _migrate_legacy_material_ir_1_0(source)
     payload = {
@@ -120,21 +131,28 @@ def normalize_legacy_document(
         payload,
         document_id=str(source["id"]),
     )
-    if result["documentKind"] == "miku-material-ir-1.0":
-        validate_document(result, "miku-material-ir-1.0")
+    if result["documentKind"] == "miku-material-ir-2.0":
+        validate_document(result, "miku-material-ir-2.0")
     return result
 
 
 def migrate_legacy_material_ir(
     document: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Migrate a frozen MiGR MaterialIR document to Miku MaterialIR 1.0."""
+    """Migrate a frozen MiGR MaterialIR document to Miku MaterialIR 2.0."""
 
     source = validate_legacy_document(document)
     if not str(source["documentKind"]).startswith("migr-material-ir-"):
         raise DocumentValidationError(
             "MIKU_DOCUMENT_KIND_MISMATCH",
             "Expected a MiGR MaterialIR document",
+        )
+    workflow = source.get("workflow")
+    if isinstance(workflow, Mapping) and workflow.get("kind") == "generic_toon":
+        raise DocumentValidationError(
+            "MIKU_WORKFLOW_RETIRED",
+            "The Generic Toon workflow was retired in Miku 2.0",
+            "$.workflow.kind",
         )
     return normalize_legacy_document(source)
 
@@ -278,7 +296,7 @@ def _migrate_legacy_material_ir_1_0(
         }
     )
     return make_document(
-        "miku-material-ir-1.0",
+        "miku-material-ir-2.0",
         payload,
         document_id=material_id,
     )
@@ -296,7 +314,7 @@ def migrate_legacy_manifest(
             "MIKU_DOCUMENT_KIND_MISMATCH",
             "Expected migr-conversion-manifest-1.0",
         )
-    validate_document(material_ir_v2, "miku-material-ir-1.0")
+    validate_document(material_ir_v2, "miku-material-ir-2.0")
     validate_document(conversion_plan_v2, "miku-conversion-plan-1.0")
     payload = {
         key: value

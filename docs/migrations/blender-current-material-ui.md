@@ -1,5 +1,8 @@
 # Blender current-material UI migration
 
+This guide is current for Miku 2.0. The retired `generic_toon` entry is not
+offered by the UI; saved values fail with `MIKU_WORKFLOW_RETIRED:generic_toon`.
+
 Miku 1.0 simplifies the Blender Shader Editor panel without changing the bundle
 schema or Unity importer.
 

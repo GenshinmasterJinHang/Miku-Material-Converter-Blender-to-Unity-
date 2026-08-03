@@ -294,7 +294,7 @@ def _try_resume_export(
             bundle.get("persistentSourceId") != source_id
             or bundle.get("persistentMaterialId") != material_id
             or bundle.get("materialKey") != material_key
-            or bundle.get("toolVersion") != "1.0.1"
+            or bundle.get("toolVersion") != "1.0.5"
             or bundle.get("targetProfileHash")
             != default_target_profile()["canonicalHash"]
         ):

@@ -3,7 +3,7 @@
 
 using System;
 using System.Linq;
-using Miku.ShaderConverter.Runtime.GenericToon;
+using Miku.ShaderConverter.Runtime.GameToon;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -17,14 +17,14 @@ namespace Miku.ShaderConverter.Editor
         [SerializeField] string preview = "";
 
         [MenuItem(
-            "Miku/Generic Toon/Rendering/Screen Rim Installer")]
+            "Miku/Game Toon/Rendering/Screen Rim Installer")]
         static void Open() => OpenWindow();
 
         internal static MikuToonRendererFeatureInstaller OpenWindow(
             ScriptableRendererData preferred = null)
         {
             var window = GetWindow<MikuToonRendererFeatureInstaller>(
-                "Miku Toon Screen Rim");
+                MikuEditorLocalization.Tr("Miku Toon Screen Rim"));
             window.rendererData =
                 preferred ??
                 Selection.activeObject as ScriptableRendererData ??
@@ -52,12 +52,13 @@ namespace Miku.ShaderConverter.Editor
         void OnGUI()
         {
             EditorGUILayout.HelpBox(
-                "Select exactly one Universal Renderer Data asset. Preview is " +
-                "read-only; Apply changes only this asset.",
+                MikuEditorLocalization.Tr(
+                    "Select exactly one Universal Renderer Data asset. Preview " +
+                    "is read-only; Apply changes only this asset."),
                 MessageType.Info);
             EditorGUI.BeginChangeCheck();
             rendererData = (ScriptableRendererData)EditorGUILayout.ObjectField(
-                "Renderer Data",
+                MikuEditorLocalization.Tr("Renderer Data"),
                 rendererData,
                 typeof(ScriptableRendererData),
                 false);
@@ -65,19 +66,22 @@ namespace Miku.ShaderConverter.Editor
                 RefreshPreview();
             using (new EditorGUI.DisabledScope(rendererData == null))
             {
-                if (GUILayout.Button("Preview"))
+                if (GUILayout.Button(MikuEditorLocalization.Tr("Preview")))
                     RefreshPreview();
                 EditorGUILayout.HelpBox(
                     string.IsNullOrEmpty(preview)
-                        ? "Choose a Renderer Data asset."
+                        ? MikuEditorLocalization.Tr(
+                            "Choose a Renderer Data asset.")
                         : preview,
                     MessageType.None);
-                if (GUILayout.Button("Apply"))
+                if (GUILayout.Button(MikuEditorLocalization.Tr("Apply")))
                 {
                     var result = Install(rendererData);
                     preview = result.created
-                        ? "Installed one Miku Toon Screen Rim feature."
-                        : "Already installed; no duplicate was added.";
+                        ? MikuEditorLocalization.Tr(
+                            "Installed one Miku Toon Screen Rim feature.")
+                        : MikuEditorLocalization.Tr(
+                            "Already installed; no duplicate was added.");
                     EditorGUIUtility.PingObject(rendererData);
                 }
             }
@@ -92,12 +96,15 @@ namespace Miku.ShaderConverter.Editor
             }
             var count = CountFeatures(rendererData);
             preview = count == 0
-                ? "Apply will add one feature. No other Renderer Data asset " +
-                  "will be changed."
+                ? MikuEditorLocalization.Tr(
+                    "Apply will add one feature. No other Renderer Data asset " +
+                    "will be changed.")
                 : count == 1
-                    ? "The feature is already installed. Apply is a no-op."
-                    : "Multiple existing Miku features were found. Apply will " +
-                      "not add another; remove unwanted duplicates manually.";
+                    ? MikuEditorLocalization.Tr(
+                        "The feature is already installed. Apply is a no-op.")
+                    : MikuEditorLocalization.Tr(
+                        "Multiple existing Miku features were found. Apply will " +
+                        "not add another; remove unwanted duplicates manually.");
         }
 
         internal static void DrawStatusAndOpenButton()
@@ -105,7 +112,8 @@ namespace Miku.ShaderConverter.Editor
             EditorGUILayout.HelpBox(
                 RendererFeatureStatus(),
                 MessageType.None);
-            if (GUILayout.Button("Open Screen Rim Installer"))
+            if (GUILayout.Button(MikuEditorLocalization.Tr(
+                    "Open Screen Rim Installer")))
                 OpenWindow();
         }
 
@@ -113,15 +121,15 @@ namespace Miku.ShaderConverter.Editor
         {
             var pipeline = ActivePipeline();
             if (pipeline == null)
-                return "Screen Rim Renderer Feature: URP asset not active.";
+                return MikuEditorLocalization.Tr(
+                    "Screen Rim Renderer Feature: URP asset not active.");
             var rendererData = RendererData(pipeline).ToArray();
             var installed = rendererData.Count(
                 item => CountFeatures(item) > 0);
-            return "Screen Rim Renderer Feature: " +
-                   installed + "/" + rendererData.Length +
-                   " active Renderer Data assets installed. Use Miku > " +
-                   "Generic Toon > Rendering > Screen Rim Installer for " +
-                   "explicit Preview/Apply.";
+            return MikuEditorLocalization.Format(
+                "Screen Rim Renderer Feature: {0}/{1} active Renderer Data assets installed. Use Miku > Game Toon > Rendering > Screen Rim Installer for explicit Preview/Apply.",
+                installed,
+                rendererData.Length);
         }
 
         internal static ScriptableRendererData ResolveDefaultRendererData()
@@ -205,12 +213,14 @@ namespace Miku.ShaderConverter.Editor
             {
                 Undo.RegisterCompleteObjectUndo(
                     target,
-                    "Install Miku Toon Screen Rim");
+                    MikuEditorLocalization.Tr(
+                        "Install Miku Toon Screen Rim"));
                 feature = CreateInstance<MikuToonScreenRimRendererFeature>();
                 feature.name = nameof(MikuToonScreenRimRendererFeature);
                 Undo.RegisterCreatedObjectUndo(
                     feature,
-                    "Install Miku Toon Screen Rim");
+                    MikuEditorLocalization.Tr(
+                        "Install Miku Toon Screen Rim"));
                 AssetDatabase.AddObjectToAsset(feature, target);
                 if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
                         feature,

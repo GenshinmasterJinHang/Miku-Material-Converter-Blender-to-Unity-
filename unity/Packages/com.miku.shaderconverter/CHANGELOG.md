@@ -1,7 +1,171 @@
 # Changelog
 
+## [2.2.8] - 2026-08-03
+
+- Replace the template menu with `Miku > Game Toon > Materials > Create
+  Material` and add explicit, localized texture inputs for the four supported
+  game workflows. The creator validates every required field before creating a
+  user-owned `.mat`, applies recommended profiles, synchronizes keywords, and
+  binds Wuwa Body's ID / Stockings Map to both shader properties.
+- Add the per-user `Miku/Settings` language selector for English and
+  Simplified Chinese. The selection is stored in `EditorPrefs` and does not
+  affect generated assets or the Unity Editor language.
+- Localize Miku-authored editor windows, inspectors, ShaderGUI labels,
+  dialogs, help boxes, and friendly status messages while keeping public menu
+  paths, shader properties, diagnostics, and JSON content stable in English.
+- Continue importing historical MiGR and time-dependent Bundles; new Blender
+  exports reject effective time dependencies before writing output.
+
+## [2.2.7] - 2026-08-03
+
+- Treat Wuwa `_EyeHET` as a direct pupil/sclera emission mask and use HDMF
+  red/inverse-alpha for primary highlight and pupil separation.
+- Add authored upper/lower highlight textures, UV0 affine recipe transport,
+  automatic main-light Fresnel EG, and mask/channel debug views.
+- Add `EyeHDMF`, `EyeUpperHighlight`, and `EyeLowerHighlight` bindings while
+  preserving existing material property references and user variants.
+- Require re-import of 2.2.6 Eye recipes instead of retaining the incorrect
+  single-HET double-highlight compatibility branch.
+
+## [2.2.6] - 2026-08-03
+
+- Use one Wuwa `EyeHET` mask for two independently transformed upper/lower HDR
+  highlights and expose separate eye-base/highlight emission strengths.
+- Add object-matrix Wuwa Face basis controls, ID-map-driven opaque sheer
+  stockings, brighter Hair recommendations, and primary Effect brightness.
+- Add `_BodyEmissionStrength`, scale Body emission independently of its
+  texture-driven keyword, and calibrate Eye/Face/Body defaults for restrained
+  iris highlights, flat face shading, and `0.15` MatCap response.
+- Migrate only generated base recipes to 2.2.6; preserve user material variants,
+  MaterialIR 2.0, existing texture roles, and all JSON schema versions.
+
+## [2.2.5] - 2026-08-02
+
+- Add authored texture-mask skin SSS and warm-pale skin grading to Genshin,
+  HSR, and Wuwa Body/Face shaders; gate Endfield Face SSS by Face Refine red.
+- Fix Wuwa `_FaceID` synchronization for `_WUWA_ID_ON` and add an idempotent
+  generated-base material profile migration plus an explicit Undoable menu for
+  ordinary material assets.
+- Add hue-preserving Genshin non-emissive highlight compression with a legacy
+  `_HighlightCompression=0` fallback; explicit emission remains uncompressed.
+- Expand the reusable anime Volume Profile for URP 17.4.0 to a deterministic
+  ten-component grading stack (Neutral Tonemapping, White Balance, Channel
+  Mixer, Lift/Gamma/Gain, Shadows/Midtones/Highlights, Split Toning, Color
+  Curves, Color Adjustments, Bloom, and Vignette). Keep White Balance, channel
+  mixing, hue, and color filters neutral while using a luminance master curve,
+  Contrast `+16`, Saturation `+8`, Exposure `+0.35`, and restrained white Bloom.
+- Remove the Vertex Color Initializer and Combined Mesh Data Unity menu entries
+  while retaining their public mesh types and APIs; keep Smooth Normal
+  Generator available.
+
+## [2.2.4] - 2026-08-02
+
+- Add explicit authored-RGB/scalar-red hair specular LUT modes and an
+  object-head-up strand fallback while retaining the two-lobe response.
+- Add bounded surface rim controls to Endfield Body, Skin, Face, and Hair.
+- Add independent Body metal direct/environment boosts and a bounded direct
+  highlight band while retaining GGX, URP reflection probes, and low-AO
+  specular visibility.
+- Add compatibility-neutral Skin/Face brightness and warm-pale whitening
+  controls before face emotion/blush overlays. Preserve MaterialIR 2.0,
+  texture roles, shader names, material slots, and existing property meanings.
+
+## [2.2.3] - 2026-08-02
+
+- Restore the Endfield directional Main Light independently of its diagnostic
+  distance attenuation and honor URP Rendering Layers for explicit exclusion.
+- Add URP 17.4 Main Light shadow/screen-shadow/light-layer/shadow-mask variants
+  plus Main Light, attenuation, Direct Only, and SH Only debug outputs.
+- Repair Face SDF/blush/manual basis, iris-only cornea, camera-stable hair
+  highlights, bounded SSS, low-AO metal/specular, two-dimensional specular
+  refinement, and rotated reflection-probe sampling.
+- Add `SpecularRefineF0` and `SpecularRefineColor` roles while preserving
+  MaterialIR 2.0 and all existing shader, role, slot, and `_EyeMode` contracts.
+
+## [2.2.2] - 2026-08-02
+
+- Separate Endfield direct-light color and distance energy from system-shadow
+  visibility for Body, Skin, Face, Eye, and Mouth.
+- Give Face SDF a 70% geometric-light floor while preserving `_UseFaceSDF`,
+  face-area, and refine-map behavior.
+- Keep `_EyeMode` as the Iris/Sclera material role: Iris samples the authored
+  Base Map while Sclera uses an independent warm white.
+- Prevent zero packed AO from blacking out cloth metal and inverse-mask hair
+  accessories; direct specular no longer depends on material AO.
+- Preserve MaterialIR 2.0, texture roles, public C# data structures, material
+  slots, and existing Shader property names.
+
+## [2.2.1] - 2026-08-02
+
+- Fix Endfield raw-red eye-shadow clipping and opaque brow/lash overlays.
+- Add non-emissive anime iris/cornea lighting and independently controlled
+  authored cheek blush.
+- Repair face-SDF readability, skin alpha-AO influence, cloth GGX reflection,
+  and hair-accessory metal visibility.
+- Preserve MaterialIR 2.0, texture roles, material slots, and legacy
+  `_AlphaSource` values.
+
+## [2.2.0] - 2026-08-02
+
+- Repair Endfield skin, face, hair, and cloth texture semantics.
+- Derive Endfield head axes from the renderer object-to-world matrix and add
+  object-space head-center controls for face and head-hair shading.
+- Add precise Endfield color-LUT, face-area/refine, and hair refine/shift/line
+  texture roles with deterministic 2.1 role migration diagnostics.
+- Correct Endfield texture import profiles for hair shift/line maps, expression
+  atlases, and matcaps.
+
+## 2.1.0 - 2026-08-02
+
+- Added `MIKU/Endfield/*` Body, Skin, Hair, Face, Eye, Mouth, Overlay, Effect,
+  and HairShadow shaders for URP 17.4.
+- Added Endfield material templates, strict texture-import auditing, and
+  texture-role/property binding.
+- Added read-only imported Mesh acquisition for deterministic UV7 outline
+  normals without importer mutation.
+
+## 2.0.0 - 2026-08-01
+
+- Removed the Generic Toon backend, shader family, builder, and dedicated GUI.
+- Added MaterialIR 2.0 import/export handling and explicit retirement errors.
+- Moved shared Screen Rim assets to `Runtime/GameToon` while preserving their
+  GUIDs and game Renderer Feature deserialization.
+
 ## Unreleased
 
+- Replaced `CustomMultiLobe` lighting with bounded finite-safe diffuse/GGX
+  evaluation, per-lobe geometry-normal fallback, and final NaN/Inf containment.
+- Changed Clear Coat smoothness to a normalized coat-contribution-weighted
+  average below the URP singular limit and retained 1.0.3/1.0.4 profile input.
+- Routed non-coat closure radiance through Unlit Base Color while retaining
+  zero Base Color and Radiance-to-Emission for the Lit Clear Coat wrapper.
+- Upgraded Generic Toon to shader-family `1.1.0`: monotonic three-tone diffuse,
+  stable system-shadow blending, Forward/Forward+ lights, hard direct and probe
+  specular, corrected ShadowCaster, and BaseMap-only Face/Skin/Hair fallbacks.
+- Added optional Generic Normal/Control/FaceSDF/HairHM/MatCap/Emission bindings,
+  local keyword synchronization, Anime Game presets, override-safe recipe
+  migration, and explicit undoable Face bounds calibration.
+- Routed evaluated `CustomMultiLobe` radiance through the selected wrapper's
+  final-color contract and kept a white strength-1 material multiplier.
+- Added per-lobe tangent/object-to-world normal lowering while keeping
+  `Input.Normal` geometric, plus diagnosed Miku 1.0.3 zero-normal migration.
+- Added Portable Hybrid import validation and runtime/UV0 mixed Shader Graph
+  support for `PreferNative` bundles.
+- Reject SourceMesh, `meshBinding`, and mesh-bound jobs in Portable Hybrid
+  bundles with `MIKU_PORTABLE_RESOURCE_MESH_BOUND` before asset generation.
+
+## 1.0.2
+
+- Added persistent fixed-workflow Recipes and centralized role-to-Shader
+  property binding for Generic, Genshin, WuWa, and HSR Toon imports.
+- Added `MikuToonCharacterMask` MRT passes to all game Body/Hair/Face shaders
+  and removed their Forward-pass Fresnel/depth rim calculations.
+- Published both Screen Rim masks through RenderGraph-declared dependencies;
+  raster callbacks no longer modify global texture state.
+
+- Fixed Clear Coat lowering for Custom Multi-Lobe materials with multiple
+  Principled terms by deterministically aggregating weighted coat mask and
+  smoothness outputs, and selecting the matching Clear Coat wrapper template.
 - Documented the native runtime lowering used for Blender Geometry
   `Backfacing` closure weights; no new Shader Graph backend node is required.
 

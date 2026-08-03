@@ -1,32 +1,28 @@
-# Miku Shader Converter 1.0
+# Miku Shader Converter 2.2.8
 
-This is the single Blender 5.2.0 extension distributed by Miku. It combines
-the semantic exporter and the GPL bake worker in one deterministic
-`miku_shader_converter-1.0.1.zip`.
+This deterministic Blender 5.2.0 extension combines the semantic exporter and
+GPL bake worker in `miku_shader_converter-2.2.8.zip`.
 
-The aggregate extension is licensed under `GPL-3.0-or-later`. Files originating
-from the Miku MIT codebase retain their SPDX headers and the archive includes
-the MIT license and third-party notices.
+The visible Blender panel is intentionally Standard PBR only. **Export Current
+Material** always writes `standard_pbr`; it does not rewrite old workflow
+custom properties. Explicit lower-level Python workflow calls, historical game
+Bundles, and the Unity importer remain available for scripts and legacy assets.
 
-Install the ZIP through **Edit > Preferences > Extensions > Install from
-Disk**. Do not copy repository directories into Blender's Scripts folder.
+The panel follows Blender's English/Simplified Chinese language setting and
+keeps the 2.2.8 controls for normal convention, displacement policy, advanced
+conversion mode, bake quality (512/1024/2048/4096), and source identity. An
+effective `Input.Time.*` dependency fails before any output or bake request is
+written with `MIKU_TIME_INPUT_UNSUPPORTED`; disconnected time nodes remain
+valid.
 
-In the Shader Editor sidebar, choose the active Material's workflow and use
-**Export Current Material**. New exports contain a `.mikubundle` entry and
-Miku 1.0 documents only. The extension preserves stable source and material
-UUIDs. On first access it copies supported legacy `migr_*` custom properties
-to their `miku_*` equivalents without deleting or rewriting the legacy values.
-
-The extension exports materials. It does not ask for a Model Root, scan
-Renderers, build a Mesh/material-slot tree, generate a character Prefab, or
-replace any Unity Renderer material reference.
-
-Build the deterministic archive from the canonical repository root:
+Install through **Edit > Preferences > Extensions > Install from Disk**. Do
+not copy a checked-out repository into Blender's Scripts directory. Build from
+the canonical repository with:
 
 ```powershell
 python tools/build_miku_blender_extensions.py
 ```
 
-Blender validation must use
-`C:\SteamLibrary\steamapps\common\Blender\blender.exe` and assert
+Validation uses only
+`C:\SteamLibrary\steamapps\common\Blender\blender.exe` and asserts
 `bpy.app.version == (5, 2, 0)`.

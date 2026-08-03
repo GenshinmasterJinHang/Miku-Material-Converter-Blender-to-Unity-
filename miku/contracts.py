@@ -56,31 +56,45 @@ class ParameterUpdateAction(str, Enum):
     SHADER_GRAPH_REBUILD = "ShaderGraphRebuild"
 
 
-WORKFLOW_KINDS = frozenset(
+SUPPORTED_WORKFLOW_KINDS = frozenset(
     {
         "standard_pbr",
-        "generic_toon",
         "genshin_toon",
         "wuwa_toon",
         "hsr_toon",
+        "endfield_toon",
     }
 )
+RETIRED_WORKFLOW_KINDS = frozenset({"generic_toon"})
+FROZEN_MATERIAL_IR_1_WORKFLOW_KINDS = frozenset(
+    {
+        "standard_pbr",
+        "genshin_toon",
+        "wuwa_toon",
+        "hsr_toon",
+        "generic_toon",
+    }
+)
+# Backward-compatible name for callers that mean currently executable routes.
+WORKFLOW_KINDS = SUPPORTED_WORKFLOW_KINDS
 
 
 DOCUMENT_KINDS = {
     "miku-target-profile-1.0",
     "miku-material-ir-1.0",
+    "miku-material-ir-2.0",
     "miku-conversion-plan-1.0",
     "miku-conversion-manifest-1.0",
     "miku-blender-source-map-1.0",
     "miku-bundle-1.0",
     "miku-unity-import-receipt-1.0",
     "miku-bake-request-1.0",
+    "miku-bake-request-1.1",
     "miku-bake-result-1.0",
 }
 
 _HEADER_KEYS = ("documentKind", "schemaVersion", "toolVersion", "id", "canonicalHash")
-TOOL_VERSION = "1.0.1"
+TOOL_VERSION = "2.2.7"
 
 
 class DocumentValidationError(ValueError):
@@ -175,18 +189,44 @@ def validate_document(document: Mapping[str, Any], expected_kind: str | None = N
     actual = canonical_hash({key: value for key, value in document.items() if key != "canonicalHash"})
     if str(document["canonicalHash"]) != actual:
         raise DocumentValidationError("MIKU_CANONICAL_HASH_MISMATCH", "canonicalHash does not match document content")
-    if kind == "miku-material-ir-1.0":
+    if kind in {"miku-material-ir-1.0", "miku-material-ir-2.0"}:
         workflow = document.get("workflow")
         workflow_kind = workflow.get("kind") if isinstance(workflow, Mapping) else None
-        if workflow_kind not in WORKFLOW_KINDS:
+        allowed_workflows = (
+            FROZEN_MATERIAL_IR_1_WORKFLOW_KINDS
+            if kind == "miku-material-ir-1.0"
+            else SUPPORTED_WORKFLOW_KINDS
+        )
+        if workflow_kind not in allowed_workflows:
             raise DocumentValidationError(
                 "MIKU_WORKFLOW_INVALID",
                 "workflow.kind must name one supported Miku workflow",
                 "$.workflow.kind",
             )
         workflow_part = workflow.get("part") if isinstance(workflow, Mapping) else None
-        if workflow_kind in {"genshin_toon", "wuwa_toon", "hsr_toon"}:
-            if workflow_part not in {"Body", "Hair", "Face", "Eye", "Effect"}:
+        if workflow_kind in {
+            "genshin_toon",
+            "wuwa_toon",
+            "hsr_toon",
+            "endfield_toon",
+        }:
+            if workflow_kind == "endfield_toon":
+                allowed_parts = {
+                    "Body",
+                    "Skin",
+                    "Hair",
+                    "Face",
+                    "Eye",
+                    "Mouth",
+                    "Overlay",
+                    "Effect",
+                    "HairShadow",
+                }
+            elif workflow_kind == "wuwa_toon":
+                allowed_parts = {"Body", "Hair", "Face", "Eye", "Effect"}
+            else:
+                allowed_parts = {"Body", "Hair", "Face", "Eye"}
+            if workflow_part not in allowed_parts:
                 raise DocumentValidationError(
                     "MIKU_WORKFLOW_PART_INVALID",
                     "Game workflows require one supported workflow part",

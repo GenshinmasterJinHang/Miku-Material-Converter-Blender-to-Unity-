@@ -60,6 +60,72 @@ def base_graph(
     }
 
 
+def portable_uv_voronoi_graph(*, explicit_uv: bool = True) -> dict:
+    graph = {
+        "material": {"name": "PortableUvVoronoi"},
+        "workflow": {"kind": "standard_pbr"},
+        "nodes": [
+            {"id": "out", "op": "Output.Material"},
+            {
+                "id": "surface",
+                "op": "Shader.PrincipledBSDF",
+                "inputs": [],
+                "outputs": [{"id": "Closure", "valueType": "Closure"}],
+            },
+            {
+                "id": "uv",
+                "op": "Input.TextureCoordinate",
+                "outputs": [
+                    {
+                        "id": "UV",
+                        "name": "UV",
+                        "valueType": "Float3",
+                        "space": "UV0",
+                    }
+                ],
+            },
+            {
+                "id": "voronoi",
+                "op": "Texture.Voronoi",
+                "inputs": [{"id": "Vector", "valueType": "Float3"}],
+                "outputs": [{"id": "Color", "valueType": "Color"}],
+                "source": {
+                    "stableId": "voronoi",
+                    "blenderNodeName": "Voronoi Texture",
+                    "groupPath": ["Material"],
+                },
+            },
+        ],
+        "edges": [
+            {
+                "from": source("voronoi", "Color"),
+                "to": source("surface", "BaseColor"),
+            },
+            {
+                "from": source("surface", "Closure"),
+                "to": source("out", "Surface"),
+            },
+        ],
+        "standardPbrSemantic": {
+            "slots": {
+                "BaseColor": {
+                    "default": None,
+                    "source": source("voronoi", "Color"),
+                }
+            }
+        },
+    }
+    if explicit_uv:
+        graph["edges"].insert(
+            0,
+            {
+                "from": source("uv", "UV"),
+                "to": source("voronoi", "Vector"),
+            },
+        )
+    return graph
+
+
 def bump_normal_graph(*, nested: bool = False, runtime_height: bool = False) -> dict:
     surface_inputs = [
         {
@@ -263,7 +329,7 @@ class RuntimeExpressionTests(unittest.TestCase):
         self.assertEqual([0.0, 0.0, 1.0], normal["default"])
         finalized = miku_blender._apply_channel_values(normalized, [])
         self.assertEqual(
-            "miku-material-ir-1.0",
+            "miku-material-ir-2.0",
             finalized["documentKind"],
         )
         finalized_normal = next(
@@ -441,7 +507,7 @@ class RuntimeExpressionTests(unittest.TestCase):
             )
         )
 
-    def test_geometry_backfacing_inverts_front_face_without_bake(self):
+    def test_geometry_backfacing_generic_workflow_is_retired(self):
         graph = base_graph(
             {
                 "id": "geometry",
@@ -459,38 +525,8 @@ class RuntimeExpressionTests(unittest.TestCase):
             },
             "Backfacing",
         )
-        ir = build_material_ir(graph, workflow_kind="generic_toon")
-        front_face = next(
-            item for item in ir["expressions"] if item["op"] == "Input.IsFrontFace"
-        )
-        backfacing = next(
-            item
-            for item in ir["expressions"]
-            if item["op"] == "Math.OneMinus"
-            and item.get("params", {}).get("formula") == "1-IsFrontFace"
-        )
-        self.assertEqual("Boolean", front_face["valueType"])
-        self.assertEqual("Fragment", front_face["stage"])
-        self.assertEqual("Varying", front_face["uniformity"])
-        self.assertEqual("Scalar", backfacing["valueType"])
-        self.assertEqual(
-            front_face["id"],
-            backfacing["inputs"]["A"]["expressionId"],
-        )
-        self.assertFalse(
-            any(
-                str(item.get("severity") or "").lower() == "error"
-                for item in ir["diagnostics"]
-            )
-        )
-        plan = ConversionPlanner().plan(ir, mode="Auto")
-        self.assertEqual([], plan["bakeJobs"])
-        self.assertTrue(
-            any(
-                item.get("code") == "MIKU_RUNTIME_INPUT_PRESERVED"
-                for item in plan["diagnostics"]
-            )
-        )
+        with self.assertRaisesRegex(ValueError, r"MIKU_WORKFLOW_RETIRED:generic_toon"):
+            build_material_ir(graph, workflow_kind="generic_toon")
 
     def test_static_linked_channel_is_baked_without_flattening_runtime_channel(self):
         graph = {
@@ -576,6 +612,136 @@ class RuntimeExpressionTests(unittest.TestCase):
         self.assertEqual(1, len(plan["bakeJobs"]))
         self.assertEqual("ExpressionIsland", plan["bakeJobs"][0]["scope"])
         self.assertEqual("voronoi", plan["bakeJobs"][0]["sourceNodeId"])
+
+    def test_prefer_native_schedules_uv0_island_without_mesh_binding(self):
+        ir = build_material_ir(
+            portable_uv_voronoi_graph(),
+            conversion_mode="PreferNative",
+        )
+        baked = [
+            item
+            for item in ir["expressions"]
+            if item["op"] == "Texture.SampleBaked2D"
+        ]
+        self.assertEqual(1, len(baked))
+        self.assertEqual("UV0", baked[0]["params"]["coordinateDomain"])
+        self.assertFalse(baked[0]["params"]["meshBindingRequired"])
+
+        plan = ConversionPlanner().plan(ir, mode="PreferNative")
+        self.assertFalse(
+            any(item.get("severity") == "error" for item in plan["diagnostics"]),
+            plan["diagnostics"],
+        )
+        self.assertEqual(1, len(plan["bakeJobs"]))
+        job = plan["bakeJobs"][0]
+        self.assertEqual("ReusableBake", job["route"])
+        self.assertEqual("UV0", job["coordinateDomain"])
+        self.assertFalse(job["meshBindingRequired"])
+        self.assertTrue(
+            any(
+                item.get("code") == "MIKU_PORTABLE_UV_BAKE_SCHEDULED"
+                for item in plan["diagnostics"]
+            )
+        )
+
+    def test_prefer_native_extracts_uv0_island_from_runtime_mix(self):
+        graph = portable_uv_voronoi_graph()
+        graph["nodes"].extend(
+            [
+                {
+                    "id": "mix",
+                    "op": "Color.Mix",
+                    "params": {
+                        "blend_type": "MIX",
+                        "semantic": "BaseColor",
+                    },
+                    "inputs": [
+                        {"id": "Factor", "valueType": "Scalar"},
+                        {"id": "A", "valueType": "Color"},
+                        {"id": "B", "valueType": "Color"},
+                    ],
+                    "outputs": [{"id": "Result", "valueType": "Color"}],
+                },
+                {
+                    "id": "layer",
+                    "op": "Input.LayerWeight",
+                    "inputs": [{"id": "Blend", "default": 0.5}],
+                    "outputs": [{"id": "Facing", "valueType": "Scalar"}],
+                },
+            ]
+        )
+        graph["edges"] = [
+            edge
+            for edge in graph["edges"]
+            if edge["to"] != source("surface", "BaseColor")
+        ]
+        graph["edges"].extend(
+            [
+                {"from": source("voronoi", "Color"), "to": source("mix", "A")},
+                {"from": source("layer", "Facing"), "to": source("mix", "Factor")},
+                {"from": source("mix", "Result"), "to": source("surface", "BaseColor")},
+            ]
+        )
+        graph["standardPbrSemantic"]["slots"]["BaseColor"]["source"] = (
+            source("mix", "Result")
+        )
+
+        ir = build_material_ir(graph, conversion_mode="PreferNative")
+        samples = [
+            item
+            for item in ir["expressions"]
+            if item["op"] == "Texture.SampleBaked2D"
+        ]
+        self.assertEqual(1, len(samples))
+        self.assertEqual("UV0", samples[0]["params"]["coordinateDomain"])
+        self.assertTrue(
+            any(item["op"] == "Math.LayerWeightFacing" for item in ir["expressions"])
+        )
+        plan = ConversionPlanner().plan(ir, mode="PreferNative")
+        self.assertEqual("ReusableBake", plan["bakeJobs"][0]["route"])
+
+    def test_prefer_native_rejects_generated_texture_island(self):
+        ir = build_material_ir(
+            portable_uv_voronoi_graph(explicit_uv=False),
+            conversion_mode="PreferNative",
+        )
+        self.assertTrue(
+            any(
+                item.get("code")
+                == "MIKU_PORTABLE_HYBRID_MESH_DEPENDENCY"
+                for item in ir["diagnostics"]
+            ),
+            ir["diagnostics"],
+        )
+        plan = ConversionPlanner().plan(ir, mode="PreferNative")
+        self.assertEqual([], plan["bakeJobs"])
+
+    def test_full_pbr_rejects_view_direction_before_worker(self):
+        graph = base_graph(
+            {
+                "id": "geometry",
+                "op": "Input.Geometry",
+                "outputs": [
+                    {
+                        "id": "Incoming",
+                        "name": "Incoming",
+                        "valueType": "Float3",
+                        "space": "World",
+                    }
+                ],
+            },
+            "Incoming",
+        )
+        ir = build_material_ir(graph, conversion_mode="FullPBRBake")
+        plan = ConversionPlanner().plan(ir, mode="FullPBRBake")
+        self.assertEqual([], plan["bakeJobs"])
+        diagnostic = next(
+            item
+            for item in plan["diagnostics"]
+            if item.get("code") == "MIKU_RUNTIME_INPUT_UNSUPPORTED"
+        )
+        self.assertEqual(["ViewDirection"], diagnostic["runtimeDependencies"])
+        self.assertIn("Portable Hybrid", diagnostic["message"])
 
     def test_camera_outputs_keep_type_space_and_fragment_stage(self):
         expected = {

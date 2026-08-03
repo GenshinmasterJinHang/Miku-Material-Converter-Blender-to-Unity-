@@ -49,8 +49,7 @@ namespace Miku.ShaderConverter.Editor
             object output;
             int positionIndex;
             Handle effectSeconds;
-            Handle surfaceNormalWs;
-            bool resolvingSurfaceNormal;
+            IDictionary<string, JObject> channelsBySemantic;
 
             public Builder(JObject ir, string materialId)
             {
@@ -74,6 +73,7 @@ namespace Miku.ShaderConverter.Editor
                         item => item["semantic"]?.Value<string>() ?? "",
                         item => item,
                         StringComparer.Ordinal);
+                channelsBySemantic = channels;
                 var surface = ir["surfaceContract"] as JObject;
                 var surfacePlan = ir["surfaceModelPlan"] as JObject;
                 var surfaceKind =
@@ -215,8 +215,8 @@ namespace Miku.ShaderConverter.Editor
 
             void AddClearCoatOutputs()
             {
-                var term = (ir["weightedClosures"]?["terms"] as JArray ??
-                            new JArray())
+                var terms = (ir["weightedClosures"]?["terms"] as JArray ??
+                             new JArray())
                     .OfType<JObject>()
                     .Where(item => string.Equals(
                         item["closureKind"]?.Value<string>(),
@@ -225,28 +225,92 @@ namespace Miku.ShaderConverter.Editor
                     .OrderBy(
                         item => item["id"]?.Value<string>() ?? "",
                         StringComparer.Ordinal)
-                    .SingleOrDefault();
-                if (term == null)
+                    .ToArray();
+                if (terms.Length == 0)
                     throw new InvalidOperationException(
                         "MIKU_COAT_PRINCIPLED_TERM_MISSING");
-                var coatMask = ClosureParameter(
-                    term,
-                    new[] { "Coat Weight", "Coat_Weight" },
-                    new JValue(0f),
-                    "Scalar");
-                var coatRoughness = ClosureParameter(
-                    term,
-                    new[] { "Coat Roughness", "Coat_Roughness" },
-                    new JValue(0.03f),
-                    "Scalar");
-                AddOutput("Coat Mask", "Vector1", coatMask);
+
+                Handle coatMask = null;
+                Handle coatSmoothnessNumerator = null;
+                foreach (var term in terms)
+                {
+                    var termId = term["id"]?.Value<string>() ?? "term";
+                    var weight = BuildWeight(
+                        term["finalWeight"] as JObject,
+                        termId + ":coat-weight");
+                    var termCoatMask = ClosureParameter(
+                        term,
+                        new[] { "Coat Weight", "Coat_Weight" },
+                        new JValue(0f),
+                        "Scalar");
+                    var termCoatRoughness = ClosureParameter(
+                        term,
+                        new[] { "Coat Roughness", "Coat_Roughness" },
+                        new JValue(0.03f),
+                        "Scalar");
+                    var weightedMask = Binary(
+                        termId + ":coat-mask-weighted",
+                        "MultiplyNode",
+                        termCoatMask,
+                        weight);
+                    var weightedSmoothness = Binary(
+                        termId + ":coat-smoothness-weighted",
+                        "MultiplyNode",
+                        Unary(
+                            termId + ":coat-smoothness",
+                            "OneMinusNode",
+                            termCoatRoughness),
+                        weightedMask);
+                    coatMask = coatMask == null
+                        ? weightedMask
+                        : Binary(
+                            termId + ":coat-mask-sum",
+                            "AddNode",
+                            coatMask,
+                            weightedMask);
+                    coatSmoothnessNumerator = coatSmoothnessNumerator == null
+                        ? weightedSmoothness
+                        : Binary(
+                            termId + ":coat-smoothness-sum",
+                            "AddNode",
+                            coatSmoothnessNumerator,
+                            weightedSmoothness);
+                }
+                var safeCoatDenominator = Binary(
+                    "coat-smoothness-denominator",
+                    "MaximumNode",
+                    coatMask,
+                    Literal(
+                        "coat-smoothness-epsilon",
+                        new JValue(0.0001f),
+                        "Scalar"));
+                var normalizedCoatSmoothness = Binary(
+                    "coat-smoothness-average",
+                    "DivideNode",
+                    coatSmoothnessNumerator,
+                    safeCoatDenominator);
+                normalizedCoatSmoothness = Binary(
+                    "coat-smoothness-safe-maximum",
+                    "MinimumNode",
+                    normalizedCoatSmoothness,
+                    Literal(
+                        "coat-smoothness-safe-limit",
+                        new JValue(0.999f),
+                        "Scalar"));
+                AddOutput(
+                    "Coat Mask",
+                    "Vector1",
+                    Unary(
+                        "coat-mask-saturate",
+                        "SaturateNode",
+                        coatMask));
                 AddOutput(
                     "Coat Smoothness",
                     "Vector1",
                     Unary(
-                        "coat-smoothness",
-                        "OneMinusNode",
-                        coatRoughness));
+                        "coat-smoothness-saturate",
+                        "SaturateNode",
+                        normalizedCoatSmoothness));
             }
 
             void BuildClosureComposite(
@@ -264,23 +328,14 @@ namespace Miku.ShaderConverter.Editor
                     throw new InvalidOperationException(
                         "MIKU_WEIGHTED_CLOSURES_MISSING");
 
-                Handle normalTs;
-                resolvingSurfaceNormal = true;
-                try
-                {
-                    normalTs = ResolveChannel(
-                        channels,
-                        "Normal",
-                        new JArray(0f, 0f, 1f));
-                }
-                finally
-                {
-                    resolvingSurfaceNormal = false;
-                }
-                surfaceNormalWs = TransformNormal(
-                    "closure-normal-ts-to-ws",
-                    normalTs,
-                    "Tangent",
+                var normalTs = ResolveChannel(
+                    channels,
+                    "Normal",
+                    new JArray(0f, 0f, 1f));
+                var geometricNormalWs = Native(
+                    "closure-geometric-normal-ws",
+                    "NormalVectorNode",
+                    0,
                     "World");
                 var positionWs = Native(
                     "closure-position-ws",
@@ -430,7 +485,7 @@ namespace Miku.ShaderConverter.Editor
                             EvaluateLobe(
                                 term,
                                 positionWs,
-                                surfaceNormalWs,
+                                geometricNormalWs,
                                 viewWs,
                                 screen,
                                 weight));
@@ -472,7 +527,16 @@ namespace Miku.ShaderConverter.Editor
                             scalarTransmittance));
                 }
 
-                AddOutput("Base Color", "Vector3", radiance);
+                var usesLitClearCoatWrapper =
+                    MikuSurfaceModelBackends.RequiresClearCoat(ir);
+                var zeroRadiance = Literal(
+                    "closure-output-zero",
+                    new JArray(0f, 0f, 0f),
+                    "Float3");
+                AddOutput(
+                    "Base Color",
+                    "Vector3",
+                    usesLitClearCoatWrapper ? zeroRadiance : radiance);
                 AddOutput(
                     "Metallic",
                     "Vector1",
@@ -494,10 +558,7 @@ namespace Miku.ShaderConverter.Editor
                 AddOutput(
                     "Emission",
                     "Vector3",
-                    Literal(
-                        "closure-emission-zero",
-                        new JArray(0f, 0f, 0f),
-                        "Float3"));
+                    usesLitClearCoatWrapper ? radiance : zeroRadiance);
                 AddOutput(
                     "Occlusion",
                     "Vector1",
@@ -513,7 +574,7 @@ namespace Miku.ShaderConverter.Editor
                         "closure-alpha-clip-zero",
                         new JValue(0f),
                         "Scalar"));
-                if (MikuSurfaceModelBackends.RequiresClearCoat(ir))
+                if (usesLitClearCoatWrapper)
                     AddClearCoatOutputs();
             }
 
@@ -555,6 +616,10 @@ namespace Miku.ShaderConverter.Editor
                     new[] { "Metallic" },
                     new JValue(kindValue == 2f ? 1f : 0f),
                     "Scalar");
+                normalWs = SafeLobeNormalWorld(
+                    termId,
+                    ClosureNormalWorld(term, normalWs),
+                    normalWs);
                 var lobeKind = Literal(
                     termId + ":lobe-kind",
                     new JValue(kindValue),
@@ -586,6 +651,109 @@ namespace Miku.ShaderConverter.Editor
                 return new Handle { node = node, slot = 9 };
             }
 
+            Handle SafeLobeNormalWorld(
+                string termId,
+                Handle lobeNormalWs,
+                Handle geometricNormalWs)
+            {
+                var lengthSquared = Binary(
+                    termId + ":normal-length-squared",
+                    "DotProductNode",
+                    lobeNormalWs,
+                    lobeNormalWs);
+                var nonZero = Compare(
+                    termId + ":normal-nonzero",
+                    "Greater",
+                    lengthSquared,
+                    Literal(
+                        termId + ":normal-epsilon",
+                        new JValue(0.0001f),
+                        "Scalar"));
+                var finiteMagnitude = Compare(
+                    termId + ":normal-finite-magnitude",
+                    "Less",
+                    lengthSquared,
+                    Literal(
+                        termId + ":normal-maximum-length-squared",
+                        new JValue(100000000f),
+                        "Scalar"));
+                var valid = Binary(
+                    termId + ":normal-valid",
+                    "AndNode",
+                    nonZero,
+                    finiteMagnitude);
+                return Unary(
+                    termId + ":normal-safe-normalize",
+                    "NormalizeNode",
+                    Branch(
+                        termId + ":normal-fallback",
+                        valid,
+                        lobeNormalWs,
+                        geometricNormalWs));
+            }
+
+            Handle ClosureNormalWorld(
+                JObject term,
+                Handle geometricNormalWs)
+            {
+                var parameter = FindClosureParameter(
+                    term,
+                    new[] { "Normal" });
+                if (parameter == null)
+                    return geometricNormalWs;
+
+                var termId = term["id"]?.Value<string>() ?? "term";
+                var role = termId + ":parameter:normal";
+                if (string.Equals(
+                        parameter["kind"]?.Value<string>(),
+                        "Constant",
+                        StringComparison.Ordinal))
+                {
+                    var value = parameter["value"];
+                    if (IsLegacyZeroNormal(value) || IsNeutralNormal(value))
+                        return geometricNormalWs;
+                    return TransformNormal(
+                        role + ":tangent-to-world",
+                        Literal(
+                            role,
+                            value ?? new JArray(0f, 0f, 1f),
+                            parameter["valueType"]?.Value<string>() ??
+                            "Float3"),
+                        "Tangent",
+                        "World");
+                }
+
+                var expressionId =
+                    parameter["expressionId"]?.Value<string>() ?? "";
+                if (string.IsNullOrEmpty(expressionId))
+                    throw new InvalidOperationException(
+                        "MIKU_CLOSURE_PARAMETER_REQUIRES_BAKE:" + role);
+                if (!expressions.TryGetValue(expressionId, out var expression))
+                    throw new InvalidOperationException(
+                        "MIKU_EXPRESSION_REFERENCE_MISSING:" + expressionId);
+
+                var normal = BuildExpression(expressionId);
+                var space =
+                    parameter["space"]?.Value<string>() ??
+                    expression["space"]?.Value<string>() ??
+                    "Tangent";
+                if (string.Equals(space, "World", StringComparison.Ordinal) ||
+                    string.Equals(
+                        space,
+                        "AbsoluteWorld",
+                        StringComparison.Ordinal))
+                    return normal;
+                if (string.Equals(space, "Tangent", StringComparison.Ordinal) ||
+                    string.Equals(space, "Object", StringComparison.Ordinal))
+                    return TransformNormal(
+                        role + ":" + space.ToLowerInvariant() + "-to-world",
+                        normal,
+                        space,
+                        "World");
+                throw new InvalidOperationException(
+                    "MIKU_CLOSURE_NORMAL_SPACE_UNSUPPORTED:" + space);
+            }
+
             Handle ClosureParameter(
                 JObject term,
                 IEnumerable<string> aliases,
@@ -595,11 +763,7 @@ namespace Miku.ShaderConverter.Editor
                 var normalized = new HashSet<string>(
                     aliases.Select(NormalizeSemanticName),
                     StringComparer.Ordinal);
-                var parameter = (term["parameters"] as JObject)?
-                    .Properties()
-                    .FirstOrDefault(item => normalized.Contains(
-                        NormalizeSemanticName(item.Name)))
-                    ?.Value as JObject;
+                var parameter = FindClosureParameter(term, aliases);
                 if (parameter == null)
                     return Literal(
                         (term["id"]?.Value<string>() ?? "term") +
@@ -624,6 +788,20 @@ namespace Miku.ShaderConverter.Editor
                     return BuildExpression(expressionId);
                 throw new InvalidOperationException(
                     "MIKU_CLOSURE_PARAMETER_REQUIRES_BAKE:" + role);
+            }
+
+            static JObject FindClosureParameter(
+                JObject term,
+                IEnumerable<string> aliases)
+            {
+                var normalized = new HashSet<string>(
+                    aliases.Select(NormalizeSemanticName),
+                    StringComparer.Ordinal);
+                return (term["parameters"] as JObject)?
+                    .Properties()
+                    .FirstOrDefault(item => normalized.Contains(
+                        NormalizeSemanticName(item.Name)))
+                    ?.Value as JObject;
             }
 
             Handle BuildWeight(JObject expression, string role)
@@ -1001,7 +1179,8 @@ namespace Miku.ShaderConverter.Editor
             Handle ResolveChannel(
                 IDictionary<string, JObject> channels,
                 string semantic,
-                JToken fallback)
+                JToken fallback,
+                bool explicitLod = false)
             {
                 if (!channels.TryGetValue(semantic, out var channel))
                     return Literal("channel:" + semantic, fallback, ValueType(fallback));
@@ -1036,7 +1215,8 @@ namespace Miku.ShaderConverter.Editor
                         return SampleChannelTexture(
                             "channel:" + semantic,
                             semantic,
-                            value["resourceId"]?.Value<string>() ?? "");
+                            value["resourceId"]?.Value<string>() ?? "",
+                            explicitLod);
                 }
                 var channelDefault = channel["default"];
                 if (channelDefault == null ||
@@ -1096,6 +1276,23 @@ namespace Miku.ShaderConverter.Editor
                 return true;
             }
 
+            static bool IsNeutralNormal(JToken value)
+            {
+                if (!(value is JArray array) || array.Count < 3)
+                    return false;
+                const float epsilon = 0.0001f;
+                var expected = new[] { 0f, 0f, 1f };
+                for (var index = 0; index < 3; index++)
+                {
+                    var component = array[index].Value<float>();
+                    if (float.IsNaN(component) ||
+                        float.IsInfinity(component) ||
+                        Math.Abs(component - expected[index]) > epsilon)
+                        return false;
+                }
+                return true;
+            }
+
             void AddOutput(string name, string concreteType, Handle value)
             {
                 var slot = adapter.AddOutput(output, name, concreteType);
@@ -1108,13 +1305,6 @@ namespace Miku.ShaderConverter.Editor
                     throw new InvalidOperationException(
                         "MIKU_EXPRESSION_REFERENCE_MISSING:" + id);
                 var op = expression["op"]?.Value<string>() ?? "";
-                if (string.Equals(
-                        op,
-                        "Input.Normal",
-                        StringComparison.Ordinal) &&
-                    surfaceNormalWs != null &&
-                    !resolvingSurfaceNormal)
-                    return surfaceNormalWs;
                 if (built.TryGetValue(id, out var cached))
                     return cached;
                 if (!visiting.Add(id))
@@ -1141,6 +1331,21 @@ namespace Miku.ShaderConverter.Editor
                             break;
                         case "Input.Normal.Object":
                             result = Native(id, "NormalVectorNode", 0, "Object");
+                            break;
+                        case "Input.MaterialChannel":
+                            var materialSemantic =
+                                expression["params"]?["semantic"]?.Value<string>() ?? "";
+                            if (string.IsNullOrEmpty(materialSemantic))
+                                throw new InvalidOperationException(
+                                    "MIKU_MATERIAL_CHANNEL_SEMANTIC_MISSING:" + id);
+                            result = ResolveChannel(
+                                channelsBySemantic,
+                                materialSemantic,
+                                new JValue(0f),
+                                string.Equals(
+                                    expression["stage"]?.Value<string>(),
+                                    "Vertex",
+                                    StringComparison.Ordinal));
                             break;
                         case "Input.Normal":
                             result = Native(id, "NormalVectorNode", 0, "World");
@@ -1958,11 +2163,17 @@ namespace Miku.ShaderConverter.Editor
                 }
                 var uv = Native(role + ":uv0", "UVNode", 0);
                 adapter.SetEnum(uv.node, "uvChannel", "UV0");
+                var explicitLod = string.Equals(
+                    parameters["lodMode"]?.Value<string>(),
+                    "Explicit0",
+                    StringComparison.Ordinal);
                 var sample = adapter.CreateNode(
                     graph,
                     materialId,
                     role + ":sample",
-                    "SampleTexture2DNode",
+                    explicitLod
+                        ? "SampleTexture2DLODNode"
+                        : "SampleTexture2DNode",
                     Position());
                 var normal = string.Equals(
                     parameters["usage"]?.Value<string>(),
@@ -1975,10 +2186,18 @@ namespace Miku.ShaderConverter.Editor
                 }
                 adapter.Connect(graph, texture.node, texture.slot, sample, 1);
                 adapter.Connect(graph, uv.node, uv.slot, sample, 2);
+                if (explicitLod)
+                {
+                    var lod = Literal(
+                        role + ":lod-zero",
+                        new JValue(0f),
+                        "Scalar");
+                    adapter.Connect(graph, lod.node, lod.slot, sample, 4);
+                }
                 var channel = parameters["channel"]?.Value<string>() ?? "RGB";
-                var slot = string.Equals(channel, "R", StringComparison.Ordinal)
-                    ? 4
-                    : 0;
+                var slot = explicitLod
+                    ? (string.Equals(channel, "R", StringComparison.Ordinal) ? 6 : 5)
+                    : (string.Equals(channel, "R", StringComparison.Ordinal) ? 4 : 0);
                 return new Handle { node = sample, slot = slot };
             }
 
@@ -2142,7 +2361,8 @@ namespace Miku.ShaderConverter.Editor
             Handle SampleChannelTexture(
                 string role,
                 string semantic,
-                string resourceId)
+                string resourceId,
+                bool explicitLod = false)
             {
                 if (string.IsNullOrEmpty(resourceId))
                     throw new InvalidOperationException(
@@ -2189,6 +2409,7 @@ namespace Miku.ShaderConverter.Editor
                                 resource["colorSpace"]?.Value<string>() ??
                                 "Linear",
                             ["uvSet"] = "UV0",
+                            ["lodMode"] = explicitLod ? "Explicit0" : "Implicit",
                         },
                     });
             }

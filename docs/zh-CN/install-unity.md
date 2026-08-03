@@ -1,30 +1,18 @@
-# Unity 包安装与最小流程
+# Unity 包安装
 
-已验证组合为 Unity 6000.4.5f1、URP 17.4.0、Shader Graph 17.4.0。
+验证组合为 Unity `6000.4.5f1`、URP `17.4.0`、Shader Graph `17.4.0`。
+通过 Package Manager 安装 `com.miku.shaderconverter-2.2.8.tgz`，或从
+`unity/Packages/com.miku.shaderconverter/package.json` 添加本地包。
 
-## 使用 TGZ
+将完整 `.mikubundle` 目录放入 `Assets/`。Standard PBR 生成 Shader Graph；
+Genshin、WuWa、HSR 使用 Game Toon 材质与共享 Screen Rim 工具。
 
-1. 获取 `com.miku.shaderconverter-0.11.0.tgz`。
-2. 打开 **Window > Package Manager**。
-3. 选择 **Add package from tarball**。
-4. 选中 TGZ，等待 Unity 完成脚本编译。
+升级前备份项目。包不会删除 `Assets/` 中的旧 Generic Toon 材质、recipe 或 wrapper，
+但旧材质可能显示 Missing Shader；请按迁移文档手动重新选择工作流并绑定。
 
-## 从源码安装
+## Miku 独立语言设置
 
-在 Package Manager 中选择 **Add package from disk**，然后选择：
-
-```text
-unity/Packages/com.miku.shaderconverter/package.json
-```
-
-## 最小流程
-
-1. 把 Blender 导出的 `.b2ubundle`、同级 `Materials/` 文件夹和可选 `.glb`
-   一起放入 Unity `Assets/`。
-2. 等待脚本化导入器生成材质、`.shadergraph`、`.generated.shadersubgraph`
-   和诊断报告。
-3. 检查每个 Bundle 的 Import Report。
-4. 对 `Approximate`、`Baked` 或 `RequiresProjectSetup` 材质进行人工预览。
-
-阻塞错误表示该材质没有安全生成，不能忽略。玻璃/折射报告如果要求 Opaque
-Texture，需要在 URP 项目设置中启用后再审核。
+在 Unity 菜单打开 `Miku/Settings`，可以选择 English 或简体中文。设置保存为
+当前用户的 EditorPrefs（`com.miku.shaderconverter.editorLanguage`），不写入项目，
+也不跟随 Unity Editor 的语言设置；菜单路径、Shader 属性名、诊断代码和 JSON 内容
+仍保持英文稳定。

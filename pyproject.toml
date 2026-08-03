@@ -1,6 +1,6 @@
 [project]
 name = "miku-development"
-version = "1.0.1"
+version = "2.2.7"
 description = "Development configuration for the Miku semantic material converter"
 requires-python = ">=3.11"
 

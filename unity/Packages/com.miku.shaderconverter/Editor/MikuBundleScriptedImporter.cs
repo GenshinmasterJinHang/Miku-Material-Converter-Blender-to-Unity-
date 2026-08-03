@@ -168,17 +168,27 @@ namespace Miku.ShaderConverter.Editor
             var isLegacy =
                 legacyVersion == "1.0" ||
                 legacyVersion == "2.0";
+            var isMaterialIrV2 =
+                string.Equals(
+                    expectedKind,
+                    "miku-material-ir-1.0",
+                    StringComparison.Ordinal) &&
+                string.Equals(
+                    actualKind,
+                    "miku-material-ir-2.0",
+                    StringComparison.Ordinal);
             if (!string.Equals(
                     actualKind,
                     expectedKind,
                     StringComparison.Ordinal) &&
-                !isLegacy)
+                !isLegacy &&
+                !isMaterialIrV2)
                 throw new InvalidDataException(
                     "MIKU_DOCUMENT_KIND_MISMATCH:" + expectedKind);
             RequireHeader(
                 document,
                 "schemaVersion",
-                isLegacy ? legacyVersion : "1.0");
+                isLegacy ? legacyVersion : isMaterialIrV2 ? "2.0" : "1.0");
             if (document["version"] != null)
                 throw new InvalidDataException("MIKU_LEGACY_VERSION_FIELD");
             if (isLegacy)

@@ -2,228 +2,253 @@
 // SPDX-License-Identifier: MIT
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
 namespace Miku.ShaderConverter.Editor
 {
-    [Serializable]
-    public sealed class MikuToonPresetSnapshot
+    public enum MikuGameMaterialPart
     {
-        public float toonSteps;
-        public float shadowSoftness;
-        public float sssStrength;
-        public float rimIntensity;
-        public float outlineWidth;
-
-        internal static MikuToonPresetSnapshot Capture(Material material)
-        {
-            float Read(string property) =>
-                material != null && material.HasProperty(property)
-                    ? material.GetFloat(property)
-                    : 0f;
-            return new MikuToonPresetSnapshot
-            {
-                toonSteps = Read("_MIKU_ToonSteps"),
-                shadowSoftness = Read("_MIKU_ShadowSoftness"),
-                sssStrength = Read("_MIKU_SSSStrength"),
-                rimIntensity = Read("_MIKU_RimIntensity"),
-                outlineWidth = Read("_MIKU_OutlineWidth"),
-            };
-        }
-    }
-
-    public enum MikuToonSemantic
-    {
-        Face,
-        BodySkin,
+        Body,
         Hair,
+        Face,
         Eye,
+        Effect,
+        Skin,
         Mouth,
-        Cloth,
-        MetalAccessory,
-        GenericOpaque,
+        Overlay,
+        HairShadow,
     }
 
-    public enum MikuToonAlbedoMode
+    [Serializable]
+    public sealed class MikuToonUvTransform
     {
-        Auto,
-        Override,
-        Solid,
+        public string coordinateSpace = "UV0";
+        public string operation = "Affine2D";
+        public Vector3 row0 = new Vector3(1f, 0f, 0f);
+        public Vector3 row1 = new Vector3(0f, 1f, 0f);
+
+        public MikuToonUvTransform Clone() => new MikuToonUvTransform
+        {
+            coordinateSpace = coordinateSpace,
+            operation = operation,
+            row0 = row0,
+            row1 = row1,
+        };
+    }
+
+    [Serializable]
+    public sealed class MikuToonTextureBinding
+    {
+        public string role = "";
+        public Texture texture;
+        [SerializeReference]
+        public MikuToonUvTransform uvTransform;
     }
 
     /// <summary>
-    /// Miku-owned synchronization metadata for one user-owned Toon material.
-    /// It contains no timestamps or machine-specific absolute paths.
+    /// Miku-owned synchronization metadata for one user-owned game Toon material.
+    /// The recipe deliberately contains no retired semantic state.
     /// </summary>
     public sealed class MikuToonMaterialRecipe : ScriptableObject
     {
-        public const string CurrentShaderFamilyVersion = "1.0.0";
+        public const string CurrentShaderFamilyVersion = "2.2.8";
 
-        public Material sourceMaterial;
         public Material generatedBaseMaterial;
         public Material userMaterial;
-        public MikuToonSemantic semantic = MikuToonSemantic.GenericOpaque;
-        public MikuToonAlbedoMode albedoMode = MikuToonAlbedoMode.Auto;
+        public string workflowKind = "";
+        public MikuGameMaterialPart gamePart = MikuGameMaterialPart.Body;
+        public MikuToonTextureBinding[] textureBindings =
+            Array.Empty<MikuToonTextureBinding>();
         public string sourceGuid = "";
         public string targetGuid = "";
         public string stableGuid = "";
         public string shaderFamilyVersion = CurrentShaderFamilyVersion;
-        public MikuToonPresetSnapshot initialPreset =
-            new MikuToonPresetSnapshot();
-        public Texture sourceTexture;
-        public Color sourceColor = Color.white;
-        public Texture lastSyncedTexture;
-        public Color lastSyncedColor = Color.white;
-        public float lastSyncedCutoff = 0.5f;
+    }
+
+    [CustomEditor(typeof(MikuToonMaterialRecipe))]
+    internal sealed class MikuToonMaterialRecipeEditor : UnityEditor.Editor
+    {
+        static readonly string[] PartValues =
+        {
+            "Body", "Hair", "Face", "Eye", "Effect", "Skin", "Mouth",
+            "Overlay", "HairShadow",
+        };
+
+        SerializedProperty generatedBaseMaterial;
+        SerializedProperty userMaterial;
+        SerializedProperty workflowKind;
+        SerializedProperty gamePart;
+        SerializedProperty textureBindings;
+        SerializedProperty sourceGuid;
+        SerializedProperty targetGuid;
+        SerializedProperty stableGuid;
+        SerializedProperty shaderFamilyVersion;
+
+        void OnEnable()
+        {
+            generatedBaseMaterial = serializedObject.FindProperty(
+                nameof(MikuToonMaterialRecipe.generatedBaseMaterial));
+            userMaterial = serializedObject.FindProperty(
+                nameof(MikuToonMaterialRecipe.userMaterial));
+            workflowKind = serializedObject.FindProperty(
+                nameof(MikuToonMaterialRecipe.workflowKind));
+            gamePart = serializedObject.FindProperty(
+                nameof(MikuToonMaterialRecipe.gamePart));
+            textureBindings = serializedObject.FindProperty(
+                nameof(MikuToonMaterialRecipe.textureBindings));
+            sourceGuid = serializedObject.FindProperty(
+                nameof(MikuToonMaterialRecipe.sourceGuid));
+            targetGuid = serializedObject.FindProperty(
+                nameof(MikuToonMaterialRecipe.targetGuid));
+            stableGuid = serializedObject.FindProperty(
+                nameof(MikuToonMaterialRecipe.stableGuid));
+            shaderFamilyVersion = serializedObject.FindProperty(
+                nameof(MikuToonMaterialRecipe.shaderFamilyVersion));
+        }
+
+        public override void OnInspectorGUI()
+        {
+            serializedObject.Update();
+            Draw(generatedBaseMaterial, "Generated Base Material");
+            Draw(userMaterial, "User Material");
+            Draw(workflowKind, "Workflow");
+            DrawPartPopup();
+            Draw(textureBindings, "Texture Bindings");
+            Draw(sourceGuid, "Source GUID");
+            Draw(targetGuid, "Target GUID");
+            Draw(stableGuid, "Stable GUID");
+            Draw(shaderFamilyVersion, "Shader Family Version");
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        static void Draw(SerializedProperty property, string label)
+        {
+            if (property != null)
+                EditorGUILayout.PropertyField(
+                    property,
+                    MikuEditorLocalization.Content(label),
+                    true);
+        }
+
+        void DrawPartPopup()
+        {
+            if (gamePart == null)
+                return;
+            var labels = PartValues
+                .Select(MikuEditorLocalization.Tr)
+                .ToArray();
+            var selected = Mathf.Clamp(gamePart.enumValueIndex, 0, labels.Length - 1);
+            var next = EditorGUILayout.Popup(
+                MikuEditorLocalization.Tr("Material Part"),
+                selected,
+                labels);
+            if (next != selected)
+                gamePart.enumValueIndex = next;
+        }
     }
 
     internal static class MikuToonRecipeUtility
     {
-        internal const string BaseMap = "_MIKU_BaseMap";
-        internal const string BaseColor = "_MIKU_BaseColor";
-        internal const string Cutoff = "_MIKU_Cutoff";
-
-        internal static string ShaderName(MikuToonSemantic semantic) =>
-            "Miku/GenericToon/" + semantic;
-
-        internal static void ApplySemanticPreset(
-            Material material,
-            MikuToonSemantic semantic)
+        internal static string SelectedShaderName(
+            MikuToonMaterialRecipe recipe)
         {
-            if (material == null)
-                throw new ArgumentNullException(nameof(material));
-            Undo.RecordObject(material, "Reset Miku Toon semantic preset");
-            Set(material, "_MIKU_ToonSteps", semantic == MikuToonSemantic.Face ? 3f : 2f);
-            Set(material, "_MIKU_ShadowSoftness", semantic == MikuToonSemantic.MetalAccessory ? 0.08f : 0.16f);
-            Set(material, "_MIKU_SSSStrength",
-                semantic == MikuToonSemantic.Face ||
-                semantic == MikuToonSemantic.BodySkin ? 0.35f : 0f);
-            Set(material, "_MIKU_RimIntensity",
-                semantic == MikuToonSemantic.Eye ? 0.75f : 0.25f);
-            Set(material, "_MIKU_OutlineWidth",
-                semantic == MikuToonSemantic.Eye ||
-                semantic == MikuToonSemantic.Mouth ? 0.5f : 1.25f);
-            EditorUtility.SetDirty(material);
+            if (recipe == null)
+                throw new ArgumentNullException(nameof(recipe));
+            var workflow = recipe.workflowKind ?? "";
+            if (!MikuFixedWorkflowTextureBindings.IsGame(workflow))
+                throw new InvalidOperationException(
+                    "MIKU_WORKFLOW_RETIRED:generic_toon");
+            return MikuFixedWorkflowTextureBindings.ShaderName(
+                workflow,
+                recipe.gamePart.ToString());
         }
 
-        internal static void Rebuild(MikuToonMaterialRecipe recipe)
+        internal static MikuToonMaterialRecipe FindForMaterial(
+            Material material)
         {
-            if (recipe == null || recipe.userMaterial == null)
-                throw new InvalidOperationException("MIKU_TOON_RECIPE_TARGET_MISSING");
-            var target = recipe.userMaterial;
-            var nextTexture = recipe.sourceTexture;
-            var nextColor = recipe.sourceColor;
-            if (recipe.sourceMaterial != null)
-                ResolveSource(
-                    recipe.sourceMaterial,
-                    recipe.albedoMode,
-                    recipe.sourceTexture,
-                    recipe.sourceColor,
-                    out nextTexture,
-                    out nextColor);
+            var path = AssetDatabase.GetAssetPath(material);
+            if (string.IsNullOrEmpty(path))
+                return null;
+            var recipePath = System.IO.Path.ChangeExtension(
+                    path,
+                    ".toon-recipe.asset")
+                .Replace('\\', '/');
+            return AssetDatabase.LoadAssetAtPath<MikuToonMaterialRecipe>(
+                recipePath);
+        }
 
+        internal static void ApplySelection(MikuToonMaterialRecipe recipe)
+        {
+            if (recipe == null || recipe.generatedBaseMaterial == null)
+                throw new InvalidOperationException("MIKU_TOON_RECIPE_BASE_MISSING");
+            var shaderName = SelectedShaderName(recipe);
+            var shader = Shader.Find(shaderName)
+                ?? throw new InvalidOperationException(
+                    "MIKU_WORKFLOW_SHADER_MISSING:" + shaderName);
             Undo.RecordObjects(
-                new UnityEngine.Object[] { target, recipe },
-                "Rebuild Miku Toon material");
-            if (target.HasProperty(BaseMap) &&
-                target.GetTexture(BaseMap) == recipe.lastSyncedTexture)
-                target.SetTexture(BaseMap, nextTexture);
-            if (target.HasProperty(BaseColor) &&
-                Approximately(target.GetColor(BaseColor), recipe.lastSyncedColor))
-                target.SetColor(BaseColor, nextColor);
-            recipe.sourceTexture = nextTexture;
-            recipe.sourceColor = nextColor;
-            recipe.lastSyncedTexture = nextTexture;
-            recipe.lastSyncedColor = nextColor;
-            recipe.shaderFamilyVersion =
-                MikuToonMaterialRecipe.CurrentShaderFamilyVersion;
-            EditorUtility.SetDirty(target);
+                new UnityEngine.Object[]
+                {
+                    recipe.generatedBaseMaterial,
+                    recipe,
+                },
+                MikuEditorLocalization.Tr(
+                    "Change Miku game Toon material part"));
+            recipe.generatedBaseMaterial.shader = shader;
+            recipe.gamePart = ParsePart(recipe.workflowKind, recipe.gamePart.ToString());
+            MikuFixedWorkflowTextureBindings.Bind(
+                recipe.generatedBaseMaterial,
+                recipe.workflowKind,
+                recipe.textureBindings);
+            MikuGameToonMaterialProfiles.ApplyRecommended(
+                recipe.generatedBaseMaterial);
+            EditorUtility.SetDirty(recipe.generatedBaseMaterial);
             EditorUtility.SetDirty(recipe);
             AssetDatabase.SaveAssets();
-        }
-
-        internal static void RestoreSourceValues(MikuToonMaterialRecipe recipe)
-        {
-            if (recipe == null || recipe.userMaterial == null)
-                return;
-            ResolveSource(
-                recipe.sourceMaterial,
-                recipe.albedoMode,
-                recipe.sourceTexture,
-                recipe.sourceColor,
-                out var texture,
-                out var color);
-            Undo.RecordObjects(
-                new UnityEngine.Object[] { recipe.userMaterial, recipe },
-                "Restore Miku Toon source values");
-            if (recipe.userMaterial.HasProperty(BaseMap))
-                recipe.userMaterial.SetTexture(BaseMap, texture);
-            if (recipe.userMaterial.HasProperty(BaseColor))
-                recipe.userMaterial.SetColor(BaseColor, color);
-            recipe.sourceTexture = texture;
-            recipe.sourceColor = color;
-            recipe.lastSyncedTexture = texture;
-            recipe.lastSyncedColor = color;
-            EditorUtility.SetDirty(recipe.userMaterial);
-            EditorUtility.SetDirty(recipe);
-        }
-
-        internal static void ResolveSource(
-            Material source,
-            MikuToonAlbedoMode mode,
-            Texture overrideTexture,
-            Color overrideColor,
-            out Texture texture,
-            out Color color)
-        {
-            if (mode == MikuToonAlbedoMode.Override)
-            {
-                texture = overrideTexture;
-                color = overrideColor;
-                return;
-            }
-            if (mode == MikuToonAlbedoMode.Solid)
-            {
-                texture = null;
-                color = overrideColor;
-                return;
-            }
-            if (source == null)
-                throw new InvalidOperationException("MIKU_TOON_SOURCE_MATERIAL_MISSING");
-
-            var baseMap = source.HasProperty("_BaseMap")
-                ? source.GetTexture("_BaseMap")
-                : null;
-            var mainTex = source.HasProperty("_MainTex")
-                ? source.GetTexture("_MainTex")
-                : null;
-            if (baseMap != null && mainTex != null && baseMap != mainTex)
-                throw new InvalidOperationException(
-                    "MIKU_TOON_ALBEDO_AMBIGUOUS:_BaseMap,_MainTex");
-            texture = baseMap != null ? baseMap : mainTex;
-            var baseColor = source.HasProperty("_BaseColor")
-                ? source.GetColor("_BaseColor")
-                : Color.white;
-            var mainColor = source.HasProperty("_Color")
-                ? source.GetColor("_Color")
-                : baseColor;
-            if (source.HasProperty("_BaseColor") &&
-                source.HasProperty("_Color") &&
-                !Approximately(baseColor, mainColor))
-                throw new InvalidOperationException(
-                    "MIKU_TOON_COLOR_AMBIGUOUS:_BaseColor,_Color");
-            color = source.HasProperty("_BaseColor") ? baseColor : mainColor;
         }
 
         internal static MikuToonMaterialRecipe CreateOrUpdateImported(
             string path,
             Material generatedBase,
-            Material userMaterial)
+            Material userMaterial,
+            string workflowKind,
+            string initialPart,
+            IDictionary<string, Texture2D> textures)
         {
-            var recipe =
-                AssetDatabase.LoadAssetAtPath<MikuToonMaterialRecipe>(path);
+            return CreateOrUpdateImported(
+                path,
+                generatedBase,
+                userMaterial,
+                workflowKind,
+                initialPart,
+                (textures ?? new Dictionary<string, Texture2D>())
+                    .OrderBy(item => item.Key, StringComparer.Ordinal)
+                    .Select(item => new MikuToonTextureBinding
+                    {
+                        role = item.Key,
+                        texture = item.Value,
+                    }));
+        }
+
+        internal static MikuToonMaterialRecipe CreateOrUpdateImported(
+            string path,
+            Material generatedBase,
+            Material userMaterial,
+            string workflowKind,
+            string initialPart,
+            IEnumerable<MikuToonTextureBinding> bindings)
+        {
+            if (!MikuFixedWorkflowTextureBindings.IsGame(workflowKind))
+                throw new InvalidOperationException(
+                    "MIKU_WORKFLOW_RETIRED:generic_toon");
+            var recipe = AssetDatabase.LoadAssetAtPath<MikuToonMaterialRecipe>(
+                path);
             var created = recipe == null;
+            var previousVersion = recipe != null
+                ? recipe.shaderFamilyVersion
+                : "";
             if (recipe == null)
             {
                 recipe = ScriptableObject.CreateInstance<
@@ -232,41 +257,51 @@ namespace Miku.ShaderConverter.Editor
             }
             recipe.generatedBaseMaterial = generatedBase;
             recipe.userMaterial = userMaterial;
-            recipe.semantic = MikuToonSemantic.GenericOpaque;
+            if (created || string.IsNullOrEmpty(recipe.workflowKind))
+                recipe.workflowKind = workflowKind;
+            if (created)
+                recipe.gamePart = ParsePart(workflowKind, initialPart);
+            recipe.textureBindings = (bindings ??
+                    Array.Empty<MikuToonTextureBinding>())
+                .Where(item => item != null)
+                .OrderBy(item => item.role, StringComparer.Ordinal)
+                .Select(item => new MikuToonTextureBinding
+                {
+                    role = item.role ?? "",
+                    texture = item.texture,
+                    uvTransform = item.uvTransform?.Clone(),
+                })
+                .ToArray();
             recipe.sourceGuid = "";
-            recipe.targetGuid =
-                AssetDatabase.AssetPathToGUID(
-                    AssetDatabase.GetAssetPath(userMaterial));
+            recipe.targetGuid = AssetDatabase.AssetPathToGUID(
+                AssetDatabase.GetAssetPath(userMaterial));
             recipe.stableGuid = AssetDatabase.AssetPathToGUID(path);
             recipe.shaderFamilyVersion =
                 MikuToonMaterialRecipe.CurrentShaderFamilyVersion;
-            if (created || recipe.initialPreset == null)
-                recipe.initialPreset =
-                    MikuToonPresetSnapshot.Capture(generatedBase);
-            if (userMaterial != null)
+            if (generatedBase != null &&
+                (created || !string.Equals(
+                    previousVersion,
+                    MikuToonMaterialRecipe.CurrentShaderFamilyVersion,
+                    StringComparison.Ordinal)))
             {
-                recipe.lastSyncedTexture = userMaterial.HasProperty(BaseMap)
-                    ? userMaterial.GetTexture(BaseMap)
-                    : null;
-                recipe.lastSyncedColor = userMaterial.HasProperty(BaseColor)
-                    ? userMaterial.GetColor(BaseColor)
-                    : Color.white;
+                MikuGameToonMaterialProfiles.ApplyRecommended(generatedBase);
+                EditorUtility.SetDirty(generatedBase);
+                AssetDatabase.SaveAssetIfDirty(generatedBase);
             }
             EditorUtility.SetDirty(recipe);
             AssetDatabase.SaveAssetIfDirty(recipe);
             return recipe;
         }
 
-        static void Set(Material material, string property, float value)
+        static MikuGameMaterialPart ParsePart(string workflow, string value)
         {
-            if (material.HasProperty(property))
-                material.SetFloat(property, value);
+            var normalized = MikuFixedWorkflowTextureBindings.NormalizePart(
+                workflow,
+                value ?? "");
+            if (Enum.TryParse(normalized, out MikuGameMaterialPart part))
+                return part;
+            throw new InvalidOperationException(
+                "MIKU_WORKFLOW_PART_INVALID:" + workflow + ":" + value);
         }
-
-        static bool Approximately(Color a, Color b) =>
-            Mathf.Abs(a.r - b.r) < 0.00001f &&
-            Mathf.Abs(a.g - b.g) < 0.00001f &&
-            Mathf.Abs(a.b - b.b) < 0.00001f &&
-            Mathf.Abs(a.a - b.a) < 0.00001f;
     }
 }

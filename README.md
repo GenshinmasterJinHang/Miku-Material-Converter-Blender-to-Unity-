@@ -1,160 +1,88 @@
-# Miku 1.0
+# Miku 2.2.8
 
-Miku converts Blender 5.2 materials into target-neutral semantic data and
-imports them into Unity 6000.4.5f1, URP 17.4.0, and Shader Graph 17.4.0.
-All newly written interchange documents use Miku 1.0 kinds and
-`schemaVersion: "1.0"`; a complete export is rooted at a `.mikubundle`.
+[![CI](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml/badge.svg)](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Blender](https://img.shields.io/badge/Blender-5.2.0-orange.svg)](docs/compatibility.md)
+[![Unity](https://img.shields.io/badge/Unity-6000.4.5f1-black.svg)](docs/compatibility.md)
 
-The supported source and package identities are:
+Miku converts Blender 5.2 EEVEE materials into target-neutral MaterialIR 2.0,
+then imports deterministic, editable Standard PBR Shader Graph assets into
+Unity 6 URP. Game-specific Toon materials remain available as Unity-side
+authoring tools and are no longer selected in the Blender export panel.
 
-- Python: `miku` and `miku_blender`
-- Blender extension: `miku_shader_converter`
-- Unity package: `com.miku.shaderconverter`
-- C# namespace: `Miku.ShaderConverter`
-- diagnostics and material properties: `MIKU_*` and `_MIKU_*`
+![Miku conversion flow](docs/images/miku-workflow-en.svg)
 
-## Blender workflow
+English is the canonical public documentation language. See the
+[简体中文 README](docs/zh-CN/README.md) and the full
+[English Manual](docs/manual.md) / [中文手册](docs/zh-CN/manual.md).
 
-Build or install the single GPL-3.0-or-later
-`miku_shader_converter-1.0.1.zip`. It contains the semantic exporter, the
-certified bake worker, the MIT core sources and their notices.
+## What Miku does
 
-In Blender's Shader Editor:
+- Blender exporter: one visible Standard PBR path with editable semantic
+  conversion, declared approximations, and isolated texture baking when it is
+  required.
+- Unity importer: deterministic `.mikubundle` import, editable Shader Graph
+  wrappers, generated Sub Graph ownership, stable IDs, and structured reports.
+- Unity Game Toon creator: explicit texture inputs for Genshin, Wuthering
+  Waves, HSR, and Endfield materials under `Miku > Game Toon > Materials >
+  Create Material`.
+- Independent Unity UI language preference at `Miku > Settings` for English or
+  Simplified Chinese. The preference is per-user and never enters generated
+  assets.
 
-1. Select the material in the active material slot.
-2. Select its semantic workflow.
-3. Choose an output directory.
-4. Click **Export Current Material**.
+## Install the release
 
-The exporter writes one deterministic material directory containing a
-`.mikubundle` and hashed sibling artifacts. Hidden `miku_*` source and material
-IDs keep output identity stable across renames. On first access, matching
-legacy `migr_*` custom properties are copied once without changing their UUID;
-all subsequent writes use only Miku properties.
+1. Download the two assets from the [v2.2.8 Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.8):
+   `miku_shader_converter-2.2.8.zip` and
+   `com.miku.shaderconverter-2.2.8.tgz`.
+2. In Blender 5.2, open **Edit > Preferences > Extensions**, choose **Install
+   from Disk**, select the Blender ZIP, and enable Miku.
+3. In Unity 6000.4.5f1, open **Window > Package Manager > + > Add package from
+   tarball**, then select the Unity TGZ.
+4. Export a material bundle from Blender and copy the complete bundle directory
+   under the Unity project's `Assets/` folder.
 
-The exporter does not ask for a Model Root, scan Renderers, show a Mesh or
-material-slot tree, replace object references, or create a character Prefab.
+For a source checkout, add `unity/Packages/com.miku.shaderconverter/package.json`
+from disk. The complete installation, ownership, diagnostics, and upgrade
+guidance are in the [Manual](docs/manual.md).
 
-## Unity workflows
+## Five-minute workflow
 
-Install `unity/Packages/com.miku.shaderconverter` through Package Manager.
-Copy a complete `.mikubundle` directory below `Assets/`.
+1. Select an object with a material in Blender's Shader Editor.
+2. Open the **Miku** sidebar, choose an output directory, and confirm the
+   **Standard PBR** path.
+3. Export the current material. A reachable `Input.Time.*` dependency stops
+   before any output or bake request is written; disconnected time nodes are
+   harmless.
+4. Copy the resulting `.mikubundle` directory to Unity `Assets/` and let the
+   importer create the editable graph and report files.
+5. For a game material, use the Unity Game Toon material creator, choose a
+   workflow and part, assign the visible texture slots explicitly, and save a
+   user-owned `.mat`.
 
-Standard PBR and closure-aware surface workflows continue to generate
-editable, version-specific Shader Graph assets. Generated Sub Graphs, base
-materials, receipts, mappings, and recipes are Miku-owned. Wrapper graphs,
-derived materials, and legacy wrapper graphs are user-owned and are never
-silently deleted.
+![Blender Standard PBR panel](docs/images/blender-standard-pbr-en.png)
 
-### Generic Toon Material Builder
+## Compatibility
 
-Open **Miku > Generic Toon > Material Builder**. Each row operates on a
-Material asset, not a Renderer or Mesh. A source Material may appear more than
-once with different semantics:
+The validated Windows tuple is Blender 5.2.0, Unity 6000.4.5f1, URP 17.4.0,
+and Shader Graph 17.4.0. The project is currently marked **Experimental**;
+unsupported version combinations must fail clearly. See the
+[compatibility matrix](docs/compatibility.md) for format and workflow details.
 
-- Face
-- BodySkin
-- Hair
-- Eye
-- Mouth
-- Cloth
-- MetalAccessory
-- GenericOpaque
+MaterialIR 2.0, Bundle 1.0, conversion-plan, bake-result, and public Shader
+property/reference names are unchanged in 2.2.8. Historical bundles remain
+importable, but the current Blender UI does not create new game-workflow or
+time-dependent bundles.
 
-The builder always creates a Miku-owned base Material, a user-editable derived
-Material, and a `MikuToonMaterialRecipe`. It never changes the source Material
-or a Renderer reference. Albedo may be read deterministically from
-`_BaseMap`/`_MainTex` and `_BaseColor`/`_Color`, explicitly overridden, or
-replaced with a solid color. Conflicting source values are reported instead of
-guessed.
+## Development
 
-Rebuild is a three-way merge: a generated value follows the source only while
-the user value still equals the last synchronized value. **Reset Semantic
-Preset** and **Restore Source Values** are separate explicit actions.
-
-### Fixed Generic Toon Shader family
-
-Generic Toon does not generate Shader Graph wrappers. It resolves missing
-semantic information to `Miku/GenericToon/GenericOpaque` and uses these eight
-package shaders:
-
-- `Miku/GenericToon/Face`
-- `Miku/GenericToon/BodySkin`
-- `Miku/GenericToon/Hair`
-- `Miku/GenericToon/Eye`
-- `Miku/GenericToon/Mouth`
-- `Miku/GenericToon/Cloth`
-- `Miku/GenericToon/MetalAccessory`
-- `Miku/GenericToon/GenericOpaque`
-
-Every shader has the same property/CBUFFER contract and explicit
-`UniversalForwardOnly`, `ShadowCaster`, `DepthOnly`, `DepthNormalsOnly`,
-`MotionVectors`, `MikuToonOutline`, and `MikuToonCharacterMask` passes.
-Geometry outline rendering always uses the original material's embedded
-`MikuToonOutline` pass. UV7/TEXCOORD7 supplies smooth normals; missing or zero
-data falls back to the object-space normal.
-
-Face orientation uses the current Renderer's object space: local +X is right,
-+Y is up and +Z is forward. Face center and extents are material properties;
-there is no runtime head-bone binder.
-
-Screen Rim is provided by the URP 17.4 RenderGraph
-`MikuToonScreenRimRendererFeature`. Use
-**Miku > Generic Toon > Rendering > Screen Rim Installer**. Select the
-Renderer Data used by the target pipeline (for example `PC_Renderer.asset`),
-review **Preview**, then choose **Apply**. The installer deduplicates and rolls
-back failures; it never modifies every URP asset automatically. The Material
-Builder and Generic Toon Shader GUI only open and prefill this installer.
-
-### Explicit Mesh data tools
-
-Use **Miku > Generic Toon > Mesh** to open the dedicated **Smooth Normal
-Generator**, **Vertex Color Initializer**, or **Combined Mesh Data** window.
-Each takes an explicitly selected source Mesh and output asset path. It clones
-the Mesh and can:
-
-- write deterministic, area-weighted smooth outline normals to UV7;
-- initialize `Miku_ToonMask_v1` vertex colors;
-- preserve, replace, or merge individual color channels.
-
-The neutral vertex color is `(255,255,255,0)`: R is SSS, G outline width, B
-screen rim and A face correction. The source Mesh, importer settings, topology,
-SubMeshes, skinning, BlendShapes, Bounds, UVs and Renderer references are not
-modified.
-
-## Legacy data
-
-`.migrbundle` and MiGR 1.x/2.x document kinds are read-only compatibility
-inputs. They are validated before in-memory normalization to Miku 1.0. New
-exports never write MiGR documents.
-
-Use **Miku > Migration** in Unity for a Dry Run and then explicit
-upgrade of selected persistent assets. The tool migrates serialized material
-properties, Shader references, AnimationClip material curves and generated
-asset identities. It does not traverse scene hierarchies. Runtime
-`MaterialPropertyBlock` values are not persistent assets and callers must
-switch those names to `_MIKU_*`.
-
-See [the migration guide](docs/migration-to-miku-1.0.md) and
-[compatibility matrix](docs/compatibility.md).
-
-## Validation
-
-The certified Windows validation tuple is:
-
-- Blender 5.2.0 at
-  `C:\SteamLibrary\steamapps\common\Blender\blender.exe`
-- Unity 6000.4.5f1
-- URP 17.4.0
-- Shader Graph 17.4.0
-
-Run:
-
-```text
-py -3.13 tools/ci/run_checks.py --profile pr
+```powershell
 py -3.13 -m unittest discover -s tests -p "test_*.py"
+py -3.13 tools/ci/run_checks.py --profile pr
+py -3.13 tools/release/build_release.py --output-dir artifacts
 ```
 
-The repository root and Unity package are MIT. The unified Blender extension
-distribution is GPL-3.0-or-later and preserves per-file MIT and
-GPL-2.0-or-later source notices.
+The exact Blender and Unity validation commands, screenshot sources, schema
+policy, security guidance, and contribution rules are documented in the
+[Manual](docs/manual.md), [CONTRIBUTING.md](CONTRIBUTING.md),
+[SECURITY.md](SECURITY.md), and [SUPPORT.md](SUPPORT.md).

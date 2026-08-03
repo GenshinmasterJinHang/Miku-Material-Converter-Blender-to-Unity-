@@ -228,20 +228,6 @@ float3 HSR_ComputeStockingsEffect(
     return lerp(1.0.xxx, stockingsColor, stockingsMap.r);
 }
 
-float3 HSR_FresnelRimLight(
-    float3 normalWS,
-    float3 viewDirWS,
-    float3 rimLightTintColor,
-    float rimLightBrightness,
-    float fresnelPower,
-    float fresnelClamp)
-{
-    float NoV = saturate(dot(normalize(normalWS), normalize(viewDirWS)));
-    float fresnel = pow(saturate(1.0 - NoV), max(fresnelPower, 1e-5));
-    float mask = lerp(1.0, fresnel, saturate(fresnelClamp));
-    return mask * rimLightTintColor * max(rimLightBrightness, 0.0);
-}
-
 float3 HSR_GetOutlineNormalOS(float3 smoothNormalOS, float3 fallbackNormalOS)
 {
     float3 selectedNormalOS = dot(smoothNormalOS, smoothNormalOS) > 1e-5

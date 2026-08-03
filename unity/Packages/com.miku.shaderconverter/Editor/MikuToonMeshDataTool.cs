@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
 
@@ -78,39 +79,39 @@ namespace Miku.ShaderConverter.Editor
         protected virtual void OnGUI()
         {
             EditorGUILayout.HelpBox(
-                "Explicit Mesh input only. The source/importer and all " +
-                "Renderer references remain untouched.",
+                MikuEditorLocalization.Tr(
+                    "Explicit Mesh input only. The source/importer and all " +
+                    "Renderer references remain untouched."),
                 MessageType.Info);
             sourceMesh = (Mesh)EditorGUILayout.ObjectField(
-                "Source Mesh",
+                MikuEditorLocalization.Tr("Source Mesh"),
                 sourceMesh,
                 typeof(Mesh),
                 false);
             outputFolder = EditorGUILayout.TextField(
-                "Output Folder",
+                MikuEditorLocalization.Tr("Output Folder"),
                 outputFolder);
             outputName = EditorGUILayout.TextField(
-                "Output Name",
+                MikuEditorLocalization.Tr("Output Name"),
                 outputName);
 
             var sourceReadable = sourceMesh == null || sourceMesh.isReadable;
             if (!sourceReadable)
                 EditorGUILayout.HelpBox(
-                    "The selected Mesh is not readable. Create an explicit " +
-                    "readable source asset before using this tool; importer " +
-                    "settings are never changed automatically.",
-                    MessageType.Error);
+                    MikuEditorLocalization.Tr(
+                        "The imported Mesh is not CPU-readable. Miku will use " +
+                        "MeshUtility.AcquireReadOnlyMeshData and write only to " +
+                        "the generated clone; importer settings stay unchanged."),
+                    MessageType.Info);
 
             var hasUv7 = sourceMesh != null &&
-                         sourceReadable &&
                          MikuToonMeshAssetCreator.HasUv7(sourceMesh);
             if (ShowsSmoothNormals)
                 DrawSmoothNormalSettings(hasUv7);
             if (ShowsVertexColors)
                 DrawVertexColorSettings();
 
-            using (new EditorGUI.DisabledScope(
-                       sourceMesh == null || !sourceReadable))
+            using (new EditorGUI.DisabledScope(sourceMesh == null))
             {
                 if (ShowsSmoothNormals && ShowsVertexColors)
                 {
@@ -118,8 +119,9 @@ namespace Miku.ShaderConverter.Editor
                         hasUv7 &&
                         uv7ConflictMode == MikuUv7ConflictMode.Preserve;
                     var label = preserveUv7
-                        ? "Create Mesh (Preserve UV7 + Vertex Colors)"
-                        : "Create Mesh with Both";
+                        ? MikuEditorLocalization.Tr(
+                            "Create Mesh (Preserve UV7 + Vertex Colors)")
+                        : MikuEditorLocalization.Tr("Create Mesh with Both");
                     if (GUILayout.Button(label) &&
                         ConfirmUv7Replacement(hasUv7))
                         Create(
@@ -134,7 +136,8 @@ namespace Miku.ShaderConverter.Editor
                     using (new EditorGUI.DisabledScope(blocked))
                     {
                         if (GUILayout.Button(
-                                "Create Mesh with Smooth Normals") &&
+                                MikuEditorLocalization.Tr(
+                                    "Create Mesh with Smooth Normals")) &&
                             ConfirmUv7Replacement(hasUv7))
                             Create(
                                 writeNormals: true,
@@ -142,7 +145,8 @@ namespace Miku.ShaderConverter.Editor
                     }
                 }
                 else if (GUILayout.Button(
-                             "Create Mesh with Neutral Vertex Colors"))
+                             MikuEditorLocalization.Tr(
+                                 "Create Mesh with Neutral Vertex Colors")))
                 {
                     Create(writeNormals: false, writeColors: true);
                 }
@@ -153,38 +157,41 @@ namespace Miku.ShaderConverter.Editor
         {
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
-                "Smooth outline normal -> UV7 / TEXCOORD7",
+                MikuEditorLocalization.Tr(
+                    "Smooth outline normal -> UV7 / TEXCOORD7"),
                 EditorStyles.boldLabel);
             positionTolerance = EditorGUILayout.Slider(
-                "Position Tolerance",
+                MikuEditorLocalization.Tr("Position Tolerance"),
                 positionTolerance,
                 0.000001f,
                 0.1f);
             smoothingAngle = EditorGUILayout.Slider(
-                "Smoothing Angle",
+                MikuEditorLocalization.Tr("Smoothing Angle"),
                 smoothingAngle,
                 0f,
                 180f);
             includeBoneWeightSignature = EditorGUILayout.Toggle(
-                "Respect Bone Weights",
+                MikuEditorLocalization.Tr("Respect Bone Weights"),
                 includeBoneWeightSignature);
             if (!hasUv7)
                 return;
 
             EditorGUILayout.HelpBox(
-                "The source Mesh already contains UV7 data. Preserve leaves " +
-                "that channel unchanged; Replace writes smooth normals only " +
-                "to the generated clone.",
+                MikuEditorLocalization.Tr(
+                    "The source Mesh already contains UV7 data. Preserve leaves " +
+                    "that channel unchanged; Replace writes smooth normals only " +
+                    "to the generated clone."),
                 MessageType.Warning);
             uv7ConflictMode = (MikuUv7ConflictMode)
                 EditorGUILayout.EnumPopup(
-                    "Existing UV7",
+                    MikuEditorLocalization.Tr("Existing UV7"),
                     uv7ConflictMode);
             if (!ShowsVertexColors &&
                 uv7ConflictMode == MikuUv7ConflictMode.Preserve)
                 EditorGUILayout.HelpBox(
-                    "Select Replace to generate smooth normals. Preserve " +
-                    "performs no operation in the normals-only tool.",
+                    MikuEditorLocalization.Tr(
+                        "Select Replace to generate smooth normals. Preserve " +
+                        "performs no operation in the normals-only tool."),
                     MessageType.Info);
         }
 
@@ -192,25 +199,31 @@ namespace Miku.ShaderConverter.Editor
         {
             EditorGUILayout.Space();
             EditorGUILayout.LabelField(
-                "Vertex colors - Miku_ToonMask_v1",
+                MikuEditorLocalization.Tr(
+                    "Vertex colors - Miku_ToonMask_v1"),
                 EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Neutral mask is RGBA (255,255,255,0): SSS, outline width, " +
-                "screen rim, face correction.",
+                MikuEditorLocalization.Tr(
+                    "Neutral mask is RGBA (255,255,255,0): SSS, outline width, " +
+                    "screen rim, face correction."),
                 MessageType.None);
             colorMode = (MikuVertexColorWriteMode)
-                EditorGUILayout.EnumPopup("Mode", colorMode);
+                EditorGUILayout.EnumPopup(
+                    MikuEditorLocalization.Tr("Mode"),
+                    colorMode);
             if (colorMode != MikuVertexColorWriteMode.Merge)
                 return;
-            mergeR = EditorGUILayout.Toggle("Write R / SSS", mergeR);
+            mergeR = EditorGUILayout.Toggle(
+                MikuEditorLocalization.Tr("Write R / SSS"),
+                mergeR);
             mergeG = EditorGUILayout.Toggle(
-                "Write G / Outline",
+                MikuEditorLocalization.Tr("Write G / Outline"),
                 mergeG);
             mergeB = EditorGUILayout.Toggle(
-                "Write B / Screen Rim",
+                MikuEditorLocalization.Tr("Write B / Screen Rim"),
                 mergeB);
             mergeA = EditorGUILayout.Toggle(
-                "Write A / Face Correction",
+                MikuEditorLocalization.Tr("Write A / Face Correction"),
                 mergeA);
         }
 
@@ -220,11 +233,12 @@ namespace Miku.ShaderConverter.Editor
                 uv7ConflictMode != MikuUv7ConflictMode.Replace)
                 return true;
             return EditorUtility.DisplayDialog(
-                "Replace UV7 on generated Mesh?",
-                "The source Mesh remains untouched. UV7 will be replaced only " +
-                "on the newly generated Mesh asset.",
-                "Replace on Clone",
-                "Cancel");
+                MikuEditorLocalization.Tr("Replace UV7 on generated Mesh?"),
+                MikuEditorLocalization.Tr(
+                    "The source Mesh remains untouched. UV7 will be replaced only " +
+                    "on the newly generated Mesh asset."),
+                MikuEditorLocalization.Tr("Replace on Clone"),
+                MikuEditorLocalization.Tr("Cancel"));
         }
 
         void Create(bool writeNormals, bool writeColors)
@@ -256,10 +270,10 @@ namespace Miku.ShaderConverter.Editor
         protected override bool ShowsVertexColors => false;
 
         [MenuItem(
-            "Miku/Generic Toon/Mesh/Smooth Normal Generator")]
+            "Miku/Game Toon/Mesh/Smooth Normal Generator")]
         static void Open() =>
             OpenWindow<MikuSmoothNormalGeneratorWindow>(
-                "Miku Smooth Normals");
+                MikuEditorLocalization.Tr("Miku Smooth Normals"));
     }
 
     public sealed class MikuVertexColorInitializerWindow :
@@ -267,37 +281,27 @@ namespace Miku.ShaderConverter.Editor
     {
         protected override bool ShowsSmoothNormals => false;
         protected override bool ShowsVertexColors => true;
-
-        [MenuItem(
-            "Miku/Generic Toon/Mesh/Vertex Color Initializer")]
-        static void Open() =>
-            OpenWindow<MikuVertexColorInitializerWindow>(
-                "Miku Vertex Colors");
     }
 
     public sealed class MikuToonMeshDataTool : MikuToonMeshToolWindow
     {
         protected override bool ShowsSmoothNormals => true;
         protected override bool ShowsVertexColors => true;
-
-        [MenuItem("Miku/Generic Toon/Mesh/Combined Mesh Data")]
-        static void Open() =>
-            OpenWindow<MikuToonMeshDataTool>(
-                "Miku Toon Mesh Data");
     }
 
-    internal static class MikuToonMeshAssetCreator
+    public static class MikuToonMeshAssetCreator
     {
-        internal static bool HasUv7(Mesh mesh)
+        public static bool HasUv7(Mesh mesh)
         {
-            if (mesh == null || !mesh.isReadable)
+            if (mesh == null)
                 return false;
-            var existing = new List<Vector4>();
-            mesh.GetUVs(7, existing);
-            return existing.Count != 0;
+            using (var data = MeshUtility.AcquireReadOnlyMeshData(mesh))
+                return data.Length == 1 &&
+                    data[0].HasVertexAttribute(
+                        UnityEngine.Rendering.VertexAttribute.TexCoord7);
         }
 
-        internal static Mesh CreateAsset(
+        public static Mesh CreateAsset(
             Mesh sourceMesh,
             string outputFolder,
             string outputName,
@@ -316,9 +320,6 @@ namespace Miku.ShaderConverter.Editor
             if (sourceMesh == null)
                 throw new InvalidOperationException(
                     "MIKU_TOON_SOURCE_MESH_MISSING");
-            if (!sourceMesh.isReadable)
-                throw new InvalidOperationException(
-                    "MIKU_TOON_SOURCE_MESH_NOT_READABLE");
             if (!writeNormals && !writeColors)
                 throw new InvalidOperationException(
                     "MIKU_TOON_MESH_OPERATION_MISSING");
@@ -329,12 +330,13 @@ namespace Miku.ShaderConverter.Editor
                 : outputName.Trim();
             var path = AssetDatabase.GenerateUniqueAssetPath(
                 folder + "/" + Sanitize(name) + ".asset");
-            var clone = UnityEngine.Object.Instantiate(sourceMesh);
+            var clone = CloneForEditing(sourceMesh);
             clone.name = Path.GetFileNameWithoutExtension(path);
             try
             {
                 if (writeNormals)
-                    MikuToonMeshData.GenerateSmoothNormals(
+                    MikuToonMeshData.GenerateSmoothNormalsFromSource(
+                        sourceMesh,
                         clone,
                         positionTolerance,
                         smoothingAngle,
@@ -359,6 +361,60 @@ namespace Miku.ShaderConverter.Editor
             }
         }
 
+        public static Mesh CreateOrUpdateSmoothNormalAsset(
+            Mesh sourceMesh,
+            string assetPath,
+            float positionTolerance = 0.0001f,
+            float smoothingAngle = 60f,
+            bool includeBoneWeightSignature = true)
+        {
+            if (sourceMesh == null)
+                throw new InvalidOperationException(
+                    "MIKU_TOON_SOURCE_MESH_MISSING");
+            var normalized = (assetPath ?? "").Replace('\\', '/');
+            if (!normalized.StartsWith("Assets/", StringComparison.Ordinal) ||
+                !normalized.EndsWith(".asset", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Split('/').Any(part => part == "." || part == ".."))
+                throw new InvalidOperationException(
+                    "MIKU_TOON_OUTPUT_PATH_INVALID");
+            var folder = Path.GetDirectoryName(normalized)?.Replace('\\', '/');
+            if (string.IsNullOrEmpty(folder))
+                throw new InvalidOperationException(
+                    "MIKU_TOON_OUTPUT_PATH_INVALID");
+            EnsureFolder(folder);
+            var clone = CloneForEditing(sourceMesh);
+            clone.name = Path.GetFileNameWithoutExtension(normalized);
+            try
+            {
+                MikuToonMeshData.GenerateSmoothNormalsFromSource(
+                    sourceMesh,
+                    clone,
+                    positionTolerance,
+                    smoothingAngle,
+                    includeBoneWeightSignature,
+                    true);
+                var existing = AssetDatabase.LoadAssetAtPath<Mesh>(normalized);
+                if (existing == null)
+                {
+                    AssetDatabase.CreateAsset(clone, normalized);
+                    clone = null;
+                    existing = AssetDatabase.LoadAssetAtPath<Mesh>(normalized);
+                }
+                else
+                {
+                    EditorUtility.CopySerialized(clone, existing);
+                    EditorUtility.SetDirty(existing);
+                }
+                AssetDatabase.SaveAssets();
+                return existing;
+            }
+            finally
+            {
+                if (clone != null)
+                    UnityEngine.Object.DestroyImmediate(clone);
+            }
+        }
+
         static string NormalizeFolder(string value)
         {
             var folder = (value ?? "").Replace('\\', '/').TrimEnd('/');
@@ -367,6 +423,83 @@ namespace Miku.ShaderConverter.Editor
                 throw new InvalidOperationException(
                     "MIKU_TOON_OUTPUT_FOLDER_INVALID");
             return folder;
+        }
+
+        static Mesh CloneForEditing(Mesh sourceMesh)
+        {
+            if (sourceMesh.isReadable)
+                return UnityEngine.Object.Instantiate(sourceMesh);
+            if (sourceMesh.blendShapeCount != 0)
+                throw new InvalidOperationException(
+                    "MIKU_TOON_NON_READABLE_BLEND_SHAPES_UNSUPPORTED");
+
+            using (var readArray =
+                   MeshUtility.AcquireReadOnlyMeshData(sourceMesh))
+            {
+                if (readArray.Length != 1)
+                    throw new InvalidOperationException(
+                        "MIKU_TOON_MESH_DATA_UNAVAILABLE");
+                var source = readArray[0];
+                var writableArray = Mesh.AllocateWritableMeshData(1);
+                var writableDisposed = false;
+                try
+                {
+                    var destination = writableArray[0];
+                    var attributes = sourceMesh.GetVertexAttributes();
+                    destination.SetVertexBufferParams(
+                        source.vertexCount,
+                        attributes);
+                    var streamCount = attributes.Length == 0
+                        ? 0
+                        : attributes.Max(value => value.stream) + 1;
+                    for (var stream = 0; stream < streamCount; stream++)
+                        destination.GetVertexData<byte>(stream).CopyFrom(
+                            source.GetVertexData<byte>(stream));
+
+                    var indexData = source.GetIndexData<byte>();
+                    var indexSize = sourceMesh.indexFormat ==
+                                    UnityEngine.Rendering.IndexFormat.UInt16
+                        ? 2
+                        : 4;
+                    destination.SetIndexBufferParams(
+                        indexData.Length / indexSize,
+                        sourceMesh.indexFormat);
+                    destination.GetIndexData<byte>().CopyFrom(indexData);
+                    destination.subMeshCount = source.subMeshCount;
+                    for (var index = 0;
+                         index < source.subMeshCount;
+                         index++)
+                        destination.SetSubMesh(
+                            index,
+                            source.GetSubMesh(index),
+                            UnityEngine.Rendering.MeshUpdateFlags
+                                .DontRecalculateBounds |
+                            UnityEngine.Rendering.MeshUpdateFlags
+                                .DontValidateIndices);
+
+                    var clone = new Mesh
+                    {
+                        name = sourceMesh.name,
+                        indexFormat = sourceMesh.indexFormat,
+                    };
+                    Mesh.ApplyAndDisposeWritableMeshData(
+                        writableArray,
+                        clone,
+                        UnityEngine.Rendering.MeshUpdateFlags
+                            .DontRecalculateBounds |
+                        UnityEngine.Rendering.MeshUpdateFlags
+                            .DontValidateIndices);
+                    writableDisposed = true;
+                    clone.bounds = sourceMesh.bounds;
+                    clone.bindposes = sourceMesh.bindposes;
+                    return clone;
+                }
+                finally
+                {
+                    if (!writableDisposed)
+                        writableArray.Dispose();
+                }
+            }
         }
 
         static void EnsureFolder(string folder)
@@ -443,26 +576,85 @@ namespace Miku.ShaderConverter.Editor
             if (!mesh.isReadable)
                 throw new InvalidOperationException(
                     "MIKU_TOON_SOURCE_MESH_NOT_READABLE");
+            GenerateSmoothNormalsFromSource(
+                mesh,
+                mesh,
+                positionTolerance,
+                smoothingAngle,
+                includeBoneWeightSignature,
+                overwriteExistingUv7);
+        }
+
+        public static void GenerateSmoothNormalsFromSource(
+            Mesh sourceMesh,
+            Mesh destinationMesh,
+            float positionTolerance,
+            float smoothingAngle,
+            bool includeBoneWeightSignature,
+            bool overwriteExistingUv7)
+        {
+            if (sourceMesh == null)
+                throw new ArgumentNullException(nameof(sourceMesh));
+            if (destinationMesh == null)
+                throw new ArgumentNullException(nameof(destinationMesh));
             if (float.IsNaN(positionTolerance) ||
                 float.IsInfinity(positionTolerance) ||
                 positionTolerance <= 0f)
                 throw new ArgumentOutOfRangeException(
                     nameof(positionTolerance));
-            var existing = new List<Vector3>();
-            mesh.GetUVs(7, existing);
-            if (existing.Count != 0 && !overwriteExistingUv7)
+            if (MikuToonMeshAssetCreator.HasUv7(sourceMesh) &&
+                !overwriteExistingUv7)
                 throw new InvalidOperationException(
                     "MIKU_TOON_UV7_ALREADY_PRESENT");
 
-            var vertices = mesh.vertices;
-            var normals = mesh.normals;
+            Vector3[] vertices;
+            Vector3[] normals;
+            var submeshIndices = new List<int[]>();
+            using (var meshDataArray =
+                   MeshUtility.AcquireReadOnlyMeshData(sourceMesh))
+            {
+                if (meshDataArray.Length != 1)
+                    throw new InvalidOperationException(
+                        "MIKU_TOON_MESH_DATA_UNAVAILABLE");
+                var meshData = meshDataArray[0];
+                using (var nativeVertices = new NativeArray<Vector3>(
+                           meshData.vertexCount,
+                           Allocator.Temp))
+                using (var nativeNormals = new NativeArray<Vector3>(
+                           meshData.vertexCount,
+                           Allocator.Temp))
+                {
+                    meshData.GetVertices(nativeVertices);
+                    meshData.GetNormals(nativeNormals);
+                    vertices = nativeVertices.ToArray();
+                    normals = nativeNormals.ToArray();
+                }
+                for (var subMesh = 0;
+                     subMesh < meshData.subMeshCount;
+                     subMesh++)
+                {
+                    var descriptor = meshData.GetSubMesh(subMesh);
+                    if (descriptor.topology != MeshTopology.Triangles)
+                        throw new InvalidOperationException(
+                            "MIKU_TOON_TRIANGLE_TOPOLOGY_REQUIRED");
+                    using (var nativeIndices = new NativeArray<int>(
+                               checked((int)descriptor.indexCount),
+                               Allocator.Temp))
+                    {
+                        meshData.GetIndices(
+                            nativeIndices,
+                            subMesh,
+                            true);
+                        submeshIndices.Add(nativeIndices.ToArray());
+                    }
+                }
+            }
             if (normals.Length != vertices.Length)
                 throw new InvalidOperationException(
                     "MIKU_TOON_NORMALS_MISSING");
             var areaNormals = new Vector3[vertices.Length];
-            for (var subMesh = 0; subMesh < mesh.subMeshCount; subMesh++)
+            foreach (var indices in submeshIndices)
             {
-                var indices = mesh.GetTriangles(subMesh, true);
                 for (var index = 0; index + 2 < indices.Length; index += 3)
                 {
                     var a = indices[index];
@@ -477,7 +669,14 @@ namespace Miku.ShaderConverter.Editor
                 }
             }
 
-            var boneWeights = mesh.boneWeights;
+            var boneWeights = sourceMesh.isReadable
+                ? sourceMesh.boneWeights
+                : Array.Empty<BoneWeight>();
+            if (includeBoneWeightSignature &&
+                !sourceMesh.isReadable &&
+                sourceMesh.bindposes.Length != 0)
+                throw new InvalidOperationException(
+                    "MIKU_TOON_BONE_WEIGHTS_UNAVAILABLE");
             var groups =
                 new Dictionary<PositionKey, List<int>>();
             for (var index = 0; index < vertices.Length; index++)
@@ -522,7 +721,7 @@ namespace Miku.ShaderConverter.Editor
                         : normals[index].normalized;
                 }
             }
-            mesh.SetUVs(7, result.ToList());
+            destinationMesh.SetUVs(7, result.ToList());
         }
 
         public static void InitializeVertexColors(
@@ -537,7 +736,12 @@ namespace Miku.ShaderConverter.Editor
                 throw new ArgumentNullException(nameof(mesh));
             if (mode == MikuVertexColorWriteMode.Preserve)
                 return;
-            var existing = mesh.colors32;
+            if (!mesh.isReadable && mode == MikuVertexColorWriteMode.Merge)
+                throw new InvalidOperationException(
+                    "MIKU_TOON_VERTEX_COLOR_MERGE_REQUIRES_READABLE_MESH");
+            var existing = mesh.isReadable
+                ? mesh.colors32
+                : Array.Empty<Color32>();
             if (existing.Length != mesh.vertexCount)
                 existing = Enumerable.Repeat(
                     new Color32(255, 255, 255, 0),
