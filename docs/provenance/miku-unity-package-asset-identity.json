@@ -508,7 +508,7 @@
       "role": "Folder"
     },
     {
-      "contentSha256": "b75e608aadefe1bfcb947cb1cd277665f138107d7693846c517ab4ee473a88f5",
+      "contentSha256": "795d07d2dd535b2efc84df5040f0851fdb848f7f2169db57f1296311dd0ff64b",
       "guid": "b7b6bba7618c4b44dbdf18f40be6f986",
       "metaPath": "Runtime/Profiles/MikuAnimeGlobalVolumeProfile.asset.meta",
       "path": "Runtime/Profiles/MikuAnimeGlobalVolumeProfile.asset",
@@ -773,7 +773,7 @@
       "role": "CSharp"
     }
   ],
-  "canonicalHash": "4736ec79ab197c512b869f7a913314a4f9d3f8b6e0a278db57d5fadfdfe48beb",
+  "canonicalHash": "0de980d41cc4cc062b96e4f1541896e8b4af07541a9ba18680d2b248d1fab240",
   "package": "com.miku.shaderconverter",
   "schema": "miku-package-asset-identity-1.0"
 }
