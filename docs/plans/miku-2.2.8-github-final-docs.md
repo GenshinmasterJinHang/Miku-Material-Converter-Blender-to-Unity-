@@ -76,3 +76,91 @@ Result, and public shader property names are not changed.
   `com.miku.shaderconverter-2.2.8.tgz`, and `SHA256SUMS.txt`.
 - All three assets were downloaded again from GitHub; the two package hashes
   matched the checked-in manifest and GitHub's asset digests.
+
+## Post-release documentation amendment: real captures and Game Toon guide
+
+Purpose and outcome: replace the synthetic UI illustrations with maintainer-
+provided Blender and Unity captures, document the four bundled Game Toon
+Shader/HLSL families and public Unity Editor tools, and add four maintainer-
+provided character renders to the bilingual manuals with an explicit non-
+commercial documentation-only notice. This amendment changes public GitHub
+documentation only; the released 2.2.8 packages, tag, schemas, APIs, and asset
+hashes remain immutable.
+
+Context and constraints:
+
+- English remains canonical and `docs/zh-CN/` mirrors its structure and claims.
+- Miku-authored source remains MIT. Only the four named character renders are
+  excluded from MIT and restricted to non-commercial learning and
+  documentation reference.
+- The two UI captures and four character renders are copied byte-for-byte. No
+  crop, recompression, or blur is applied. Text provenance records source
+  basenames only; the maintainer approved the captures' visible content.
+- The character renders remain outside both installable packages and all
+  existing Release assets.
+
+Progress:
+
+- [x] 2026-08-03: verified the clean canonical repository boundary, GitHub
+  authentication, merged predecessor PR #4, and latest `origin/main`.
+- [x] 2026-08-03: inspected the current MenuItem implementations, creator
+  validation, texture-import mutation, Mesh clone ownership, renderer-feature
+  installer, Volume profile rebuild, custom inspectors, and migration tools.
+- [x] 2026-08-03: imported the six approved PNG files byte-for-byte and recorded
+  their source basenames, display mappings, terms, and SHA-256 hashes.
+- [x] 2026-08-03: rewrote the bilingual README/Manual content, documented all
+  public tools, and retired the four synthetic localized captures and renderer.
+- [x] 2026-08-03: extended public-documentation regression coverage; the focused
+  8-test module, full 253-test Python suite, and PR profile passed.
+- [ ] Publish, review, and merge the documentation PR without touching v2.2.8.
+
+Discoveries:
+
+- `Miku > Game Toon > Textures > Import Audit` applies recognized Endfield
+  TextureImporter settings, reimports changed textures, and writes
+  `Assets/Miku/Reports/endfield-texture-import-audit.json`; it is not a read-
+  only scanner.
+- The Smooth Normal Generator writes UV7 only on a cloned Mesh asset and leaves
+  the source Mesh, importer, and Renderer references untouched.
+- The Toon Material Recipe inspector exposes synchronization metadata; part
+  application occurs through the matching Miku material Inspector workflow.
+
+Decision log:
+
+- Preserve the existing English image filenames for the two real UI captures
+  so historical public links remain valid. Remove the two obsolete localized
+  synthetic PNGs and their renderer script; both languages use the real UI
+  captures.
+- Put the four-character 2x2 gallery in both manuals. Keep README concise with
+  a preset table and a link to the manual gallery.
+- Record the four-image restriction in a dedicated provenance document and in
+  `THIRD_PARTY_NOTICES.md`; do not alter the MIT license or package metadata.
+
+Implementation sequence:
+
+1. Import and hash the two UI captures and four character renders.
+2. Update English/Chinese README and Manual with mirrored preset, tool, image,
+   ownership, and licensing text.
+3. Add provenance and third-party notice entries; remove synthetic captures.
+4. Extend link, image, hash, menu, version, and license regression coverage.
+
+Validation:
+
+- `py -3.13 -m unittest tests.test_public_docs`
+- `py -3.13 -m unittest discover -s tests -p "test_*.py"`
+- `py -3.13 tools/ci/run_checks.py --profile pr`
+- `git diff --check`
+- Visual review of all six PNGs and GitHub Markdown layout.
+
+Results and follow-up:
+
+- The six repository PNG hashes match their maintainer-provided source files.
+  Visual review confirmed the two UI captures and all four front-facing renders
+  are readable and correctly mapped.
+- Passed `py -3.13 -m unittest tests.test_public_docs` (8 tests), the full
+  Python suite (253 tests), `tools/ci/run_checks.py --profile pr`, and
+  `git diff --check`.
+- Blender and Unity runtime suites were not rerun because no package, runtime,
+  API, schema, Shader, or menu behavior changed. The PR profile still rebuilt
+  both packages and verified their canonical identity.
+- GitHub PR/CI/merge results remain to be appended before delivery.

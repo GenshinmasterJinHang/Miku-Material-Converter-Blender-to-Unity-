@@ -15,10 +15,21 @@ Project Authors code licensed under MIT. They are not third-party ports and do
 not require a third-party attribution entry. Their provenance is recorded in
 `docs/provenance/game-workflow-backends.md`.
 
-The repository and public artifacts contain no game-extracted Shader code,
-models, textures, logos, character data, or other protected game assets. Miku
-is unofficial and has no affiliation, authorization, sponsorship, or
-endorsement relationship with the relevant game publishers or developers.
+The installable Blender and Unity packages and existing v2.2.8 Release assets
+contain no game-extracted Shader code, models, textures, logos, character data,
+or other protected game assets. Miku is unofficial and has no affiliation,
+authorization, sponsorship, or endorsement relationship with the relevant game
+publishers or developers.
+
+The GitHub manuals contain four maintainer-provided character-render examples
+for Genshin, Honkai: Star Rail, Wuthering Waves, and Arknights: Endfield. Those
+four PNG files are excluded from Miku's MIT license and are provided solely for
+non-commercial learning and documentation reference; commercial use is
+prohibited. Related characters, designs, and intellectual property belong to
+their respective rights holders, and Miku grants no game-asset rights. Exact
+file identities, hashes, and display mappings are recorded in
+`docs/provenance/documentation-images.md`. The four PNG files are not included
+in either installable package or the existing v2.2.8 Release assets.
 
 The MIT Semantic Exporter communicates with the GPL Bake Worker only through
 versioned request/result JSON and baked files. MIT code does not import the GPL
