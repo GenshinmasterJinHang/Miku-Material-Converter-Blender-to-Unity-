@@ -163,6 +163,91 @@ def main() -> None:
     )
     assert_no_errors(multi_lobe_document)
 
+    three_lobe = new_material("MikuThreePrincipledCoating")
+    three_tree = three_lobe.node_tree
+    principled = [
+        three_tree.nodes.new("ShaderNodeBsdfPrincipled")
+        for _ in range(3)
+    ]
+    first_mix = three_tree.nodes.new("ShaderNodeMixShader")
+    final_mix = three_tree.nodes.new("ShaderNodeMixShader")
+    layer_weight = three_tree.nodes.new("ShaderNodeLayerWeight")
+    three_tree.links.new(principled[0].outputs[0], first_mix.inputs[1])
+    three_tree.links.new(principled[1].outputs[0], first_mix.inputs[2])
+    three_tree.links.new(first_mix.outputs[0], final_mix.inputs[1])
+    three_tree.links.new(principled[2].outputs[0], final_mix.inputs[2])
+    three_tree.links.new(layer_weight.outputs["Facing"], final_mix.inputs[0])
+    three_tree.links.new(
+        final_mix.outputs[0],
+        output_node(three_lobe).inputs["Surface"],
+    )
+    three_lobe_document = material_ir(three_lobe)
+    assert len(three_lobe_document["weightedClosures"]["terms"]) == 3
+    for term in three_lobe_document["weightedClosures"]["terms"]:
+        for name in ("Normal", "Coat Normal"):
+            parameter = term["parameters"].get(name)
+            if parameter and parameter.get("kind") == "Constant":
+                assert parameter["value"] == [0.0, 0.0, 1.0], parameter
+    assert_no_errors(three_lobe_document)
+
+    blue_emission = mix_material(
+        "MikuBlueViewEmission",
+        "ShaderNodeBsdfPrincipled",
+        "ShaderNodeEmission",
+        dynamic_factor=True,
+    )
+    blue_node = next(
+        node
+        for node in blue_emission.node_tree.nodes
+        if node.bl_idname == "ShaderNodeEmission"
+    )
+    blue_node.inputs["Color"].default_value = (0.0, 0.303, 1.0, 1.0)
+    blue_node.inputs["Strength"].default_value = 11.2
+    blue_document = material_ir(blue_emission)
+    blue_term = next(
+        term
+        for term in blue_document["weightedClosures"]["terms"]
+        if term["domain"] == "Emission"
+    )
+    blue_color = blue_term["parameters"]["Color"]["value"]
+    assert all(
+        abs(actual - expected) < 1e-5
+        for actual, expected in zip(blue_color[:3], (0.0, 0.303, 1.0))
+    ), blue_term
+    assert abs(blue_term["parameters"]["Strength"]["value"] - 11.2) < 1e-5
+    assert "expressionId" in str(blue_term["finalWeight"]), blue_term
+    assert_no_errors(blue_document)
+
+    shared_normal = new_material("MikuSharedBakedNormalLobes")
+    normal_tree = shared_normal.node_tree
+    diffuse = normal_tree.nodes.new("ShaderNodeBsdfDiffuse")
+    glossy = normal_tree.nodes.new("ShaderNodeBsdfGlossy")
+    bump = normal_tree.nodes.new("ShaderNodeBump")
+    height = normal_tree.nodes.new("ShaderNodeValue")
+    add = normal_tree.nodes.new("ShaderNodeAddShader")
+    normal_tree.links.new(height.outputs[0], bump.inputs["Height"])
+    normal_tree.links.new(bump.outputs["Normal"], diffuse.inputs["Normal"])
+    normal_tree.links.new(bump.outputs["Normal"], glossy.inputs["Normal"])
+    normal_tree.links.new(diffuse.outputs[0], add.inputs[0])
+    normal_tree.links.new(glossy.outputs[0], add.inputs[1])
+    normal_tree.links.new(
+        add.outputs[0],
+        output_node(shared_normal).inputs["Surface"],
+    )
+    normal_document = material_ir(shared_normal)
+    normal_parameters = [
+        term["parameters"]["Normal"]
+        for term in normal_document["weightedClosures"]["terms"]
+    ]
+    assert all(
+        item["kind"] == "ValueExpression"
+        for item in normal_parameters
+    ), normal_parameters
+    assert len(
+        {item["expressionId"] for item in normal_parameters}
+    ) == 1, normal_parameters
+    assert_no_errors(normal_document)
+
     glass = mix_material(
         "MikuStrictGlass",
         "ShaderNodeBsdfTransparent",

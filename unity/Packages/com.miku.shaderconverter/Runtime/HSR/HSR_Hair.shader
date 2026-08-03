@@ -28,8 +28,8 @@ Shader "MIKU/HSR/Hair"
         _RimLightWidth ("Rim Width", Range(0,10)) = 1
         _RimLightThreshold ("Rim Depth Threshold", Range(0,1)) = 0.03
         _RimLightFadeout ("Rim Fadeout", Range(0.001,1)) = 0.2
-        _FresnelPower ("Fresnel Power", Range(0.1,8)) = 3
-        _FresnelClamp ("Fresnel Clamp", Range(0,1)) = 1
+        [HideInInspector] _FresnelPower ("Legacy Fresnel Power", Range(0.1,8)) = 3
+        [HideInInspector] _FresnelClamp ("Legacy Fresnel Clamp", Range(0,1)) = 1
         _OutlineWidth ("Outline Width", Range(0,0.1)) = 0.001
         _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
         _OutlineDistanceScale ("Outline Distance Scale", Range(0,1)) = 1
@@ -88,18 +88,35 @@ Shader "MIKU/HSR/Hair"
                 indirect *= lerp(1.0.xxx, baseColor, _IndirectLightMixBaseColor);
                 float3 mainLightColor = lerp(HSR_Desaturate(mainLight.color.rgb), mainLight.color.rgb, _MainLightColorUsage);
                 float3 direct = mainLightColor * baseColor * rampColor;
-                float3 rim = HSR_FresnelRimLight(
-                    normalWS,
-                    viewDirWS,
-                    _RimLightTintColor.rgb,
-                    _RimLightBrightness,
-                    _FresnelPower,
-                    _FresnelClamp);
-                float3 finalColor = indirect + direct + specular + rim;
+                float3 finalColor = indirect + direct + specular;
                 return half4(finalColor, 1.0);
             }
             ENDHLSL
         }
+        Pass
+        {
+            Name "MikuToonCharacterMask"
+            Tags { "LightMode"="MikuToonCharacterMask" }
+            Cull Back
+            ZWrite Off
+            ZTest Equal
+            HLSLPROGRAM
+            #pragma target 4.5
+            #pragma vertex MikuGameScreenRimVertex
+            #pragma fragment MikuGameScreenRimFragment
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float4 _BaseColorTint;
+                float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal;
+                float _ShadowThresholdCenter; float _ShadowThresholdSoftness; float _ShadowRampOffset; float _MainLightColorUsage;
+                float _SpecularExponent; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness;
+                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
+                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
+            CBUFFER_END
+            #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonScreenRimPass.hlsl"
+            ENDHLSL
+        }
+
         Pass
         {
             Name "Outline"

@@ -92,8 +92,16 @@ namespace Miku.ShaderConverter.Editor
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (material == null)
                 return 0;
+            if (material.shader != null && string.Equals(
+                    material.shader.name,
+                    "MGIR/GenericToon/Lit",
+                    StringComparison.Ordinal))
+                throw new InvalidOperationException(
+                    "MIKU_WORKFLOW_RETIRED:generic_toon");
             if (apply)
-                Undo.RecordObject(material, "Upgrade MiGR material data");
+                Undo.RecordObject(
+                    material,
+                    MikuEditorLocalization.Tr("Upgrade MiGR material data"));
             var serialized = new SerializedObject(material);
             serialized.Update();
             var changed = 0;
@@ -121,17 +129,6 @@ namespace Miku.ShaderConverter.Editor
                         key.stringValue = next;
                 }
             }
-            if (material.shader != null &&
-                string.Equals(
-                    material.shader.name,
-                    "MGIR/GenericToon/Lit",
-                    StringComparison.Ordinal))
-            {
-                changed++;
-                if (apply)
-                    material.shader = Shader.Find(
-                        "Miku/GenericToon/GenericOpaque");
-            }
             if (apply && changed > 0)
             {
                 serialized.ApplyModifiedProperties();
@@ -146,7 +143,9 @@ namespace Miku.ShaderConverter.Editor
             if (clip == null)
                 return 0;
             if (apply)
-                Undo.RecordObject(clip, "Upgrade MiGR animation curves");
+                Undo.RecordObject(
+                    clip,
+                    MikuEditorLocalization.Tr("Upgrade MiGR animation curves"));
             var changed = 0;
             foreach (var binding in AnimationUtility.GetCurveBindings(clip))
             {
@@ -319,8 +318,6 @@ namespace Miku.ShaderConverter.Editor
                     ".migr-unity-receipt.json",
                     ".miku-unity-receipt.json")
                 .Replace(".migrmanifest.json", ".miku-manifest.json")
-                .Replace("MGIR/GenericToon/Lit",
-                    "Miku/GenericToon/GenericOpaque")
                 .Replace("MiGR Generated", "Miku Generated")
                 .Replace("_MIGR_", "_MIKU_")
                 .Replace("_MGIR_", "_MIKU_");

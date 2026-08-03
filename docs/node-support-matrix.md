@@ -1,6 +1,6 @@
 # Blender 5.2 EEVEE node support matrix
 
-This document defines the project scope for Miku 1.0.1. It distinguishes
+This document defines the project scope for Miku 2.0.0. It distinguishes
 accepted input from visual parity: a node can be accepted and translated while
 still requiring an explicit approximation or bake.
 
@@ -29,6 +29,12 @@ Evidence:
 
 ## Output and scope rules
 
+- `genshin_toon`, `wuwa_toon`, and `hsr_toon` are tolerant fixed-shader
+  workflows: arbitrary graph topology is retained only in Source Map, static
+  Image Textures export by controlled roles, and neither Shader Graph nor bake
+  jobs are generated.
+- `standard_pbr` remains governed by the strict per-node rules below.
+
 - The exporter resolves an active EEVEE-target Material Output first, then an
   active `ALL` output.
 - A required surface connected only to a Cycles-target output is unsupported.
@@ -38,10 +44,13 @@ Evidence:
 - The isolated internal channel baker may temporarily select Cycles because
   Blender exposes material bake operators through that engine. It restores
   engine, selection, active object, materials, and generated temporary data.
-- Auto, Prefer Native, and Reusable Bake Only are portable and never emit a
-  mesh-bound Texture2D. Source Mesh Fidelity is required for Wireframe, Noise
-  Color, non-Point Mapping, complex static closure projection, or another
-  UV/topology-bound expression. Auto reports
+- Auto and Reusable Bake Only never select a mesh-bound route. Portable Hybrid
+  (`PreferNative`) additionally permits statically proven UV0 islands to bake
+  on a canonical 0-1 plane while View Direction, Camera, Time, Fresnel, and
+  Layer Weight remain runtime expressions. Generated/Object coordinates,
+  geometry normals, Wireframe, AO, topology, or other mesh-surface dependencies
+  are rejected with `MIKU_PORTABLE_HYBRID_MESH_DEPENDENCY`. Source Mesh
+  Fidelity is required for mesh-bound Texture2D output. Auto reports
   `MIKU_SOURCE_MESH_FIDELITY_REQUIRED` and never changes mode implicitly.
 
 ## Miku 1.0.1 corpus evidence
@@ -74,7 +83,7 @@ artifacts are not repository fixtures.
 | Transparent BSDF | URP transparent/alpha coverage | Supported — Equivalent / Approximate | White transparency maps cleanly. Blender documents colored/additive transparency as blend-mode dependent; those cases require review. |
 | Sheen BSDF | Fresnel-tinted cloth/sheens approximation | Supported — Approximate | Blender's 5.2 EEVEE manual lists standalone Sheen BSDF as unsupported. URP has no identical sheen lobe. |
 | Material Output — Surface | EEVEE-first active-chain selection | Supported — Equivalent | Multiple active outputs are resolved deterministically and reported. |
-| Material Output — Displacement | `BUMP` → fragment Normal From Height; `DISPLACEMENT` → Object-space Vertex Position; `BOTH` → both | Supported — Equivalent / Requires project setup | Height uses LOD 0 in Vertex. The Displacement node must use Object space, an unlinked Normal input, and finite constant Midlevel/Scale. True displacement reports that sufficient mesh subdivision is required. |
+| Material Output — Displacement | `BUMP` → fragment Normal From Height; `DISPLACEMENT` → Object-space Vertex Position; `BOTH` → both | Supported — Equivalent / Requires project setup | `FOLLOW_BLENDER` preserves Blender's mode. `ALWAYS_VERTEX` may promote a Bump Height source using Midlevel `0.5` and finite constant `Strength × Distance` (negated by Invert). `MAP_ONLY` exports the raw Height map without connecting Vertex Position. Height is Linear R half-float and uses UV0/LOD 0 in Vertex. Different active Height sources are never guessed or merged. True displacement requires sufficient mesh subdivision. |
 
 The following shader families are outside the generic material converter:
 
@@ -122,6 +131,7 @@ Not every procedural texture requires baking.
 | --- | --- | --- |
 | Value/RGB, Math, Vector Math | Supported — Exact/Equivalent for mapped operations | Invalid type, NaN/Infinity, or stage combinations fail validation. |
 | Texture Coordinate / UV Map / Mapping | Supported — Exact/Equivalent/Approximate by mode | UV0/UV1, Object, World, View, Tangent, and Screen spaces remain distinct. Generated coordinates and unsupported instancer behavior are diagnosed. |
+| Wuwa Eye static Point Mapping | Supported — Equivalent | For `EyeUpperHighlight`, `EyeLowerHighlight`, and optional `EyeEG`, a static UV0 Point Mapping is lowered to a six-value Affine2D binding. Linked/animated values, other vector types, and non-UV0 sources are diagnosed and left unbound. |
 | Separate/Combine Color or XYZ | Supported — Equivalent | Explicit scalar/vector/color conversions are emitted. Separate Color/XYZ and Image Alpha may define deterministic packed Metalness, Roughness, Ambient Occlusion, Height, Alpha, and Emission Mask channel bindings. One physical packed image/property/sample is reused per resource, UV, and LOD. |
 | Invert / Mix Color Multiply / legacy MixRGB Multiply | Supported — Equivalent for mapped routes | Invert remains an explicit One Minus expression. Multiply uses Blender's Factor semantics. AO topology is recognized from the connection to Base Color; no filename or pixel inspection is used. |
 | Color Ramp | Supported — Expanded/Baked | Two-element Linear, Ease, and B-Spline ramps expand to native math; B-Spline uses replicated endpoints and cubic weights. Other verified static forms bake, while unsupported dynamic forms fail explicitly. |

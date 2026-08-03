@@ -48,8 +48,20 @@ namespace Miku.ShaderConverter.Editor
         const string LegacyKindV2 = "migr-bundle-2.0";
         const string LegacyKindV21 = "migr-bundle-2.1";
         const string LegacyKindV22 = "migr-bundle-2.2";
-        const string PackageVersion = "1.0.1";
-        const string ExpectedProfileHash = "fe56024961668585c82c96a48a45ea5fe87b8598a6d04b55eb8e608003186eee";
+        const string PackageVersion = "2.2.8";
+        const string ExpectedProfileHash = "7700bb62aae8ddcfaa2e519079c2bd8e79e30c7fa30f8e493d084117aab1228d";
+        const string Package226ProfileHash = "2430a52781ef9d2e6172ce274800d5639732a144143d3ee4513a4a336d53b7ca";
+        const string Package224ProfileHash = "a5f985ee6ea8d494d47c2f9256425ced29f716c203128eaea06abc0d432dc7cd";
+        const string Package200ProfileHash = "82f6ac3e109825ec0db7035844fe1f2b3f4c7a8d8dc83752abc11844e8d834c6";
+        const string Package105PreUnlitRadianceRoutingProfileHash = "b69be9de5a4d85a77f0bdeccf8c4be9feda6b0fb5e67da3461d95ca49798646f";
+        const string Package105PreRealtimeShadowProfileHash = "b24efa12840a0aa553f2cc093d1a8a0fcb80932e2fd876007363ecb511241c35";
+        const string Package105PreUnlitMainLightProfileHash = "5d04ac540690a9e6a55ea1cbd7eb99f257777243119a9e07f0d58584cef439ab";
+        const string Package105PreFiniteNormalGuardProfileHash = "d14afe0be23435bc3e63b6d4f255f758628f782d6f9844495a93f38531a077ab";
+        const string Package104ProfileHash = "c8450c824a8e8b75d1c979cba68cfbe9573747116dce60d553e67b3eda7e06e4";
+        const string Package103ProfileHash = "b9e8f39f08ed1d76da8e6af18ae58e14ea84cc05a009a0b7d4479978d629841b";
+        const string Package102HeightProfileHash = "7de7739b0c6e751b848613379e687129957993e2143f3740d36c5a36a79b6516";
+        const string Package102PreHeightProfileHash = "cca2380ce3997244d321f12279353a2f0183117d098bd46edf58b844145d60ae";
+        const string Package102PreviousProfileHash = "08899c54368aa04f71336630d13bb36259686f0ab05c09a71d71951738a80275";
         const string Package101PreviousProfileHash = "a9bd14623ee3dd1247fa1f4915c8f176dbfd2f2034160ae54dcaa09b816c7d1b";
         const string Miku100ProfileHash = "2a31076c3312ebf53c2a801b17b20ea276ebe87880a73fcc1c8125c37f916be6";
         const string Package220ProfileHash = "50bb9fb048707256b3882a757253a3fc685e791395b5bc9872fb7daf98129848";
@@ -97,6 +109,18 @@ namespace Miku.ShaderConverter.Editor
             new[]
             {
                 ExpectedProfileHash,
+                Package226ProfileHash,
+                Package224ProfileHash,
+                Package200ProfileHash,
+                Package105PreUnlitRadianceRoutingProfileHash,
+                Package105PreRealtimeShadowProfileHash,
+                Package105PreUnlitMainLightProfileHash,
+                Package105PreFiniteNormalGuardProfileHash,
+                Package104ProfileHash,
+                Package103ProfileHash,
+                Package102HeightProfileHash,
+                Package102PreHeightProfileHash,
+                Package102PreviousProfileHash,
                 Package101PreviousProfileHash,
                 Miku100ProfileHash,
                 Package220ProfileHash,
@@ -155,6 +179,17 @@ namespace Miku.ShaderConverter.Editor
                     return Fail(result, "MIKU_BUNDLE_MISSING");
                 var bundle = ParseJson(bundlePath, "MIKU_BUNDLE_JSON_INVALID");
                 ValidateBundleHeader(bundle);
+                var currentMikuBundle = string.Equals(
+                    bundle["documentKind"]?.Value<string>(),
+                    ExpectedKindV1,
+                    StringComparison.Ordinal);
+                var hasCurrentSourceMesh = currentMikuBundle &&
+                    (bundle["resources"] as JArray ?? new JArray())
+                    .OfType<JObject>()
+                    .Any(item => string.Equals(
+                        item["semantic"]?.Value<string>(),
+                        "SourceMesh",
+                        StringComparison.Ordinal));
                 var bundleProfileHash = RequireSha256(bundle, "targetProfileHash");
                 if (string.Equals(
                         bundleProfileHash,
@@ -219,8 +254,13 @@ namespace Miku.ShaderConverter.Editor
                     transactionRoot,
                     bundle["ir"] as JObject,
                     "miku-material-ir-1.0");
+                var plan = LoadStagedDocument(
+                    transactionRoot,
+                    bundle["plan"] as JObject,
+                    "miku-conversion-plan-1.0");
+                ValidatePortableHybridBundle(plan, bundle);
                 var hasSurfaceModelPlan =
-                    MikuSurfaceModelBackends.IsMaterialIr2(ir);
+                    MikuSurfaceModelBackends.HasSurfaceModelPlan(ir);
                 if (hasSurfaceModelPlan &&
                     (
                         string.Equals(
@@ -285,19 +325,30 @@ namespace Miku.ShaderConverter.Editor
                     bundle["manifest"] as JObject,
                     "miku-conversion-manifest-1.0");
                 ValidateManifest(manifest, bundle);
+                NormalizeLegacyClosureZeroNormals(
+                    ir,
+                    bundleProfileHash,
+                    result.diagnostics);
                 if (HasLegacyZeroNormalChannel(ir))
                 {
                     AddDiagnosticOnce(
                         result.diagnostics,
                         "MIKU_LEGACY_ZERO_NORMAL_NORMALIZED");
                 }
+                if (RequiresClosureFiniteSanitization(ir))
+                {
+                    AddDiagnosticOnce(
+                        result.diagnostics,
+                        "MIKU_CLOSURE_NONFINITE_VALUE_SANITIZED");
+                }
                 var workflowBackend = MikuWorkflowBackends.Resolve(ir);
+                var fixedWorkflow =
+                    MikuFixedWorkflowTextureBindings.IsFixed(
+                        workflowBackend.Kind);
                 var createUserMaterialVariant =
                     request.createMaterialVariant ||
-                    string.Equals(
-                        workflowBackend.Kind,
-                        "generic_toon",
-                        StringComparison.Ordinal);
+                    fixedWorkflow ||
+                    hasCurrentSourceMesh;
                 var surfaceGenerator =
                     hasSurfaceModelPlan &&
                     string.Equals(
@@ -346,6 +397,11 @@ namespace Miku.ShaderConverter.Editor
                     materialRoot + "/" + outputStem + ".toon-recipe.asset",
                     toonRecipeGuid,
                     ".asset");
+                if (fixedWorkflow)
+                    ApplyPersistedFixedWorkflowSelection(
+                        toonRecipePath,
+                        workflowBackend.Kind,
+                        ir);
                 var manifestPath = materialRoot + "/" + outputStem + ".miku-manifest.json";
                 var identityPath = string.IsNullOrEmpty(location.identityPath)
                     ? materialRoot + "/" + outputStem + ".miku-assets.json"
@@ -385,6 +441,7 @@ namespace Miku.ShaderConverter.Editor
                             ? recordedSubGraphPath
                             : null);
                 }
+                Material sourceMeshMaterial = null;
                 if (createUserMaterialVariant)
                 {
                     ValidateStableGuidOwnership(
@@ -395,10 +452,7 @@ namespace Miku.ShaderConverter.Editor
                         "UserMaterialVariant",
                         materialVariantPath,
                         materialVariantGuid);
-                    if (string.Equals(
-                            workflowBackend.Kind,
-                            "generic_toon",
-                            StringComparison.Ordinal))
+                    if (fixedWorkflow)
                         ValidateStableGuidOwnership(
                             "ToonMaterialRecipe",
                             toonRecipePath,
@@ -605,11 +659,12 @@ namespace Miku.ShaderConverter.Editor
                 else
                 {
                     result.diagnostics.Add(
-                        "MIKU_STATIC_TOON_BACKEND:GenericOpaque");
+                        "MIKU_STATIC_TOON_BACKEND:" +
+                        FixedWorkflowSelection(workflowBackend.Kind, ir));
                 }
                 CopyStagedReference(transactionRoot, bundle["manifest"] as JObject, manifestPath);
 
-                var textures = ImportResources(
+                var importedTextures = ImportResources(
                     transactionRoot,
                     bundle["resources"] as JArray,
                     location,
@@ -617,6 +672,19 @@ namespace Miku.ShaderConverter.Editor
                     persistentSourceId,
                     persistentMaterialId,
                     result);
+                var fixedTextureBindings = fixedWorkflow
+                    ? ResolveFixedWorkflowTextureBindings(
+                        bundle["resources"] as JArray,
+                        importedTextures,
+                        workflowBackend.Kind,
+                        result.diagnostics)
+                    : Array.Empty<MikuToonTextureBinding>();
+                var materialTextures = fixedWorkflow
+                    ? fixedTextureBindings.ToDictionary(
+                        item => item.role,
+                        item => (Texture2D)item.texture,
+                        StringComparer.Ordinal)
+                    : importedTextures;
                 AssetDatabase.Refresh(
                     ImportAssetOptions.ForceSynchronousImport |
                     ImportAssetOptions.ForceUpdate);
@@ -636,6 +704,20 @@ namespace Miku.ShaderConverter.Editor
                     ValidateShader(editableGraphShader, graphPath);
                 }
                 var shader = workflowBackend.ResolveShader(ir, editableGraphShader);
+                if (MikuFixedWorkflowTextureBindings.IsGame(
+                        workflowBackend.Kind) &&
+                    string.Equals(
+                        ir["workflow"]?["part"]?.Value<string>(),
+                        "Effect",
+                        StringComparison.Ordinal) &&
+                    !string.Equals(
+                        workflowBackend.Kind,
+                        "wuwa_toon",
+                        StringComparison.Ordinal))
+                    AddDiagnosticOnce(
+                        result.diagnostics,
+                        "MIKU_LEGACY_EFFECT_PART_FALLBACK_BODY:" +
+                        workflowBackend.Kind);
                 ValidateShader(shader, workflowBackend.UsesEditableGraph ? graphPath : shader.name);
 
                 if (createUserMaterialVariant)
@@ -649,10 +731,15 @@ namespace Miku.ShaderConverter.Editor
                     BindMaterial(
                         baseMaterial,
                         ir,
-                        textures,
+                        materialTextures,
                         workflowBackend.Kind,
                         workflowBackend.UsesEditableGraph,
                         result.diagnostics);
+                    if (fixedWorkflow)
+                        MikuFixedWorkflowTextureBindings.Bind(
+                            baseMaterial,
+                            workflowBackend.Kind,
+                            fixedTextureBindings);
                     MikuManualTextureKeywordUtility.SyncKeywords(baseMaterial);
                     EditorUtility.SetDirty(baseMaterial);
                     AssetDatabase.SaveAssetIfDirty(baseMaterial);
@@ -662,7 +749,7 @@ namespace Miku.ShaderConverter.Editor
                     ValidateMaterial(
                         baseMaterialPath,
                         shader,
-                        textures,
+                        materialTextures,
                         workflowBackend.Kind,
                         ir);
                     var userMaterial = GetOrCreateUserMaterialVariant(
@@ -671,12 +758,10 @@ namespace Miku.ShaderConverter.Editor
                         baseMaterial,
                         sourceName);
                     ValidateMaterialVariant(materialVariantPath, baseMaterial);
+                    sourceMeshMaterial = userMaterial;
                     result.assetPaths.Add(baseMaterialPath);
                     result.assetPaths.Add(materialVariantPath);
-                    if (string.Equals(
-                            workflowBackend.Kind,
-                            "generic_toon",
-                            StringComparison.Ordinal))
+                    if (fixedWorkflow)
                     {
                         var recipeExisted =
                             File.Exists(
@@ -684,7 +769,12 @@ namespace Miku.ShaderConverter.Editor
                         MikuToonRecipeUtility.CreateOrUpdateImported(
                             toonRecipePath,
                             baseMaterial,
-                            userMaterial);
+                            userMaterial,
+                            workflowBackend.Kind,
+                            FixedWorkflowSelection(
+                                workflowBackend.Kind,
+                                ir),
+                            fixedTextureBindings);
                         EnsureMetaGuid(
                             toonRecipePath,
                             toonRecipeGuid,
@@ -693,6 +783,9 @@ namespace Miku.ShaderConverter.Editor
                             toonRecipePath,
                             ImportAssetOptions.ForceSynchronousImport);
                         result.assetPaths.Add(toonRecipePath);
+                        AddDiagnosticOnce(
+                            result.diagnostics,
+                            "MIKU_TOON_SCREEN_RIM_RENDERER_FEATURE_REQUIRED");
                     }
                 }
                 var sourceMeshResource = (
@@ -702,7 +795,22 @@ namespace Miku.ShaderConverter.Editor
                         item["semantic"]?.Value<string>(),
                         "SourceMesh",
                         StringComparison.Ordinal));
-                if (sourceMeshResource != null)
+                if (sourceMeshResource != null && currentMikuBundle)
+                {
+                    if (sourceMeshMaterial == null)
+                        throw new InvalidDataException(
+                            "MIKU_SOURCE_MESH_MATERIAL_REQUIRED");
+                    ImportSourceMeshAssets(
+                        transactionRoot,
+                        sourceMeshResource,
+                        location,
+                        materialRoot,
+                        persistentSourceId,
+                        persistentMaterialId,
+                        sourceMeshMaterial,
+                        result);
+                }
+                else if (sourceMeshResource != null)
                     AddDiagnosticOnce(
                         result.diagnostics,
                         "MIKU_SOURCE_MESH_IGNORED_EXPLICIT_TOOL_REQUIRED");
@@ -718,19 +826,13 @@ namespace Miku.ShaderConverter.Editor
                     createUserMaterialVariant ? AssetDatabase.AssetPathToGUID(baseMaterialPath) : "",
                     createUserMaterialVariant ? materialVariantPath : "",
                     createUserMaterialVariant ? AssetDatabase.AssetPathToGUID(materialVariantPath) : "",
-                    string.Equals(
-                        workflowBackend.Kind,
-                        "generic_toon",
-                        StringComparison.Ordinal)
+                    fixedWorkflow
                         ? toonRecipePath
                         : "",
-                    string.Equals(
-                        workflowBackend.Kind,
-                        "generic_toon",
-                        StringComparison.Ordinal)
+                    fixedWorkflow
                         ? AssetDatabase.AssetPathToGUID(toonRecipePath)
                         : "",
-                    textures);
+                    importedTextures);
                 MikuAtomicAssetWriter.WriteIfChanged(ToAbsoluteProjectPath(identityPath), identity.ToString(Formatting.Indented) + "\n");
                 if (workflowBackend.UsesEditableGraph)
                     result.assetPaths.AddRange(new[] { graphPath, subGraphPath });
@@ -745,12 +847,9 @@ namespace Miku.ShaderConverter.Editor
                     workflowBackend.UsesEditableGraph ? graphPath : "",
                     workflowBackend.UsesEditableGraph ? subGraphPath : "",
                     shader,
-                    textures,
+                    importedTextures,
                     createUserMaterialVariant,
-                    string.Equals(
-                        workflowBackend.Kind,
-                        "generic_toon",
-                        StringComparison.Ordinal)
+                    fixedWorkflow
                         ? toonRecipePath
                         : "",
                     workflowBackend.Kind);
@@ -1046,13 +1145,25 @@ namespace Miku.ShaderConverter.Editor
             var isLegacy =
                 legacyVersion == "1.0" ||
                 legacyVersion == "2.0";
+            var isMaterialIrV2 =
+                string.Equals(
+                    expectedKind,
+                    "miku-material-ir-1.0",
+                    StringComparison.Ordinal) &&
+                string.Equals(
+                    actualKind,
+                    "miku-material-ir-2.0",
+                    StringComparison.Ordinal);
             if (!string.Equals(
                     actualKind,
                     expectedKind,
                     StringComparison.Ordinal) &&
-                !isLegacy)
+                !isLegacy &&
+                !isMaterialIrV2)
                 throw new InvalidDataException("MIKU_DOCUMENT_KIND_MISMATCH:" + expectedKind);
-            var expectedVersion = isLegacy ? legacyVersion : "1.0";
+            var expectedVersion = isLegacy
+                ? legacyVersion
+                : isMaterialIrV2 ? "2.0" : "1.0";
             if (!string.Equals(
                     document["schemaVersion"]?.Value<string>(),
                     expectedVersion,
@@ -1236,6 +1347,155 @@ namespace Miku.ShaderConverter.Editor
             return textures;
         }
 
+        static MikuToonTextureBinding[]
+            ResolveFixedWorkflowTextureBindings(
+                JArray resources,
+                IReadOnlyDictionary<string, Texture2D> importedTextures,
+                string workflowKind,
+                IList<string> diagnostics)
+        {
+            var result = new Dictionary<string, MikuToonTextureBinding>(
+                StringComparer.Ordinal);
+            foreach (var resource in (resources ?? new JArray())
+                         .OfType<JObject>()
+                         .OrderBy(
+                             item => item["id"]?.Value<string>(),
+                             StringComparer.Ordinal))
+            {
+                var bindingKey =
+                    resource["bindingKey"]?.Value<string>() ??
+                    resource["semantic"]?.Value<string>() ??
+                    "";
+                if (!importedTextures.TryGetValue(
+                        bindingKey,
+                        out var texture))
+                    continue;
+                var bindings = resource["materialBindings"] as JArray;
+                if (bindings == null || bindings.Count == 0)
+                    continue;
+                foreach (var binding in bindings.OfType<JObject>())
+                {
+                    var role = binding["role"]?.Value<string>() ?? "";
+                    if (!MikuFixedWorkflowTextureBindings.IsRoleAllowed(
+                            workflowKind,
+                            role))
+                        throw new InvalidDataException(
+                            "MIKU_FIXED_TEXTURE_ROLE_INVALID:" + role);
+                    var resolved = new MikuToonTextureBinding
+                    {
+                        role = role,
+                        texture = texture,
+                        uvTransform = ParseFixedUvTransform(
+                            binding["uvTransform"] as JObject,
+                            role),
+                    };
+                    if (result.TryGetValue(role, out var existing))
+                    {
+                        if (existing.texture != texture ||
+                            !EquivalentUvTransform(
+                                existing.uvTransform,
+                                resolved.uvTransform))
+                            throw new InvalidDataException(
+                                "MIKU_FIXED_TEXTURE_ROLE_AMBIGUOUS:" + role);
+                        continue;
+                    }
+                    result[role] = resolved;
+                }
+            }
+            foreach (var texture in importedTextures)
+            {
+                if (!result.Values.Any(item => item.texture == texture.Value))
+                    AddDiagnosticOnce(
+                        diagnostics,
+                        "MIKU_FIXED_TEXTURE_UNASSIGNED:" + texture.Key);
+            }
+            return result.Values
+                .OrderBy(item => item.role, StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        static MikuToonUvTransform ParseFixedUvTransform(
+            JObject value,
+            string role)
+        {
+            if (value == null)
+                return null;
+            if (!string.Equals(
+                    value["coordinateSpace"]?.Value<string>(),
+                    "UV0",
+                    StringComparison.Ordinal) ||
+                !string.Equals(
+                    value["operation"]?.Value<string>(),
+                    "Affine2D",
+                    StringComparison.Ordinal))
+                throw new InvalidDataException(
+                    "MIKU_FIXED_TEXTURE_UV_TRANSFORM_UNSUPPORTED:" + role);
+            var matrix = value["matrix"] as JArray;
+            if (matrix == null || matrix.Count != 6 ||
+                matrix.Any(item =>
+                    item.Type != JTokenType.Integer &&
+                    item.Type != JTokenType.Float))
+                throw new InvalidDataException(
+                    "MIKU_FIXED_TEXTURE_UV_MATRIX_INVALID:" + role);
+            var values = matrix.Select(item => item.Value<float>()).ToArray();
+            if (values.Any(item => float.IsNaN(item) || float.IsInfinity(item)))
+                throw new InvalidDataException(
+                    "MIKU_FIXED_TEXTURE_UV_MATRIX_INVALID:" + role);
+            return new MikuToonUvTransform
+            {
+                coordinateSpace = "UV0",
+                operation = "Affine2D",
+                row0 = new UnityEngine.Vector3(values[0], values[1], values[2]),
+                row1 = new UnityEngine.Vector3(values[3], values[4], values[5]),
+            };
+        }
+
+        static bool EquivalentUvTransform(
+            MikuToonUvTransform left,
+            MikuToonUvTransform right)
+        {
+            if (left == null || right == null)
+                return left == right;
+            return string.Equals(
+                       left.coordinateSpace,
+                       right.coordinateSpace,
+                       StringComparison.Ordinal) &&
+                   string.Equals(
+                       left.operation,
+                       right.operation,
+                       StringComparison.Ordinal) &&
+                   left.row0 == right.row0 &&
+                   left.row1 == right.row1;
+        }
+
+        static void ApplyPersistedFixedWorkflowSelection(
+            string recipePath,
+            string workflowKind,
+            JObject ir)
+        {
+            var recipe = AssetDatabase.LoadAssetAtPath<
+                MikuToonMaterialRecipe>(recipePath);
+            if (recipe == null)
+                return;
+            var workflow = ir["workflow"] as JObject
+                ?? throw new InvalidDataException("MIKU_WORKFLOW_MISSING");
+            if (!MikuFixedWorkflowTextureBindings.IsGame(workflowKind))
+                throw new InvalidDataException(
+                    "MIKU_WORKFLOW_RETIRED:generic_toon");
+            workflow["part"] = MikuFixedWorkflowTextureBindings.NormalizePart(
+                workflowKind,
+                recipe.gamePart.ToString());
+        }
+
+        static string FixedWorkflowSelection(
+            string workflowKind,
+            JObject ir)
+        {
+            return MikuFixedWorkflowTextureBindings.NormalizePart(
+                workflowKind,
+                ir["workflow"]?["part"]?.Value<string>() ?? "Body");
+        }
+
         static void ValidateResourceChannelBindings(JObject resource)
         {
             if (!(resource["channelBindings"] is JArray bindings))
@@ -1290,6 +1550,325 @@ namespace Miku.ShaderConverter.Editor
             if (seen.Count != bindings.Count)
                 throw new InvalidDataException(
                     "MIKU_CHANNEL_BINDING_INVALID");
+        }
+
+        static void ImportSourceMeshAssets(
+            string transactionRoot,
+            JObject resource,
+            MaterialIdentityLocation location,
+            string materialRoot,
+            string sourceId,
+            string materialId,
+            Material material,
+            MikuImportResult result)
+        {
+            var relative = NormalizeRelativePath(
+                RequireString(resource, "relativePath"));
+            if (!string.Equals(
+                    Path.GetExtension(relative),
+                    ".glb",
+                    StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException(
+                    "MIKU_SOURCE_MESH_RESOURCE_INVALID");
+            var sourcePath = Path.Combine(
+                transactionRoot,
+                relative.Replace('/', Path.DirectorySeparatorChar));
+            var bytes = File.ReadAllBytes(sourcePath);
+            if (!string.Equals(
+                    Sha256Bytes(bytes),
+                    RequireSha256(resource, "sha256"),
+                    StringComparison.Ordinal))
+                throw new InvalidDataException(
+                    "MIKU_ARTIFACT_HASH_MISMATCH");
+
+            // glTFast's ScriptedImporter owns its asynchronous load. Blocking
+            // GltfImport.Load on Unity's main thread can deadlock when the
+            // continuation returns to the editor synchronization context.
+            var glbRole = "SourceMeshGlb";
+            var glbGuid = StableAssetGuid(sourceId, materialId, glbRole);
+            var glbAssetPath = RecordedAssetPath(
+                location,
+                glbRole,
+                materialRoot + "/SourceMesh/" +
+                SanitizeName(material.name) + ".source.glb",
+                glbGuid,
+                ".glb");
+            ValidateStableGuidOwnership(glbRole, glbAssetPath, glbGuid);
+            var absoluteGlbAssetPath = ToAbsoluteProjectPath(glbAssetPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(absoluteGlbAssetPath));
+            var glbExisted = File.Exists(absoluteGlbAssetPath);
+            WriteBytesIfChanged(absoluteGlbAssetPath, bytes);
+            EnsureMetaGuid(glbAssetPath, glbGuid, !glbExisted);
+            AssetDatabase.ImportAsset(
+                glbAssetPath,
+                ImportAssetOptions.ForceSynchronousImport |
+                ImportAssetOptions.ForceUpdate);
+            var sourcePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(glbAssetPath)
+                ?? throw new InvalidDataException(
+                    "MIKU_SOURCE_MESH_IMPORT_FAILED");
+            result.assetPaths.Add(glbAssetPath);
+
+            var previewScene =
+                UnityEditor.SceneManagement.EditorSceneManager.NewPreviewScene();
+            var temporaryRoot = PrefabUtility.InstantiatePrefab(
+                sourcePrefab,
+                previewScene) as GameObject;
+            if (temporaryRoot == null)
+            {
+                UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(
+                    previewScene);
+                throw new InvalidDataException(
+                    "MIKU_SOURCE_MESH_IMPORT_FAILED");
+            }
+            try
+            {
+                var meshFilters = temporaryRoot
+                    .GetComponentsInChildren<MeshFilter>(true)
+                    .Where(item => item.sharedMesh != null)
+                    .ToArray();
+                if (temporaryRoot.GetComponentsInChildren<SkinnedMeshRenderer>(
+                        true).Length > 0)
+                    throw new InvalidDataException(
+                        "MIKU_SOURCE_MESH_DEFORM_UNSUPPORTED");
+                var expectedMeshCount = resource["meshCount"]?.Value<int>() ?? 0;
+                var expectedVertexCount =
+                    resource["vertexCount"]?.Value<int>() ?? 0;
+                var expectedIndexCount =
+                    resource["indexCount"]?.Value<int>() ?? 0;
+                var actualVertexCount = meshFilters.Sum(
+                    item => item.sharedMesh.vertexCount);
+                var actualIndexCount = meshFilters.Sum(
+                    item => MeshIndexCount(item.sharedMesh));
+                var bindingRecords =
+                    (resource["rendererBindings"] as JArray
+                        ?? throw new InvalidDataException(
+                            "MIKU_MESH_BINDING_MISMATCH"))
+                    .OfType<JObject>()
+                    .OrderBy(item => item["meshIndex"]?.Value<int>() ?? -1)
+                    .ToArray();
+                if (meshFilters.Length != expectedMeshCount ||
+                    bindingRecords.Length != expectedMeshCount ||
+                    actualVertexCount != expectedVertexCount ||
+                    actualIndexCount != expectedIndexCount ||
+                    !bool.Equals(resource["hasUv0"]?.Value<bool>() ?? false, true) ||
+                    meshFilters.Any(item =>
+                        !item.sharedMesh.HasVertexAttribute(
+                            VertexAttribute.TexCoord0)))
+                    throw new InvalidDataException(
+                        "MIKU_MESH_BINDING_MISMATCH");
+
+                var filtersBySource =
+                    new Dictionary<string, MeshFilter>(StringComparer.Ordinal);
+                var renderersBySource =
+                    new Dictionary<string, Renderer>(StringComparer.Ordinal);
+                var claimedMeshIndices = new HashSet<int>();
+                foreach (var binding in bindingRecords)
+                {
+                    var meshIndex = binding["meshIndex"]?.Value<int>() ?? -1;
+                    var objectName = RequireString(binding, "sourceObject");
+                    if (meshIndex < 0 ||
+                        meshIndex >= meshFilters.Length ||
+                        !claimedMeshIndices.Add(meshIndex) ||
+                        filtersBySource.ContainsKey(objectName))
+                        throw new InvalidDataException(
+                            "MIKU_MESH_BINDING_MISMATCH");
+                    var filter = meshFilters[meshIndex];
+                    var renderer = filter.GetComponent<Renderer>();
+                    if (renderer == null)
+                        throw new InvalidDataException(
+                            "MIKU_MESH_BINDING_MISMATCH");
+                    // A single-node glTF may inherit the asset file name.
+                    // Restore the sealed Blender identity from rendererBindings.
+                    filter.gameObject.name = objectName;
+                    filtersBySource[objectName] = filter;
+                    renderersBySource[objectName] = renderer;
+                }
+
+                var importedMeshes =
+                    new Dictionary<string, Mesh>(StringComparer.Ordinal);
+                var importedFingerprints =
+                    new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var binding in bindingRecords)
+                {
+                    var objectName = RequireString(binding, "sourceObject");
+                    var filter = filtersBySource[objectName];
+                    var role = "SourceMesh:" + objectName;
+                    var guid = StableAssetGuid(sourceId, materialId, role);
+                    var assetPath = RecordedAssetPath(
+                        location,
+                        role,
+                        materialRoot + "/SourceMesh/Meshes/" +
+                        SanitizeName(objectName) + ".asset",
+                        guid,
+                        ".asset");
+                    ValidateStableGuidOwnership(role, assetPath, guid);
+                    Directory.CreateDirectory(
+                        Path.GetDirectoryName(ToAbsoluteProjectPath(assetPath)));
+                    var meshAsset = AssetDatabase.LoadAssetAtPath<Mesh>(assetPath);
+                    if (meshAsset == null)
+                    {
+                        meshAsset = UnityEngine.Object.Instantiate(filter.sharedMesh);
+                        meshAsset.name = objectName;
+                        AssetDatabase.CreateAsset(meshAsset, assetPath);
+                        EnsureMetaGuid(assetPath, guid, true);
+                        AssetDatabase.ImportAsset(
+                            assetPath,
+                            ImportAssetOptions.ForceSynchronousImport);
+                        meshAsset = AssetDatabase.LoadAssetAtPath<Mesh>(assetPath);
+                    }
+                    else
+                    {
+                        EditorUtility.CopySerialized(filter.sharedMesh, meshAsset);
+                        meshAsset.name = objectName;
+                        EditorUtility.SetDirty(meshAsset);
+                        AssetDatabase.SaveAssetIfDirty(meshAsset);
+                    }
+                    if (meshAsset == null ||
+                        !string.Equals(
+                            AssetDatabase.AssetPathToGUID(assetPath),
+                            guid,
+                            StringComparison.Ordinal) ||
+                        !meshAsset.HasVertexAttribute(VertexAttribute.TexCoord0))
+                        throw new InvalidDataException(
+                            "MIKU_SOURCE_MESH_ASSET_CREATE_FAILED");
+                    filter.sharedMesh = meshAsset;
+                    importedMeshes[objectName] = meshAsset;
+                    importedFingerprints[objectName] =
+                        ComputeUnityMeshFingerprint(meshAsset);
+                    result.assetPaths.Add(assetPath);
+                }
+
+                var descriptionEntries =
+                    new List<MikuMeshBindingDescription.RendererBinding>();
+                foreach (var binding in bindingRecords)
+                {
+                    var objectName = RequireString(binding, "sourceObject");
+                    if (!renderersBySource.TryGetValue(objectName, out var renderer) ||
+                        !importedMeshes.TryGetValue(objectName, out var meshAsset))
+                        throw new InvalidDataException(
+                            "MIKU_MESH_BINDING_MISMATCH");
+                    if (meshAsset.vertexCount !=
+                            (binding["exportedVertices"]?.Value<int>() ?? -1) ||
+                        MeshIndexCount(meshAsset) !=
+                            (binding["exportedIndices"]?.Value<int>() ?? -1))
+                        throw new InvalidDataException(
+                            "MIKU_MESH_BINDING_MISMATCH");
+                    var materialSlots =
+                        (binding["materialSlots"] as JArray ?? new JArray())
+                        .Select(item => item.Value<int>())
+                        .OrderBy(item => item)
+                        .ToArray();
+                    if (materialSlots.Length == 0 ||
+                        materialSlots.Distinct().Count() != materialSlots.Length ||
+                        materialSlots.Any(slot =>
+                            slot < 0 || slot >= meshAsset.subMeshCount))
+                        throw new InvalidDataException(
+                            "MIKU_MESH_BINDING_MISMATCH");
+                    var assigned = new Material[Math.Max(
+                        renderer.sharedMaterials.Length,
+                        meshAsset.subMeshCount)];
+                    foreach (var slot in materialSlots)
+                        assigned[slot] = material;
+                    renderer.sharedMaterials = assigned;
+                    descriptionEntries.Add(
+                        new MikuMeshBindingDescription.RendererBinding
+                        {
+                            rendererPath = RequireString(binding, "rendererPath"),
+                            sourceObject = objectName,
+                            sourceMeshFingerprint = RequireSha256(
+                                binding,
+                                "meshFingerprint"),
+                            unityMeshFingerprint =
+                                importedFingerprints[objectName],
+                            vertexCount = meshAsset.vertexCount,
+                            indexCount = MeshIndexCount(meshAsset),
+                            materialSlots = materialSlots,
+                        });
+                }
+
+                temporaryRoot.name =
+                    SanitizeName(material.name) + ".source-mesh";
+                var prefabRole = "SourceMeshPrefab";
+                var prefabGuid = StableAssetGuid(
+                    sourceId,
+                    materialId,
+                    prefabRole);
+                var prefabPath = RecordedAssetPath(
+                    location,
+                    prefabRole,
+                    materialRoot + "/SourceMesh/" +
+                    SanitizeName(material.name) + ".prefab",
+                    prefabGuid,
+                    ".prefab");
+                ValidateStableGuidOwnership(prefabRole, prefabPath, prefabGuid);
+                Directory.CreateDirectory(
+                    Path.GetDirectoryName(ToAbsoluteProjectPath(prefabPath)));
+                var prefabExisted = File.Exists(ToAbsoluteProjectPath(prefabPath));
+                if (PrefabUtility.SaveAsPrefabAsset(temporaryRoot, prefabPath) == null)
+                    throw new InvalidDataException(
+                        "MIKU_SOURCE_MESH_PREFAB_CREATE_FAILED");
+                EnsureMetaGuid(prefabPath, prefabGuid, !prefabExisted);
+                AssetDatabase.ImportAsset(
+                    prefabPath,
+                    ImportAssetOptions.ForceSynchronousImport);
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath)
+                    ?? throw new InvalidDataException(
+                        "MIKU_SOURCE_MESH_PREFAB_CREATE_FAILED");
+
+                var bindingRole = "SourceMeshBinding";
+                var bindingGuid = StableAssetGuid(
+                    sourceId,
+                    materialId,
+                    bindingRole);
+                var bindingPath = RecordedAssetPath(
+                    location,
+                    bindingRole,
+                    materialRoot + "/SourceMesh/" +
+                    SanitizeName(material.name) + ".meshbinding.asset",
+                    bindingGuid,
+                    ".asset");
+                ValidateStableGuidOwnership(bindingRole, bindingPath, bindingGuid);
+                var description =
+                    AssetDatabase.LoadAssetAtPath<MikuMeshBindingDescription>(
+                        bindingPath);
+                if (description == null)
+                {
+                    description = ScriptableObject.CreateInstance<
+                        MikuMeshBindingDescription>();
+                    Directory.CreateDirectory(
+                        Path.GetDirectoryName(ToAbsoluteProjectPath(bindingPath)));
+                    AssetDatabase.CreateAsset(description, bindingPath);
+                    EnsureMetaGuid(bindingPath, bindingGuid, true);
+                    AssetDatabase.ImportAsset(
+                        bindingPath,
+                        ImportAssetOptions.ForceSynchronousImport);
+                    description =
+                        AssetDatabase.LoadAssetAtPath<MikuMeshBindingDescription>(
+                            bindingPath);
+                }
+                if (description == null)
+                    throw new InvalidDataException(
+                        "MIKU_MESH_BINDING_DESCRIPTION_CREATE_FAILED");
+                description.sourceMeshSha256 = RequireSha256(resource, "sha256");
+                description.meshFingerprintSet = RequireSha256(
+                    resource["meshBinding"] as JObject,
+                    "sha256");
+                description.generatedPrefab = prefab;
+                description.material = material;
+                description.rendererBindings = descriptionEntries;
+                EditorUtility.SetDirty(description);
+                AssetDatabase.SaveAssetIfDirty(description);
+                result.assetPaths.Add(prefabPath);
+                result.assetPaths.Add(bindingPath);
+                AddDiagnosticOnce(
+                    result.diagnostics,
+                    "MIKU_SOURCE_MESH_FIDELITY_PREFAB:" + prefabPath);
+            }
+            finally
+            {
+                UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(
+                    previewScene);
+            }
         }
 
         internal static string ComputeUnityMeshFingerprint(Mesh mesh)
@@ -1508,7 +2087,9 @@ namespace Miku.ShaderConverter.Editor
                                   "standard_pbr",
                                   StringComparison.Ordinal);
             var hasStandardControls = standardPbr &&
-                                      HasStandardPbrAuthoringControls(material);
+                                   HasStandardPbrAuthoringControls(material);
+            var fixedWorkflow =
+                MikuFixedWorkflowTextureBindings.IsFixed(workflowKind);
             if (standardPbr && !hasStandardControls)
             {
                 AddDiagnosticOnce(
@@ -1519,8 +2100,27 @@ namespace Miku.ShaderConverter.Editor
                 ResetSurfaceAuthoringDefaults(material, ir);
             foreach (var item in textures)
             {
+                if (fixedWorkflow)
+                {
+                    var property =
+                        MikuFixedWorkflowTextureBindings.TextureProperty(
+                            workflowKind,
+                            item.Key);
+                    if (!string.IsNullOrEmpty(property) &&
+                        material.HasProperty(property))
+                        material.SetTexture(property, item.Value);
+                    continue;
+                }
                 if (!RequiresMaterialTextureBinding(ir, item.Key))
                 {
+                    if (IsNonAuthoritativeCompatibilityResource(ir, item.Key))
+                    {
+                        AddDiagnosticOnce(
+                            diagnostics,
+                            "MIKU_NON_AUTHORITATIVE_COMPATIBILITY_RESOURCE_SKIPPED:" +
+                            item.Key);
+                        continue;
+                    }
                     if (IsApproximatedSourceMeshPbrChannel(ir, item.Key))
                     {
                         AddDiagnosticOnce(
@@ -1560,6 +2160,7 @@ namespace Miku.ShaderConverter.Editor
                             material,
                             item.Key,
                             item.Value,
+                            ir,
                             diagnostics))
                     {
                         continue;
@@ -1587,10 +2188,7 @@ namespace Miku.ShaderConverter.Editor
                 var semantic = channel["semantic"]?.Value<string>() ?? "";
                 var constant = value["value"];
                 if (!usesEditableGraph)
-                {
-                    TryBindStaticConstant(material, semantic, constant);
                     continue;
-                }
                 if (TryBindSurfaceContractConstant(
                         material,
                         ir,
@@ -1646,6 +2244,11 @@ namespace Miku.ShaderConverter.Editor
                     material.SetTexture("_BaseMap", null);
                 if (material.HasProperty("_BaseColor"))
                     material.SetColor("_BaseColor", Color.white);
+                if (material.HasProperty("_EmissionMap"))
+                    material.SetTexture("_EmissionMap", null);
+                if (material.HasProperty("_EmissionColor"))
+                    material.SetColor("_EmissionColor", Color.white);
+                SetFloatIfPresent(material, "_EmissionStrength", 1.0f);
             }
             var renderMethod =
                 surface["renderMethod"]?.Value<string>() ?? "Opaque";
@@ -1690,6 +2293,8 @@ namespace Miku.ShaderConverter.Editor
                 case "BaseColor":
                     return IsDielectricSurface(ir) ||
                            UsesEvaluatedClosureRadiance(ir);
+                case "Emission":
+                    return UsesEvaluatedClosureRadiance(ir);
                 case "Alpha":
                     if (string.Equals(
                             surface["renderMethod"]?.Value<string>(),
@@ -1764,7 +2369,7 @@ namespace Miku.ShaderConverter.Editor
 
         static JObject EffectiveSurfaceContract(JObject ir)
         {
-            if (MikuSurfaceModelBackends.IsMaterialIr2(ir))
+            if (MikuSurfaceModelBackends.HasSurfaceModelPlan(ir))
                 return MikuSurfaceModelBackends
                     .Resolve(ir)
                     .WrapperContract(ir);
@@ -1797,6 +2402,7 @@ namespace Miku.ShaderConverter.Editor
             Material material,
             string semantic,
             Texture2D texture,
+            JObject ir,
             IList<string> diagnostics)
         {
             var property = EditableTextureProperty(semantic);
@@ -1838,14 +2444,17 @@ namespace Miku.ShaderConverter.Editor
                         material,
                         "_MIKU_BumpDistance",
                         1.0f);
+                    var heightContract = ir?["heightChannel"] as JObject;
                     SetFloatIfPresent(
                         material,
                         "_MIKU_HeightMidlevel",
-                        0.5f);
-                    SetFloatIfPresent(
-                        material,
-                        "_MIKU_HeightScale",
-                        1.0f);
+                        heightContract?["midlevel"]?.Value<float>() ?? 0.5f);
+                    if (heightContract?["scale"] != null &&
+                        heightContract["scale"].Type != JTokenType.Null)
+                        SetFloatIfPresent(
+                            material,
+                            "_MIKU_HeightScale",
+                            heightContract["scale"].Value<float>());
                     return true;
                 case "Alpha":
                     SetFloatIfPresent(material, "_Opacity", 1.0f);
@@ -2006,6 +2615,119 @@ namespace Miku.ShaderConverter.Editor
                     IsLegacyZeroNormal(channel["value"]?["value"]));
         }
 
+        internal static void NormalizeLegacyClosureZeroNormals(
+            JObject ir,
+            string profileHash,
+            IList<string> diagnostics)
+        {
+            if (!string.Equals(
+                    profileHash,
+                    Package103ProfileHash,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var changed = NormalizeClosureParameterTree(ir?["closureGraph"]);
+            changed |= NormalizeClosureParameterTree(ir?["weightedClosures"]);
+            if (changed)
+            {
+                AddDiagnosticOnce(
+                    diagnostics,
+                    "MIKU_LEGACY_CLOSURE_ZERO_NORMAL_NORMALIZED");
+            }
+        }
+
+        internal static bool RequiresClosureFiniteSanitization(JObject ir)
+        {
+            if (!string.Equals(
+                    ir?["surfaceModelPlan"]?["kind"]?.Value<string>(),
+                    "CustomMultiLobe",
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var terms = (ir?["weightedClosures"]?["terms"] as JArray ??
+                         new JArray())
+                .OfType<JObject>()
+                .ToArray();
+            if (terms.Any(term =>
+                    {
+                        var roughness = term["parameters"]?["Roughness"]
+                            as JObject;
+                        return string.Equals(
+                                   roughness?["kind"]?.Value<string>(),
+                                   "Constant",
+                                   StringComparison.Ordinal) &&
+                               roughness["value"] != null &&
+                               roughness["value"].Value<float>() <= 0.045f;
+                    }))
+            {
+                return true;
+            }
+
+            return MikuSurfaceModelBackends.RequiresClearCoat(ir) &&
+                   terms.Count(term => string.Equals(
+                       term["closureKind"]?.Value<string>(),
+                       "Principled",
+                       StringComparison.Ordinal)) > 1;
+        }
+
+        static bool NormalizeClosureParameterTree(JToken token)
+        {
+            if (token is JArray array)
+            {
+                var changed = false;
+                foreach (var child in array)
+                    changed |= NormalizeClosureParameterTree(child);
+                return changed;
+            }
+            if (!(token is JObject item))
+                return false;
+
+            var normalized = false;
+            if (item["parameters"] is JObject parameters)
+            {
+                foreach (var property in parameters.Properties())
+                {
+                    var parameterName = new string(
+                        property.Name
+                            .Where(char.IsLetterOrDigit)
+                            .Select(char.ToLowerInvariant)
+                            .ToArray());
+                    if (parameterName != "normal" &&
+                        parameterName != "coatnormal")
+                    {
+                        continue;
+                    }
+                    if (!(property.Value is JObject parameter) ||
+                        !string.Equals(
+                            parameter["kind"]?.Value<string>(),
+                            "Constant",
+                            StringComparison.Ordinal) ||
+                        !IsLegacyZeroNormal(parameter["value"]))
+                    {
+                        continue;
+                    }
+                    parameter["value"] = new JArray(0f, 0f, 1f);
+                    normalized = true;
+                }
+            }
+
+            foreach (var property in item.Properties().ToArray())
+            {
+                if (!string.Equals(
+                        property.Name,
+                        "parameters",
+                        StringComparison.Ordinal))
+                {
+                    normalized |= NormalizeClosureParameterTree(property.Value);
+                }
+            }
+            return normalized;
+        }
+
         static void AddDiagnosticOnce(
             IList<string> diagnostics,
             string diagnostic)
@@ -2035,6 +2757,8 @@ namespace Miku.ShaderConverter.Editor
             JObject ir,
             string bindingKey)
         {
+            if (IsNonAuthoritativeCompatibilityResource(ir, bindingKey))
+                return false;
             if (!MikuSurfaceModelBackends.RequiresMaterialTextureBinding(
                     ir,
                     bindingKey))
@@ -2043,6 +2767,31 @@ namespace Miku.ShaderConverter.Editor
             }
             return !MikuSurfaceModelBackends.UsesSourceMeshPbrProjection(ir) ||
                    SourceMeshPbrTextureSemantics.Contains(bindingKey ?? "");
+        }
+
+        static bool IsNonAuthoritativeCompatibilityResource(
+            JObject ir,
+            string bindingKey)
+        {
+            var surfaceKind =
+                ir?["surfaceModelPlan"]?["kind"]?.Value<string>() ?? "";
+            if (UsesEvaluatedClosureRadiance(ir) &&
+                (string.Equals(
+                     bindingKey,
+                     "BaseColor",
+                     StringComparison.Ordinal) ||
+                 string.Equals(
+                     bindingKey,
+                     "Emission",
+                     StringComparison.Ordinal)))
+            {
+                return true;
+            }
+            return string.Equals(
+                       surfaceKind,
+                       "CustomMultiLobe",
+                       StringComparison.Ordinal) &&
+                   string.Equals(bindingKey, "IOR", StringComparison.Ordinal);
         }
 
         static bool IsApproximatedSourceMeshPbrChannel(
@@ -2087,50 +2836,6 @@ namespace Miku.ShaderConverter.Editor
             return false;
         }
 
-        static void TryBindStaticConstant(
-            Material material,
-            string semantic,
-            JToken constant)
-        {
-            if (constant == null || constant.Type == JTokenType.Null)
-                return;
-            if (constant is JArray color && color.Count >= 3)
-            {
-                foreach (var property in new[] { "_BaseColor", "_Color" })
-                {
-                    if (!material.HasProperty(property))
-                        continue;
-                    material.SetColor(
-                        property,
-                        new Color(
-                            color[0].Value<float>(),
-                            color[1].Value<float>(),
-                            color[2].Value<float>(),
-                            color.Count > 3 ? color[3].Value<float>() : 1.0f));
-                    return;
-                }
-                return;
-            }
-            var scalar = constant.Value<float>();
-            var candidates = semantic switch
-            {
-                "Metalness" => new[] { "_Metallic", "_Metalness" },
-                "Roughness" => new[] { "_Roughness" },
-                "Alpha" => new[] { "_Alpha", "_Opacity" },
-                "AmbientOcclusion" => new[] { "_OcclusionStrength" },
-                _ => Array.Empty<string>(),
-            };
-            foreach (var property in candidates)
-            {
-                if (!material.HasProperty(property))
-                    continue;
-                material.SetFloat(property, scalar);
-                return;
-            }
-            if (semantic == "Roughness" && material.HasProperty("_Smoothness"))
-                material.SetFloat("_Smoothness", 1.0f - scalar);
-        }
-
         static void ValidateShader(Shader shader, string graphPath)
         {
             if (shader == null)
@@ -2168,6 +2873,25 @@ namespace Miku.ShaderConverter.Editor
                 throw new InvalidDataException("MIKU_INTERNAL_ERROR_SHADER");
             foreach (var item in textures)
             {
+                if (MikuFixedWorkflowTextureBindings.IsFixed(workflowKind))
+                {
+                    var property =
+                        MikuFixedWorkflowTextureBindings.TextureProperty(
+                            workflowKind,
+                            item.Key);
+                    if (!string.IsNullOrEmpty(property) &&
+                        material.HasProperty(property) &&
+                        material.GetTexture(property) == item.Value)
+                        continue;
+                    // Roles for another selectable part remain in the Recipe and
+                    // intentionally do not bind to the current base material.
+                    if (!string.IsNullOrEmpty(property) &&
+                        !material.HasProperty(property))
+                        continue;
+                    throw new InvalidDataException(
+                        "MIKU_MATERIAL_TEXTURE_BINDING_MISSING:" +
+                        item.Value.name);
+                }
                 if (!RequiresMaterialTextureBinding(ir, item.Key))
                     continue;
                 if (!material.GetTexturePropertyNames().Any(
@@ -3043,6 +3767,35 @@ namespace Miku.ShaderConverter.Editor
             return File.Exists(absolutePath) ||
                    Directory.Exists(absolutePath) ||
                    File.Exists(absolutePath + ".meta");
+        }
+
+        static void ValidatePortableHybridBundle(JObject plan, JObject bundle)
+        {
+            if (!string.Equals(
+                    plan?["mode"]?.Value<string>(),
+                    "PreferNative",
+                    StringComparison.Ordinal))
+                return;
+            var resources = bundle?["resources"] as JArray ?? new JArray();
+            if (resources.OfType<JObject>().Any(resource =>
+                    string.Equals(
+                        resource["semantic"]?.Value<string>(),
+                        "SourceMesh",
+                        StringComparison.Ordinal) ||
+                    resource["meshBinding"] is JObject))
+                throw new InvalidDataException(
+                    "MIKU_PORTABLE_RESOURCE_MESH_BOUND");
+            var jobs = plan?["bakeJobs"] as JArray ?? new JArray();
+            if (jobs.OfType<JObject>().Any(job =>
+                    !string.Equals(
+                        job["route"]?.Value<string>(),
+                        "ReusableBake",
+                        StringComparison.Ordinal) ||
+                    job["meshBindingRequired"]?.Value<bool?>() != false ||
+                    !new[] { "Uniform", "UV0" }.Contains(
+                        job["coordinateDomain"]?.Value<string>() ?? "")))
+                throw new InvalidDataException(
+                    "MIKU_PORTABLE_RESOURCE_MESH_BOUND");
         }
 
         static string StableAssetGuid(string sourceId, string materialId, string role)

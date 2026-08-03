@@ -204,6 +204,62 @@ class SocketConversionTests(unittest.TestCase):
 
 
 class ClosureWeightTests(unittest.TestCase):
+    def test_unconnected_closure_zero_normals_become_neutral_deterministically(self):
+        graph = single_leaf_graph()
+        surface = next(node for node in graph["nodes"] if node["id"] == "surface")
+        surface["inputs"].extend(
+            [
+                socket("Normal", [0.0, 0.0, 0.0], "Vector3"),
+                socket("Coat_Normal", [0.0, 0.0, 0.0], "Vector3"),
+            ]
+        )
+
+        first = build_weighted_closure_set(graph)
+        second = build_weighted_closure_set(graph)
+        parameters = first[0]["root"]["parameters"]
+
+        self.assertEqual([0.0, 0.0, 1.0], parameters["Normal"]["value"])
+        self.assertEqual(
+            [0.0, 0.0, 1.0],
+            parameters["Coat_Normal"]["value"],
+        )
+        self.assertEqual(first, second)
+        self.assertEqual(
+            first[1]["terms"][0]["id"],
+            second[1]["terms"][0]["id"],
+        )
+        self.assertAlmostEqual(
+            1.0,
+            evaluate_weight(first[1]["terms"][0]["finalWeight"]),
+        )
+
+    def test_explicitly_connected_zero_closure_normal_is_not_rewritten(self):
+        graph = single_leaf_graph("Shader.DiffuseBSDF")
+        graph["nodes"].append(
+            {
+                "id": "authored-zero",
+                "op": "Input.Normal",
+                "outputs": [socket("Normal", [0.0, 0.0, 0.0], "Vector3")],
+            }
+        )
+        graph["edges"].append(
+            {
+                "from": endpoint("authored-zero", "Normal"),
+                "to": endpoint("surface", "Normal"),
+            }
+        )
+
+        closure, weighted, _ = build_weighted_closure_set(graph)
+        parameter = closure["root"]["parameters"]["Normal"]
+
+        self.assertEqual("ValueExpression", parameter["kind"])
+        self.assertEqual("authored-zero", parameter["source"]["nodeId"])
+        self.assertNotIn("value", parameter)
+        self.assertEqual(
+            "authored-zero",
+            weighted["terms"][0]["parameters"]["Normal"]["source"]["nodeId"],
+        )
+
     def test_mix_clamps_and_distributes_weight_in_socket_order(self):
         for factor, expected_first, expected_second in (
             (-1.0, 1.0, 0.0),
@@ -241,80 +297,11 @@ class ClosureWeightTests(unittest.TestCase):
                     closure["root"]["sourceSocketOrder"],
                 )
 
-    def test_generic_toon_backfacing_mix_weight_is_native_runtime_expression(self):
-        graph = closure_graph(
-            "Mix",
-            "Shader.DiffuseBSDF",
-            "Shader.Emission",
-        )
+    def test_generic_toon_backfacing_input_is_retired_explicitly(self):
+        graph = closure_graph("Mix", "Shader.DiffuseBSDF", "Shader.Emission")
         graph["workflow"] = {"kind": "generic_toon"}
-        graph["nodes"].append(
-            {
-                "id": "geometry",
-                "op": "Input.Geometry",
-                "outputs": [
-                    socket(
-                        "Backfacing",
-                        0.0,
-                        "Float",
-                        space="None",
-                        stage="Fragment",
-                        uniformity="Varying",
-                    )
-                ],
-            }
-        )
-        graph["edges"].append(
-            {
-                "from": endpoint("geometry", "Backfacing"),
-                "to": endpoint("composite", "Fac"),
-            }
-        )
-
-        ir = build_material_ir(
-            graph,
-            workflow_kind="generic_toon",
-            material_key="generic-toon-backfacing",
-        )
-        validate_document(ir, "miku-material-ir-1.0")
-        errors = [
-            item
-            for item in ir["diagnostics"]
-            if str(item.get("severity") or "").lower() == "error"
-        ]
-        self.assertEqual([], errors)
-        self.assertCountEqual(
-            ["Input.IsFrontFace", "Math.OneMinus"],
-            [item["op"] for item in ir["expressions"]],
-        )
-
-        def source_weight_nodes(value):
-            if isinstance(value, dict):
-                if (
-                    value.get("kind") == "ViewDependent"
-                    and isinstance(value.get("source"), dict)
-                ):
-                    yield value
-                for child in value.values():
-                    yield from source_weight_nodes(child)
-            elif isinstance(value, list):
-                for child in value:
-                    yield from source_weight_nodes(child)
-
-        weight_sources = list(
-            source_weight_nodes(ir["weightedClosures"]["terms"])
-        )
-        self.assertGreaterEqual(len(weight_sources), 2)
-        self.assertTrue(all(item.get("expressionId") for item in weight_sources))
-        self.assertTrue(all("requiresBake" not in item for item in weight_sources))
-        mix_region = next(
-            item
-            for item in ir["regions"]
-            if item.get("kind") == "SurfaceMix"
-        )
-        self.assertEqual("Runtime", mix_region["dynamism"])
-        plan = ConversionPlanner().plan(ir, mode="Auto")
-        self.assertEqual([], plan["bakeJobs"])
+        with self.assertRaisesRegex(ValueError, r"MIKU_WORKFLOW_RETIRED:generic_toon"):
+            build_material_ir(graph, workflow_kind="generic_toon")
 
     def test_unconnected_mix_branch_is_exact_zero_closure(self):
         graph = closure_graph(
@@ -353,7 +340,7 @@ class ClosureWeightTests(unittest.TestCase):
             source_blend_id="blend",
             material_key="unconnected-mix",
         )
-        validate_document(material_ir, "miku-material-ir-1.0")
+        validate_document(material_ir, "miku-material-ir-2.0")
         self.assertEqual(
             "Null",
             material_ir["closureGraph"]["root"]["first"]["kind"],
@@ -972,7 +959,7 @@ class MigrationTests(unittest.TestCase):
             }
         )
         migrated = migrate_legacy_material_ir(v1)
-        validate_document(migrated, "miku-material-ir-1.0")
+        validate_document(migrated, "miku-material-ir-2.0")
         self.assertEqual("Principled", migrated["closureGraph"]["root"]["kind"])
         self.assertEqual("OpaquePBR", migrated["surfaceModelPlan"]["kind"])
         self.assertEqual(

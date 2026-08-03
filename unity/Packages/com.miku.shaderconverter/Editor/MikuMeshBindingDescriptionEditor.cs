@@ -11,13 +11,21 @@ namespace Miku.ShaderConverter.Editor
     {
         public override void OnInspectorGUI()
         {
-            DrawDefaultInspector();
+            serializedObject.Update();
+            DrawProperty("sourceMeshSha256", "Source Mesh SHA-256");
+            DrawProperty("meshFingerprintSet", "Mesh Fingerprint Set");
+            DrawProperty("generatedPrefab", "Generated Prefab");
+            DrawProperty("material", "Material");
+            DrawProperty("rendererBindings", "Renderer Bindings", true);
+            serializedObject.ApplyModifiedProperties();
             EditorGUILayout.Space();
             EditorGUILayout.HelpBox(
-                "This material is mesh-bound. Use the generated prefab, or " +
-                "apply it only to a renderer with an identical mesh.",
+                MikuEditorLocalization.Tr(
+                    "This material is mesh-bound. Use the generated prefab, or " +
+                    "apply it only to a renderer with an identical mesh."),
                 MessageType.Warning);
-            if (!GUILayout.Button("Apply to Selected Renderer"))
+            if (!GUILayout.Button(MikuEditorLocalization.Tr(
+                    "Apply to Selected Renderer")))
                 return;
             var description =
                 (MikuMeshBindingDescription)target;
@@ -56,11 +64,26 @@ namespace Miku.ShaderConverter.Editor
                 binding.materialSlots.DefaultIfEmpty(-1).Max() + 1);
             if (requiredLength != materials.Length)
                 Array.Resize(ref materials, requiredLength);
-            Undo.RecordObject(renderer, "Apply Miku Mesh-Bound Material");
+            Undo.RecordObject(
+                renderer,
+                MikuEditorLocalization.Tr("Apply Miku Mesh-Bound Material"));
             foreach (var slot in binding.materialSlots)
                 materials[slot] = description.material;
             renderer.sharedMaterials = materials;
             EditorUtility.SetDirty(renderer);
+        }
+
+        void DrawProperty(
+            string propertyName,
+            string label,
+            bool includeChildren = false)
+        {
+            var property = serializedObject.FindProperty(propertyName);
+            if (property != null)
+                EditorGUILayout.PropertyField(
+                    property,
+                    MikuEditorLocalization.Content(label),
+                    includeChildren);
         }
     }
 }

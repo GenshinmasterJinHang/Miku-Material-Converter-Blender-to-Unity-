@@ -36,17 +36,22 @@ namespace Miku.ShaderConverter.Editor
                 ["standard_pbr"] = new EditableGraphBackend(
                     "standard_pbr",
                     StandardWrapperTemplate),
-                ["generic_toon"] = new StaticGenericToonBackend(),
                 ["genshin_toon"] = new StaticGameBackend(
                     "genshin_toon", "MIKU/Genshin/"),
                 ["wuwa_toon"] = new StaticGameBackend(
                     "wuwa_toon", "MIKU/Wuwa/"),
                 ["hsr_toon"] = new StaticGameBackend(
                     "hsr_toon", "MIKU/HSR/"),
+                ["endfield_toon"] = new StaticGameBackend(
+                    "endfield_toon", "MIKU/Endfield/"),
             };
         static readonly HashSet<string> GameWorkflows =
             new HashSet<string>(
-                new[] { "genshin_toon", "wuwa_toon", "hsr_toon" },
+                new[]
+                {
+                    "genshin_toon", "wuwa_toon", "hsr_toon",
+                    "endfield_toon",
+                },
                 StringComparer.Ordinal);
         static readonly HashSet<string> GameParts =
             new HashSet<string>(
@@ -57,22 +62,29 @@ namespace Miku.ShaderConverter.Editor
         {
             if (materialIr == null)
                 throw new InvalidDataException("MIKU_MATERIAL_IR_MISSING");
+            var documentKind = materialIr["documentKind"]?.Value<string>();
             var isV1 = string.Equals(
-                           materialIr["documentKind"]?.Value<string>(),
-                           "miku-material-ir-1.0",
-                           StringComparison.Ordinal) &&
-                       string.Equals(
-                           materialIr["schemaVersion"]?.Value<string>(),
-                           "1.0",
-                           StringComparison.Ordinal);
-            var isV2 = MikuSurfaceModelBackends.IsMaterialIr2(materialIr);
-            if (!isV1 && !isV2)
+                documentKind,
+                "miku-material-ir-1.0",
+                StringComparison.Ordinal);
+            var isV2 = string.Equals(
+                documentKind,
+                "miku-material-ir-2.0",
+                StringComparison.Ordinal);
+            if ((!isV1 && !isV2) ||
+                !string.Equals(
+                    materialIr["schemaVersion"]?.Value<string>(),
+                    isV2 ? "2.0" : "1.0",
+                    StringComparison.Ordinal))
                 throw new InvalidDataException("MIKU_MATERIAL_IR_SCHEMA_INVALID");
             if (materialIr["version"] != null)
                 throw new InvalidDataException("MIKU_LEGACY_VERSION_FIELD");
             var workflow = materialIr["workflow"] as JObject
                 ?? throw new InvalidDataException("MIKU_WORKFLOW_MISSING");
             var kind = workflow["kind"]?.Value<string>() ?? "";
+            if (string.Equals(kind, "generic_toon", StringComparison.Ordinal))
+                throw new InvalidDataException(
+                    "MIKU_WORKFLOW_RETIRED:generic_toon");
             if (!Backends.TryGetValue(kind, out var backend))
                 throw new InvalidDataException("MIKU_WORKFLOW_UNSUPPORTED:" + kind);
             var part = workflow["part"]?.Value<string>();
@@ -90,10 +102,14 @@ namespace Miku.ShaderConverter.Editor
             if (string.Equals(kind, "standard_pbr", StringComparison.Ordinal))
             {
                 var wrapperTemplate = isV2
-                    ? MikuSurfaceModelBackends
-                        .Resolve(materialIr)
-                        .WrapperTemplatePath
-                    : ResolveSurfaceContract(materialIr);
+                    ? MikuSurfaceModelBackends.HasSurfaceModelPlan(materialIr)
+                        ? MikuSurfaceModelBackends.Resolve(materialIr)
+                            .WrapperTemplatePath
+                        : StandardWrapperTemplate
+                    : MikuSurfaceModelBackends.HasSurfaceModelPlan(materialIr)
+                        ? MikuSurfaceModelBackends.Resolve(materialIr)
+                            .WrapperTemplatePath
+                        : ResolveSurfaceContract(materialIr);
                 return new EditableGraphBackend(kind, wrapperTemplate);
             }
             return backend;
@@ -274,22 +290,5 @@ namespace Miku.ShaderConverter.Editor
             }
         }
 
-        sealed class StaticGenericToonBackend : IMikuWorkflowBackend
-        {
-            public string Kind => "generic_toon";
-            public bool UsesEditableGraph => false;
-            public string WrapperTemplatePath => string.Empty;
-
-            public Shader ResolveShader(
-                JObject materialIr,
-                Shader editableGraphShader)
-            {
-                const string shaderName =
-                    "Miku/GenericToon/GenericOpaque";
-                return Shader.Find(shaderName)
-                    ?? throw new InvalidDataException(
-                        "MIKU_WORKFLOW_SHADER_MISSING:" + shaderName);
-            }
-        }
     }
 }

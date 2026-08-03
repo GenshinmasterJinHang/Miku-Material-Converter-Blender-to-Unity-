@@ -19,6 +19,9 @@ if str(ROOT) not in sys.path:
 from tools.miku_environment import validate_source_boundary
 
 LEGACY_IDENTITY_PATTERN = re.compile(r"(?:MiGR|MIGR|MGIR|migr[-_.]|mgir[-_.])")
+ACTIVE_DIAGNOSTIC_IDENTIFIERS = (
+    "MIKU_ENDFIELD_ROLE_MIGRATED",
+)
 LEGACY_IDENTITY_ALLOWLIST = {
     Path("miku/legacy.py"),
     Path("miku/migrations.py"),
@@ -26,6 +29,7 @@ LEGACY_IDENTITY_ALLOWLIST = {
     Path("unity/Packages/com.miku.shaderconverter/Editor/MikuBundleImporter.cs"),
     Path("unity/Packages/com.miku.shaderconverter/Editor/MikuBundleScriptedImporter.cs"),
     Path("unity/Packages/com.miku.shaderconverter/Editor/MikuLegacyAssetMigration.cs"),
+    Path("unity/Packages/com.miku.shaderconverter/Editor/MikuEditorLocalization.cs"),
     Path("unity/Packages/com.miku.shaderconverter/Editor/MikuLegacyMgirImporter.cs"),
 }
 
@@ -101,6 +105,8 @@ def validate_identity_boundary() -> None:
             if relative in LEGACY_IDENTITY_ALLOWLIST:
                 continue
             text = path.read_text(encoding="utf-8-sig")
+            for identifier in ACTIVE_DIAGNOSTIC_IDENTIFIERS:
+                text = text.replace(identifier, "")
             match = LEGACY_IDENTITY_PATTERN.search(text)
             if match:
                 line = text.count("\n", 0, match.start()) + 1

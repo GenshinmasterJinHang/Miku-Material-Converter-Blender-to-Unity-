@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using Miku.ShaderConverter.Runtime;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
@@ -24,6 +25,7 @@ namespace Miku.ShaderConverter.Editor.Tests
         const string CurrentProfileHashV2 = "4970ecd6266173f8c60341e10fd26eafe1cbd6d918428aacea5b3e40eef46ff6";
         const string CurrentProfileHashV22 = "50bb9fb048707256b3882a757253a3fc685e791395b5bc9872fb7daf98129848";
         const string CurrentProfileHashV21 = "e847380c02ecf8e16e4496a0709b7ccf8946f71b4cc16622f901bcc41768f331";
+        const string Package103ProfileHash = "b9e8f39f08ed1d76da8e6af18ae58e14ea84cc05a009a0b7d4479978d629841b";
         const string Package202ProfileHash = "4e30b6e4da6d9d1c7a3e2805355ac5354fa751b14e2458c162099cbc2d10b397";
         const string Package200And201ProfileHash = "549551f13909f1c56da9effb58a635eb3e813e9be4c17325211c53abc1ea997c";
         const string Package120ProfileHash = "72d2487e908af41734e6c6212232f5080b47cab7e09af536c552160b71de628d";
@@ -36,6 +38,50 @@ namespace Miku.ShaderConverter.Editor.Tests
         RenderPipelineAsset previousDefaultPipeline;
         RenderPipelineAsset previousQualityPipeline;
         UniversalRenderPipelineAsset testPipeline;
+
+        [Test]
+        public void PortableHybridRejectsMeshBoundBundleResources()
+        {
+            var plan = new JObject
+            {
+                ["mode"] = "PreferNative",
+                ["bakeJobs"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["route"] = "ReusableBake",
+                        ["coordinateDomain"] = "UV0",
+                        ["meshBindingRequired"] = false,
+                    },
+                },
+            };
+            var bundle = new JObject
+            {
+                ["resources"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["kind"] = "Texture2D",
+                        ["semantic"] = "BakedExpression",
+                    },
+                },
+            };
+            Assert.DoesNotThrow(() => InvokeVoid(
+                "ValidatePortableHybridBundle",
+                plan,
+                bundle));
+
+            ((JObject)((JArray)bundle["resources"])[0])["meshBinding"] =
+                new JObject { ["sha256"] = new string('0', 64) };
+            var error = Assert.Throws<TargetInvocationException>(() =>
+                InvokeVoid(
+                    "ValidatePortableHybridBundle",
+                    plan,
+                    bundle));
+            Assert.That(
+                error?.InnerException?.Message,
+                Does.Contain("MIKU_PORTABLE_RESOURCE_MESH_BOUND"));
+        }
 
         [SetUp]
         public void SetUp()
@@ -130,7 +176,6 @@ namespace Miku.ShaderConverter.Editor.Tests
         }
 
         [TestCase("standard_pbr", true)]
-        [TestCase("generic_toon", false)]
         [TestCase("genshin_toon", false)]
         [TestCase("wuwa_toon", false)]
         [TestCase("hsr_toon", false)]
@@ -139,11 +184,7 @@ namespace Miku.ShaderConverter.Editor.Tests
             bool editable)
         {
             var workflow = new JObject { ["kind"] = kind };
-            if (!editable &&
-                !string.Equals(
-                    kind,
-                    "generic_toon",
-                    StringComparison.Ordinal))
+            if (!editable)
                 workflow["part"] = "Body";
             var ir = new JObject
             {
@@ -158,9 +199,7 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(
                 backend.WrapperTemplatePath,
                 Is.EqualTo(
-                    kind == "generic_toon"
-                        ? string.Empty
-                        : kind == "standard_pbr"
+                    kind == "standard_pbr"
                         ? MikuWorkflowBackends.StandardWrapperTemplate
                         : MikuWorkflowBackends.StandardWrapperTemplate));
         }
@@ -260,6 +299,81 @@ namespace Miku.ShaderConverter.Editor.Tests
                     path.EndsWith(
                         ".meshbinding.asset",
                         StringComparison.Ordinal)));
+        }
+
+        [Test]
+        public void CurrentMikuSourceMeshCreatesStablePrefabAndBinding()
+        {
+            var bundlePath = WriteValidBundle(
+                sourceId: "miku-source-mesh-fixture",
+                materialId: "miku-source-mesh-material",
+                sourceName: "MikuSourceMeshFixture",
+                targetProfileHash: CurrentProfileHash,
+                explicitMaterialIrV2: SurfaceModelIr2("OpaquePBR"),
+                includeSourceMesh: true,
+                bundleKind: "miku-bundle-1.0");
+            var request = new MikuImportRequest
+            {
+                bundlePath = bundlePath,
+                outputRoot = OutputRoot,
+                createMaterialVariant = false,
+            };
+
+            var first = MikuBundleImporter.Import(request);
+            Assert.That(
+                first.success,
+                Is.True,
+                string.Join(" | ", first.diagnostics));
+            Assert.That(
+                first.diagnostics,
+                Has.Some.StartsWith("MIKU_SOURCE_MESH_FIDELITY_PREFAB:"));
+            var prefabPath = first.assetPaths.Single(path =>
+                path.EndsWith(".prefab", StringComparison.Ordinal));
+            var bindingPath = first.assetPaths.Single(path =>
+                path.EndsWith(
+                    ".meshbinding.asset",
+                    StringComparison.Ordinal));
+            var glbPath = first.assetPaths.Single(path =>
+                path.EndsWith(".source.glb", StringComparison.Ordinal));
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            var description =
+                AssetDatabase.LoadAssetAtPath<MikuMeshBindingDescription>(
+                    bindingPath);
+            Assert.That(prefab, Is.Not.Null);
+            Assert.That(description, Is.Not.Null);
+            Assert.That(description.generatedPrefab, Is.EqualTo(prefab));
+            Assert.That(description.material, Is.Not.Null);
+            Assert.That(description.rendererBindings, Has.Count.EqualTo(1));
+            Assert.That(
+                description.rendererBindings[0].unityMeshFingerprint,
+                Has.Length.EqualTo(64));
+            var importedMesh = prefab
+                .GetComponentsInChildren<MeshFilter>(true)
+                .Single()
+                .sharedMesh;
+            Assert.That(importedMesh.vertexCount, Is.EqualTo(3));
+            Assert.That(importedMesh.subMeshCount, Is.EqualTo(1));
+            Assert.That(
+                importedMesh.HasVertexAttribute(VertexAttribute.TexCoord0),
+                Is.True);
+            var prefabGuid = AssetDatabase.AssetPathToGUID(prefabPath);
+            var bindingGuid = AssetDatabase.AssetPathToGUID(bindingPath);
+            var glbGuid = AssetDatabase.AssetPathToGUID(glbPath);
+
+            var second = MikuBundleImporter.Import(request);
+            Assert.That(
+                second.success,
+                Is.True,
+                string.Join(" | ", second.diagnostics));
+            Assert.That(
+                AssetDatabase.AssetPathToGUID(prefabPath),
+                Is.EqualTo(prefabGuid));
+            Assert.That(
+                AssetDatabase.AssetPathToGUID(bindingPath),
+                Is.EqualTo(bindingGuid));
+            Assert.That(
+                AssetDatabase.AssetPathToGUID(glbPath),
+                Is.EqualTo(glbGuid));
         }
 
         [TestCase(
@@ -592,6 +706,31 @@ namespace Miku.ShaderConverter.Editor.Tests
         }
 
         [Test]
+        public void CustomMultiLobeSkipsNonAuthoritativeCompatibilityBindings()
+        {
+            var ir = SurfaceModelIr2("CustomMultiLobe");
+
+            Assert.That(
+                MikuBundleImporter.RequiresMaterialTextureBinding(ir, "IOR"),
+                Is.False);
+            Assert.That(
+                MikuBundleImporter.RequiresMaterialTextureBinding(
+                    ir,
+                    "BaseColor"),
+                Is.False);
+            Assert.That(
+                MikuBundleImporter.RequiresMaterialTextureBinding(
+                    ir,
+                    "Emission"),
+                Is.False);
+            Assert.That(
+                MikuBundleImporter.RequiresMaterialTextureBinding(
+                    ir,
+                    "_MIKU_Baked_reachable"),
+                Is.True);
+        }
+
+        [Test]
         public void CustomMultiLobeGeneratesImportableUnlitUrpGraph()
         {
             var ir = SurfaceModelIr2("CustomMultiLobe");
@@ -608,6 +747,13 @@ namespace Miku.ShaderConverter.Editor.Tests
                     StringComparison.Ordinal)).ToArray();
             Assert.That(customFunctions, Has.Length.EqualTo(2));
             Assert.That(
+                objects.Count(item => string.Equals(
+                    item["m_Type"]?.Value<string>(),
+                    "UnityEditor.ShaderGraph.AndNode",
+                    StringComparison.Ordinal)),
+                Is.EqualTo(2),
+                "Each lobe must reject non-finite normal magnitudes.");
+            Assert.That(
                 customFunctions.All(item => string.Equals(
                     item["m_FunctionSource"]?.Value<string>(),
                     "8ce39b4252824e4bbd28e2cf5dfcd3a5",
@@ -616,6 +762,47 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(
                 generator.GenerateSubGraph(ir, materialId),
                 Is.EqualTo(generated));
+
+            var graph = objects.Single(item =>
+                (item["m_Type"]?.Value<string>() ?? "")
+                .EndsWith(".GraphData", StringComparison.Ordinal));
+            var byId = objects
+                .Where(item => item["m_ObjectId"] != null)
+                .ToDictionary(
+                    item => item["m_ObjectId"].Value<string>(),
+                    item => item,
+                    StringComparer.Ordinal);
+            foreach (var customFunction in customFunctions)
+            {
+                var customFunctionId =
+                    customFunction["m_ObjectId"].Value<string>();
+                var normalSlot = (customFunction["m_Slots"] as JArray)
+                    .OfType<JObject>()
+                    .Select(reference =>
+                        byId[reference["m_Id"].Value<string>()])
+                    .Single(slot => string.Equals(
+                        slot["m_DisplayName"]?.Value<string>(),
+                        "NormalWS",
+                        StringComparison.Ordinal));
+                var normalSlotId = normalSlot["m_Id"].Value<int>();
+                var normalEdge = (graph["m_Edges"] as JArray)
+                    .OfType<JObject>()
+                    .Single(edge =>
+                        string.Equals(
+                            edge["m_InputSlot"]?["m_Node"]?["m_Id"]
+                                ?.Value<string>(),
+                            customFunctionId,
+                            StringComparison.Ordinal) &&
+                        edge["m_InputSlot"]?["m_SlotId"]?.Value<int>() ==
+                        normalSlotId);
+                var normalSourceId =
+                    normalEdge["m_OutputSlot"]?["m_Node"]?["m_Id"]
+                        ?.Value<string>() ?? "";
+                Assert.That(
+                    byId[normalSourceId]["m_Type"]?.Value<string>(),
+                    Is.EqualTo("UnityEditor.ShaderGraph.NormalizeNode"),
+                    "Each lobe must receive a validated, normalized normal.");
+            }
 
             var contract = generator.WrapperContract(ir);
             var template = File.ReadAllText(
@@ -630,6 +817,11 @@ namespace Miku.ShaderConverter.Editor.Tests
                     contract);
             wrapper = MikuShaderGraph17RuntimeBackend
                 .ApplyWrapperContract(wrapper, contract);
+            Assert.That(
+                wrapper,
+                Does.Contain("UniversalUnlitSubTarget"),
+                "Non-coat closure radiance is final lighting and must use " +
+                "the unlit wrapper Base Color path.");
             var assetRoot = OutputRoot + "/SurfaceModels";
             Directory.CreateDirectory(ToAbsolute(assetRoot));
             var subGraphPath =
@@ -679,6 +871,9 @@ namespace Miku.ShaderConverter.Editor.Tests
             var ir = ClearCoatSurfaceModelIr2();
             ir["surfaceModelPlan"]["kind"] = "CustomMultiLobe";
             var generator = MikuSurfaceModelBackends.Resolve(ir);
+            Assert.That(
+                generator.WrapperTemplatePath,
+                Does.EndWith("MikuClearCoatTemplate.shadergraph"));
             const string materialId = "closure-clear-coat-multi-lobe";
             var generated = generator.GenerateSubGraph(ir, materialId);
 
@@ -690,6 +885,65 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(
                 generated,
                 Does.Contain("\"m_DisplayName\": \"Coat Smoothness\""));
+        }
+
+        [Test]
+        public void ClosureCompositeClearCoatAggregatesMultiplePrincipledTerms()
+        {
+            var ir = ClearCoatSurfaceModelIr2();
+            ir["surfaceModelPlan"]["kind"] = "CustomMultiLobe";
+            var terms = (JArray)ir["weightedClosures"]["terms"];
+            var second = (JObject)terms[0].DeepClone();
+            second["id"] = "principled-second";
+            second["closureId"] = "closure-principled-second";
+            second["finalWeight"] = new JObject
+            {
+                ["kind"] = "Constant",
+                ["valueType"] = "Float",
+                ["value"] = 0.5f,
+            };
+            terms.Add(second);
+
+            var generator = MikuSurfaceModelBackends.Resolve(ir);
+            var generated = generator.GenerateSubGraph(
+                ir,
+                "closure-clear-coat-multi-principled");
+            var objects = ParseMultiJson(generated);
+            Assert.That(
+                objects.Count(item => string.Equals(
+                    item["m_Type"]?.Value<string>(),
+                    "UnityEditor.ShaderGraph.DivideNode",
+                    StringComparison.Ordinal)),
+                Is.GreaterThanOrEqualTo(1),
+                "Coat smoothness must be normalized by coat contribution.");
+            Assert.That(
+                objects.Count(item => string.Equals(
+                    item["m_Type"]?.Value<string>(),
+                    "UnityEditor.ShaderGraph.MinimumNode",
+                    StringComparison.Ordinal)),
+                Is.GreaterThanOrEqualTo(1),
+                "Coat smoothness must be capped below the singular limit.");
+        }
+
+        [Test]
+        public void RiskyMultiLobeInputsReportFiniteSanitization()
+        {
+            var ir = SurfaceModelIr2("CustomMultiLobe");
+            var first = (JObject)ir["weightedClosures"]["terms"][0];
+            first["parameters"]["Roughness"] = new JObject
+            {
+                ["kind"] = "Constant",
+                ["valueType"] = "Float",
+                ["value"] = 0f,
+            };
+
+            Assert.That(
+                Invoke<bool>("RequiresClosureFiniteSanitization", ir),
+                Is.True);
+            ir["surfaceModelPlan"]["kind"] = "OpaquePBR";
+            Assert.That(
+                Invoke<bool>("RequiresClosureFiniteSanitization", ir),
+                Is.False);
         }
 
         [TestCase(
@@ -1401,6 +1655,66 @@ namespace Miku.ShaderConverter.Editor.Tests
         }
 
         [Test]
+        public void Package103ClosureZeroNormalsMigrateInMemoryWithDiagnostic()
+        {
+            var ir = SurfaceModelIr2("CustomMultiLobe");
+            var term = ((JArray)ir["weightedClosures"]["terms"])
+                .OfType<JObject>()
+                .First();
+            ((JObject)term["parameters"])["Normal"] = new JObject
+            {
+                ["kind"] = "Constant",
+                ["valueType"] = "Float3",
+                ["value"] = new JArray(0f, 0f, 0f),
+            };
+            ir["closureGraph"] = new JObject
+            {
+                ["root"] = new JObject
+                {
+                    ["parameters"] = new JObject
+                    {
+                        ["Coat Normal"] = new JObject
+                        {
+                            ["kind"] = "Constant",
+                            ["valueType"] = "Float3",
+                            ["value"] = new JArray(0f, 0f, 0f),
+                        },
+                        ["Normal"] = new JObject
+                        {
+                            ["kind"] = "ValueExpression",
+                            ["valueType"] = "Float3",
+                            ["expressionId"] = "explicit-zero-expression",
+                        },
+                    },
+                },
+            };
+            var diagnostics = new List<string>();
+
+            MikuBundleImporter.NormalizeLegacyClosureZeroNormals(
+                ir,
+                Package103ProfileHash,
+                diagnostics);
+
+            Assert.That(
+                term["parameters"]?["Normal"]?["value"],
+                Is.EqualTo(new JArray(0f, 0f, 1f)));
+            Assert.That(
+                ir["closureGraph"]?["root"]?["parameters"]?
+                    ["Coat Normal"]?["value"],
+                Is.EqualTo(new JArray(0f, 0f, 1f)));
+            Assert.That(
+                ir["closureGraph"]?["root"]?["parameters"]?
+                    ["Normal"]?["expressionId"]?.Value<string>(),
+                Is.EqualTo("explicit-zero-expression"));
+            Assert.That(
+                diagnostics,
+                Is.EqualTo(new[]
+                {
+                    "MIKU_LEGACY_CLOSURE_ZERO_NORMAL_NORMALIZED",
+                }));
+        }
+
+        [Test]
         public void LegacyZeroNormalIsNeutralInGraphAndMaterialBinding()
         {
             var channels = new JArray
@@ -1655,79 +1969,29 @@ namespace Miku.ShaderConverter.Editor.Tests
         }
 
         [Test]
-        public void GenericToonImportPreservesExistingWrapperAndCreatesNoGraph()
+        public void RetiredGenericToonImportFailsBeforeWritingAssets()
         {
-            const string sourceId = "wrapper-migration-source";
-            const string materialId = "44444444-4444-4444-8444-444444444444";
-            var standard = MikuBundleImporter.Import(new MikuImportRequest
+            var result = MikuBundleImporter.Import(new MikuImportRequest
             {
                 bundlePath = WriteValidBundle(
                     false,
-                    sourceId,
-                    materialId,
-                    "WrapperMigration",
-                    "standard_pbr"),
+                    "retired-generic-source",
+                    "44444444-4444-4444-8444-444444444444",
+                    "RetiredGeneric",
+                    "generic_toon"),
                 outputRoot = OutputRoot,
                 fullRegeneration = true,
                 createMaterialVariant = false,
             });
             Assert.That(
-                standard.success,
-                Is.True,
-                string.Join(" | ", standard.diagnostics));
-            var wrapper = standard.assetPaths.Single(
-                path => path.EndsWith(".shadergraph", StringComparison.Ordinal));
-            var wrapperGuid = AssetDatabase.AssetPathToGUID(wrapper);
-            var modifiedBytes = File.ReadAllBytes(ToAbsolute(wrapper))
-                .Concat(new byte[] { (byte)'\n' })
-                .ToArray();
-            File.WriteAllBytes(ToAbsolute(wrapper), modifiedBytes);
-
-            var generic = MikuBundleImporter.Import(new MikuImportRequest
-            {
-                bundlePath = WriteValidBundle(
-                    false,
-                    sourceId,
-                    materialId,
-                    "WrapperMigration",
-                    "generic_toon"),
-                outputRoot = OutputRoot,
-                fullRegeneration = false,
-                createMaterialVariant = false,
-            });
+                result.success,
+                Is.False);
             Assert.That(
-                generic.success,
-                Is.True,
-                string.Join(" | ", generic.diagnostics));
+                result.diagnostics,
+                Has.Some.StartsWith("MIKU_IMPORT_FAILED:MIKU_WORKFLOW_RETIRED:generic_toon"));
             Assert.That(
-                generic.assetPaths,
-                Has.None.Matches<string>(path =>
-                    path.EndsWith(
-                        ".shadergraph",
-                        StringComparison.Ordinal)));
-            Assert.That(
-                generic.assetPaths,
-                Has.None.Matches<string>(path =>
-                    path.EndsWith(
-                        ".shadersubgraph",
-                        StringComparison.Ordinal)));
-            Assert.That(
-                generic.assetPaths,
-                Has.Some.Matches<string>(path =>
-                    path.EndsWith(
-                        ".toon-recipe.asset",
-                        StringComparison.Ordinal)));
-            var userMaterialPath = generic.assetPaths.Single(path =>
-                path.EndsWith(".mat", StringComparison.Ordinal) &&
-                !path.EndsWith(".generated.mat", StringComparison.Ordinal));
-            Assert.That(
-                AssetDatabase.LoadAssetAtPath<Material>(userMaterialPath)
-                    .shader.name,
-                Is.EqualTo("Miku/GenericToon/GenericOpaque"));
-            Assert.That(
-                AssetDatabase.AssetPathToGUID(wrapper),
-                Is.EqualTo(wrapperGuid));
-            Assert.That(File.ReadAllBytes(ToAbsolute(wrapper)), Is.EqualTo(modifiedBytes));
+                result.assetPaths,
+                Is.Empty);
         }
 
         [Test]
@@ -2814,7 +3078,7 @@ namespace Miku.ShaderConverter.Editor.Tests
         [TestCase("TransparentEmission")]
         [TestCase("TransparentLit")]
         [TestCase("CustomMultiLobe")]
-        public void ClosureCompositeUsesNormalChannelForOutputAndWorldNormal(
+        public void ClosureCompositeUsesPerLobeWorldNormalsAndGeometryInputs(
             string surfaceKind)
         {
             const string bindingKey =
@@ -2836,59 +3100,59 @@ namespace Miku.ShaderConverter.Editor.Tests
                     item => item["m_ObjectId"].Value<string>(),
                     item => item,
                     StringComparer.Ordinal);
-            var transform = objects.Single(item =>
-                string.Equals(
-                    item["m_Type"]?.Value<string>(),
-                    "UnityEditor.ShaderGraph.TransformNode",
-                    StringComparison.Ordinal));
-            var transformId =
-                transform["m_ObjectId"]?.Value<string>() ?? "";
-            var reachesNormalConsumer =
-                (graph["m_Edges"] as JArray ?? new JArray())
-                .OfType<JObject>()
-                .Any(edge =>
-                {
-                    var outputId = edge["m_OutputSlot"]?["m_Node"]?
-                        ["m_Id"]?.Value<string>() ?? "";
-                    var inputId = edge["m_InputSlot"]?["m_Node"]?
-                        ["m_Id"]?.Value<string>() ?? "";
-                    return string.Equals(
-                               outputId,
-                               transformId,
-                               StringComparison.Ordinal) &&
-                           byId.TryGetValue(inputId, out var inputNode) &&
-                           (
-                               string.Equals(
-                                   inputNode["m_Type"]?.Value<string>(),
-                                   "UnityEditor.ShaderGraph.DotProductNode",
-                                   StringComparison.Ordinal) ||
-                               string.Equals(
-                                   inputNode["m_Type"]?.Value<string>(),
-                                   "UnityEditor.ShaderGraph.CustomFunctionNode",
-                                   StringComparison.Ordinal)
-                           );
-                });
+            var customFunctions = objects.Where(item => string.Equals(
+                item["m_Type"]?.Value<string>(),
+                "UnityEditor.ShaderGraph.CustomFunctionNode",
+                StringComparison.Ordinal)).ToArray();
+            var normalSources = customFunctions.Select(function =>
+            {
+                var edge = (graph["m_Edges"] as JArray ?? new JArray())
+                    .OfType<JObject>()
+                    .Single(item => string.Equals(
+                            item["m_InputSlot"]?["m_Node"]?["m_Id"]?
+                                .Value<string>(),
+                            function["m_ObjectId"]?.Value<string>(),
+                            StringComparison.Ordinal) &&
+                        item["m_InputSlot"]?["m_SlotId"]?.Value<int>() == 1);
+                return byId[edge["m_OutputSlot"]?["m_Node"]?["m_Id"]?
+                    .Value<string>() ?? ""];
+            }).ToArray();
 
             Assert.That(generated, Does.Contain(bindingKey));
             Assert.That(
                 generated,
                 Does.Contain(
                     "UnityEditor.ShaderGraph.NormalFromHeightNode"));
-            // Pure emission has no lighting/Fresnel consumer; retaining the
-            // configured Transform node is the expected world-normal path.
-            Assert.That(
-                reachesNormalConsumer ||
-                string.Equals(
+            if (string.Equals(
                     surfaceKind,
                     "TransparentEmission",
-                    StringComparison.Ordinal),
-                Is.True);
+                    StringComparison.Ordinal))
+            {
+                Assert.That(customFunctions, Is.Empty);
+            }
+            else
+            {
+                Assert.That(customFunctions, Has.Length.EqualTo(2));
+                Assert.That(
+                    normalSources.Select(item =>
+                        item["m_Type"]?.Value<string>()),
+                    Is.All.EqualTo(
+                        "UnityEditor.ShaderGraph.NormalizeNode"));
+                Assert.That(
+                    normalSources.Select(item =>
+                        item["m_ObjectId"]?.Value<string>()).Distinct().Count(),
+                    Is.EqualTo(2));
+            }
+            Assert.That(objects.Any(item => string.Equals(
+                item["m_Type"]?.Value<string>(),
+                "UnityEditor.ShaderGraph.NormalVectorNode",
+                StringComparison.Ordinal)), Is.True);
         }
 
         [TestCase("TransparentEmission")]
         [TestCase("TransparentLit")]
         [TestCase("CustomMultiLobe")]
-        public void ClosureCompositeRoutesEvaluatedRadianceThroughBaseColor(
+        public void UnlitClosureCompositeRoutesEvaluatedRadianceThroughBaseColor(
             string surfaceKind)
         {
             var generated = GenerateRuntimeSubGraph(
@@ -2935,9 +3199,72 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(
                 SourceFor("Base Color")["m_Type"]?.Value<string>(),
                 Does.EndWith(".AddNode"));
+            var emissionSource = SourceFor("Emission");
+            Assert.That(
+                emissionSource["m_Type"]?.Value<string>(),
+                Does.EndWith(".Vector3Node"));
+            Assert.That(
+                (emissionSource["m_Slots"] as JArray ?? new JArray())
+                    .OfType<JObject>()
+                    .Select(reference => byId[
+                        reference["m_Id"]?.Value<string>() ?? ""])
+                    .Where(slot => slot["m_Id"]?.Value<int>() > 0)
+                    .Select(slot => slot["m_Value"]?.Value<float>() ?? 0f),
+                Has.All.EqualTo(0f));
+        }
+
+        [Test]
+        public void LitClearCoatClosureRoutesEvaluatedRadianceThroughEmission()
+        {
+            var ir = ClearCoatSurfaceModelIr2();
+            ir["surfaceModelPlan"]["kind"] = "CustomMultiLobe";
+            var generated = GenerateRuntimeSubGraph(
+                ir,
+                "closure-radiance-clear-coat");
+            var objects = ParseMultiJson(generated);
+            var graph = objects.Single(item =>
+                (item["m_Type"]?.Value<string>() ?? "")
+                .EndsWith(".GraphData", StringComparison.Ordinal));
+            var output = objects.Single(item =>
+                (item["m_Type"]?.Value<string>() ?? "")
+                .EndsWith(".SubGraphOutputNode", StringComparison.Ordinal));
+            var byId = objects
+                .Where(item => item["m_ObjectId"] != null)
+                .ToDictionary(
+                    item => item["m_ObjectId"].Value<string>(),
+                    item => item,
+                    StringComparer.Ordinal);
+            var outputSlots = (output["m_Slots"] as JArray ?? new JArray())
+                .OfType<JObject>()
+                .Select(reference => byId[
+                    reference["m_Id"]?.Value<string>() ?? ""])
+                .ToDictionary(
+                    slot => slot["m_DisplayName"]?.Value<string>() ?? "",
+                    slot => slot["m_Id"]?.Value<int>() ?? -1,
+                    StringComparer.Ordinal);
+            JObject SourceFor(string displayName)
+            {
+                var edge = (graph["m_Edges"] as JArray ?? new JArray())
+                    .OfType<JObject>()
+                    .Single(item =>
+                        string.Equals(
+                            item["m_InputSlot"]?["m_Node"]?["m_Id"]?
+                                .Value<string>(),
+                            output["m_ObjectId"]?.Value<string>(),
+                            StringComparison.Ordinal) &&
+                        item["m_InputSlot"]?["m_SlotId"]?.Value<int>() ==
+                            outputSlots[displayName]);
+                return byId[
+                    edge["m_OutputSlot"]?["m_Node"]?["m_Id"]?
+                        .Value<string>() ?? ""];
+            }
+
+            Assert.That(
+                SourceFor("Base Color")["m_Type"]?.Value<string>(),
+                Does.EndWith(".Vector3Node"));
             Assert.That(
                 SourceFor("Emission")["m_Type"]?.Value<string>(),
-                Does.EndWith(".Vector3Node"));
+                Does.EndWith(".AddNode"));
         }
 
         [Test]
@@ -3360,7 +3687,7 @@ namespace Miku.ShaderConverter.Editor.Tests
                         SurfaceModelIr2("CustomMultiLobe")),
                 outputRoot = OutputRoot,
                 fullRegeneration = true,
-                createMaterialVariant = false,
+                createMaterialVariant = true,
             };
 
             var result = MikuBundleImporter.Import(request);
@@ -3378,6 +3705,94 @@ namespace Miku.ShaderConverter.Editor.Tests
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(wrapperPath);
             Assert.That(shader, Is.Not.Null);
             Assert.That(ShaderUtil.ShaderHasError(shader), Is.False);
+            var materialPath = result.assetPaths.Single(path =>
+                path.EndsWith(".generated.mat", StringComparison.Ordinal));
+            var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+            Assert.That(material.GetColor("_EmissionColor"), Is.EqualTo(Color.white));
+            Assert.That(material.GetFloat("_EmissionStrength"), Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void ExternalPackage103MultiLobeRegressionBundlesImportWhenProvided()
+        {
+            var fixtureRoot = Environment.GetEnvironmentVariable(
+                "MIKU_103_REGRESSION_BUNDLE_ROOT");
+            if (string.IsNullOrWhiteSpace(fixtureRoot))
+            {
+                Assert.Ignore(
+                    "Set MIKU_103_REGRESSION_BUNDLE_ROOT to the immutable " +
+                    "Miku 1.0.3 output directory.");
+            }
+
+            var fixtures = new[]
+            {
+                (Directory: "彩色镀层5__70dcd51d8b5b", File: "彩色镀层5.mikubundle", HasMesh: false),
+                (Directory: "彩色镀层8__576e51791e32", File: "彩色镀层8.mikubundle", HasMesh: true),
+                (Directory: "凹凸石3__b4c02f01f6e4", File: "凹凸石3.mikubundle", HasMesh: true),
+            };
+            foreach (var fixture in fixtures)
+            {
+                var result = MikuBundleImporter.Import(new MikuImportRequest
+                {
+                    bundlePath = Path.Combine(
+                        fixtureRoot,
+                        fixture.Directory,
+                        fixture.File),
+                    outputRoot = OutputRoot + "/Package103Regression",
+                    fullRegeneration = true,
+                    createMaterialVariant = true,
+                });
+                Assert.That(
+                    result.success,
+                    Is.True,
+                    fixture.File + ": " +
+                    string.Join(" | ", result.diagnostics));
+
+                if (fixture.File.StartsWith("彩色镀层", StringComparison.Ordinal))
+                {
+                    Assert.That(
+                        result.diagnostics,
+                        Does.Contain(
+                            "MIKU_LEGACY_CLOSURE_ZERO_NORMAL_NORMALIZED"));
+                }
+                Assert.That(
+                    result.assetPaths.Any(path => path.EndsWith(
+                        ".prefab",
+                        StringComparison.Ordinal)),
+                    Is.EqualTo(fixture.HasMesh));
+
+                foreach (var texturePath in result.assetPaths.Where(path =>
+                    path.EndsWith(".exr", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var importer = (TextureImporter)AssetImporter.GetAtPath(
+                        texturePath);
+                    Assert.That(importer.textureType, Is.EqualTo(TextureImporterType.Default));
+                    Assert.That(importer.sRGBTexture, Is.False);
+                }
+                foreach (var texturePath in result.assetPaths.Where(path =>
+                    fixture.File.StartsWith("凹凸石", StringComparison.Ordinal) &&
+                    path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var importer = (TextureImporter)AssetImporter.GetAtPath(
+                        texturePath);
+                    Assert.That(importer.textureType, Is.EqualTo(TextureImporterType.NormalMap));
+                    Assert.That(importer.flipGreenChannel, Is.False);
+                }
+
+                foreach (var prefabPath in result.assetPaths.Where(path =>
+                    path.EndsWith(".prefab", StringComparison.Ordinal)))
+                {
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                        prefabPath);
+                    Assert.That(prefab, Is.Not.Null);
+                    Assert.That(
+                        prefab.GetComponentsInChildren<Renderer>(true)
+                            .SelectMany(renderer => renderer.sharedMaterials)
+                            .Any(material => material != null),
+                        Is.True,
+                        fixture.File + " Source Mesh material slot is unbound.");
+                }
+            }
         }
 
         [Test]
@@ -3701,6 +4116,99 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(generated, Does.Contain("UnityEditor.ShaderGraph.BranchNode"));
             Assert.That(generated, Does.Not.Contain("UnityEditor.ShaderGraph.FresnelNode"));
             Assert.That(generated, Does.Not.Contain("CustomFunctionNode"));
+        }
+
+        [Test]
+        public void MaterialHeightChannelUsesVertexLodZeroAndIrDefaults()
+        {
+            var ir = SurfaceIr("StandardLit", "Opaque");
+            ir["resources"] = new JArray
+            {
+                new JObject
+                {
+                    ["id"] = "height-resource",
+                    ["semantic"] = "Height",
+                    ["channel"] = "R",
+                    ["colorSpace"] = "Linear",
+                },
+            };
+            ir["expressions"] = new JArray
+            {
+                Expression(
+                    "material-height",
+                    "Input.MaterialChannel",
+                    "Scalar",
+                    "Vertex",
+                    new JObject
+                    {
+                        ["semantic"] = "Height",
+                        ["uvSet"] = "UV0",
+                        ["lod"] = 0,
+                    }),
+                Expression(
+                    "position-object",
+                    "Input.Position.Object",
+                    "Float3",
+                    "Vertex"),
+                Expression(
+                    "normal-object",
+                    "Input.Normal.Object",
+                    "Float3",
+                    "Vertex"),
+                Expression(
+                    "vertex-displacement",
+                    "Vector.Displacement",
+                    "Float3",
+                    "Vertex",
+                    new JObject
+                    {
+                        ["midlevel"] = 0.25f,
+                        ["scale"] = -0.125f,
+                        ["midlevelReference"] = "_MIKU_HeightMidlevel",
+                        ["scaleReference"] = "_MIKU_HeightScale",
+                    },
+                    new JObject
+                    {
+                        ["Height"] = new JObject
+                        {
+                            ["expressionId"] = "material-height",
+                        },
+                        ["Position"] = new JObject
+                        {
+                            ["expressionId"] = "position-object",
+                        },
+                        ["Normal"] = new JObject
+                        {
+                            ["expressionId"] = "normal-object",
+                        },
+                    }),
+            };
+            ir["channels"] = new JArray
+            {
+                new JObject
+                {
+                    ["semantic"] = "Height",
+                    ["valueType"] = "Scalar",
+                    ["stage"] = "Fragment",
+                    ["required"] = true,
+                    ["value"] = new JObject
+                    {
+                        ["kind"] = "TextureResource",
+                        ["resourceId"] = "height-resource",
+                    },
+                },
+                ExpressionChannel("Displacement", "vertex-displacement"),
+                ConstantChannel("Alpha", 1.0),
+            };
+
+            var generated = GenerateRuntimeSubGraph(ir, "material-height-fixture");
+
+            Assert.That(generated, Does.Contain("SampleTexture2DLODNode"));
+            Assert.That(generated, Does.Contain("_MIKU_HeightMap"));
+            Assert.That(generated, Does.Contain("_MIKU_HeightMidlevel"));
+            Assert.That(generated, Does.Contain("_MIKU_HeightScale"));
+            Assert.That(generated, Does.Contain("0.25"));
+            Assert.That(generated, Does.Contain("-0.125"));
         }
 
         [Test]
@@ -4535,6 +5043,12 @@ namespace Miku.ShaderConverter.Editor.Tests
                         },
                     }),
             };
+            ((JObject)expressions
+                .OfType<JObject>()
+                .Single(item => string.Equals(
+                    item["id"]?.Value<string>(),
+                    "closure-normal",
+                    StringComparison.Ordinal)))["space"] = "Tangent";
             ir["expressions"] = expressions;
             ir["resources"] = new JArray
             {
@@ -4560,6 +5074,25 @@ namespace Miku.ShaderConverter.Editor.Tests
             var firstTerm = ((JArray)ir["weightedClosures"]["terms"])
                 .OfType<JObject>()
                 .First();
+            foreach (var term in ((JArray)ir["weightedClosures"]["terms"])
+                .OfType<JObject>()
+                .Where(item => string.Equals(
+                    item["domain"]?.Value<string>(),
+                    "SurfaceScattering",
+                    StringComparison.Ordinal)))
+            {
+                ((JObject)term["parameters"])["Normal"] = new JObject
+                {
+                    ["kind"] = "ValueExpression",
+                    ["valueType"] = "Float3",
+                    ["expressionId"] = "closure-normal",
+                    ["source"] = new JObject
+                    {
+                        ["nodeId"] = "normal-source",
+                        ["socketId"] = "Normal",
+                    },
+                };
+            }
             firstTerm["finalWeight"] = new JObject
             {
                 ["id"] = "weight-runtime-expression",

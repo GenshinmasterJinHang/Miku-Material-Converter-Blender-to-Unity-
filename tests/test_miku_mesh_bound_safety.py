@@ -6,6 +6,7 @@ import unittest
 from miku.bundle import (
     compute_sealed_digest,
     validate_bundle_document,
+    validate_portable_hybrid_resources,
 )
 from miku.contracts import DocumentValidationError, make_document
 from miku.planner import ConversionPlanner, default_target_profile
@@ -466,6 +467,39 @@ class MeshBoundBakeSafetyTests(unittest.TestCase):
             validate_bundle_document(legacy)
         self.assertEqual(
             "MIKU_SOURCE_MESH_RESOURCE_INVALID",
+            raised.exception.code,
+        )
+
+    def test_portable_hybrid_rejects_mesh_bound_resources(self):
+        portable = {
+            **file_ref("Baked/value.exr", "image/x-exr"),
+            "id": "portable",
+            "semantic": "ExpressionIsland",
+            "bindingKey": "_MIKU_Baked_portable",
+            "expressionId": "expression",
+            "usage": "Scalar",
+            "channel": "R",
+            "colorSpace": "Linear",
+            "width": 4,
+            "height": 4,
+            "channelCount": 1,
+            "componentBytes": 2,
+            "coordinateDomain": "UV0",
+            "meshBindingRequired": False,
+        }
+        validate_portable_hybrid_resources("PreferNative", [portable])
+        mesh_bound = {
+            **portable,
+            "meshBinding": {
+                "kind": "MeshFingerprintSet",
+                "sha256": "2" * 64,
+                "meshes": [],
+            },
+        }
+        with self.assertRaises(DocumentValidationError) as raised:
+            validate_portable_hybrid_resources("PreferNative", [mesh_bound])
+        self.assertEqual(
+            "MIKU_PORTABLE_RESOURCE_MESH_BOUND",
             raised.exception.code,
         )
 

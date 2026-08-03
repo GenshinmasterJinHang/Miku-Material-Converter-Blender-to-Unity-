@@ -267,6 +267,51 @@ class MikuBundleSecurityTests(unittest.TestCase):
                 )
             )
 
+    def test_fixed_eye_uv_transform_is_validated_and_finite(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            image = root / "upper.png"
+            image.write_bytes(b"sealed-upper-highlight")
+            resource = make_file_reference(root, image, media_type="image/png")
+            resource.update(
+                {
+                    "id": "upper-highlight",
+                    "semantic": "FixedWorkflowTexture",
+                    "bindingKey": "FixedTexture_upper",
+                    "materialBindings": [
+                        {
+                            "role": "EyeUpperHighlight",
+                            "uvTransform": {
+                                "coordinateSpace": "UV0",
+                                "operation": "Affine2D",
+                                "matrix": [0.68, 0.0, 0.13, 0.0, 1.27, -0.05],
+                            },
+                        }
+                    ],
+                    "usage": "Scalar",
+                    "channel": "RGB",
+                    "colorSpace": "Linear",
+                    "width": 1,
+                    "height": 1,
+                    "channelCount": 4,
+                    "componentBytes": 1,
+                    "uvSet": "UV0",
+                    "projection": "FLAT",
+                    "interpolation": "LINEAR",
+                    "extension": "REPEAT",
+                }
+            )
+            validate_bundle_document(self._bundle(root, [resource]))
+            resource["materialBindings"][0]["uvTransform"]["matrix"][0] = (
+                float("nan")
+            )
+            with self.assertRaises(DocumentValidationError) as raised:
+                validate_bundle_document(self._bundle(root, [resource]))
+            self.assertEqual(
+                "MIKU_INVALID_NUMBER",
+                raised.exception.code,
+            )
+
     def test_packed_channel_bindings_reject_srgb_and_invalid_channels(self):
         for color_space, channel, expected in (
             (

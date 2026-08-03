@@ -25,14 +25,28 @@ except ImportError:  # Ordinary Python unit tests do not provide Blender.
     bpy = None
 
 from .capabilities import classify_eevee_graph
+from .translations import TRANSLATIONS
 
 try:
     from ..miku.bundle import (
         compute_sealed_digest,
         make_file_reference,
         validate_bundle_document,
+        validate_portable_hybrid_resources,
+    )
+    from ..miku.bake_protocol import (
+        DEFAULT_BAKE_RESOLUTION,
+        normalize_bake_resolution,
     )
     from ..miku.contracts import make_document, validate_document
+    from ..miku.fixed_workflows import (
+        FIXED_TEXTURE_ROLES,
+        FIXED_WORKFLOWS,
+        allowed_texture_role,
+        infer_filename_texture_role,
+        normalize_texture_role,
+        texture_role_color_space,
+    )
     from ..miku.planner import (
         SOURCE_MESH_RESOLVABLE_DIAGNOSTIC_CODES,
         ConversionPlanner,
@@ -53,8 +67,21 @@ except (ImportError, ValueError):
         compute_sealed_digest,
         make_file_reference,
         validate_bundle_document,
+        validate_portable_hybrid_resources,
+    )
+    from miku.bake_protocol import (
+        DEFAULT_BAKE_RESOLUTION,
+        normalize_bake_resolution,
     )
     from miku.contracts import make_document, validate_document
+    from miku.fixed_workflows import (
+        FIXED_TEXTURE_ROLES,
+        FIXED_WORKFLOWS,
+        allowed_texture_role,
+        infer_filename_texture_role,
+        normalize_texture_role,
+        texture_role_color_space,
+    )
     from miku.planner import (
         SOURCE_MESH_RESOLVABLE_DIAGNOSTIC_CODES,
         ConversionPlanner,
@@ -75,7 +102,7 @@ except (ImportError, ValueError):
 bl_info = {
     "name": "Miku Semantic Material Converter",
     "author": "Miku contributors",
-    "version": (1, 0, 1),
+    "version": (2, 2, 8),
     "blender": (5, 2, 0),
     "location": "Shader Editor > Sidebar > Miku",
     "description": "Export Blender materials as target-neutral semantic regions and deterministic Unity bundles.",
@@ -84,16 +111,76 @@ bl_info = {
 
 WORKFLOW_ITEMS = (
     ("standard_pbr", "Standard PBR", "Editable URP Shader Graph"),
-    (
-        "generic_toon",
-        "Generic Toon",
-        "Fixed semantic Toon shaders with material-driven Unity authoring",
-    ),
     ("genshin_toon", "Genshin Toon", "Miku Genshin-compatible backend"),
     ("wuwa_toon", "WuWa Toon", "Miku Wuthering Waves-compatible backend"),
     ("hsr_toon", "HSR Toon", "Miku HSR-compatible backend"),
+    ("endfield_toon", "Endfield Toon", "Miku Endfield-compatible backend"),
 )
-GAME_WORKFLOWS = frozenset({"genshin_toon", "wuwa_toon", "hsr_toon"})
+BAKE_QUALITY_RESOLUTIONS = {
+    "LOW_512": 512,
+    "STANDARD_1024": 1024,
+    "HIGH_2048": 2048,
+    "ULTRA_4096": 4096,
+}
+
+
+def bake_resolution_for_quality(quality: Any) -> int:
+    key = str(quality or "")
+    if key not in BAKE_QUALITY_RESOLUTIONS:
+        raise RuntimeError(f"MIKU_BAKE_QUALITY_INVALID:{key or '<missing>'}")
+    return normalize_bake_resolution(BAKE_QUALITY_RESOLUTIONS[key])
+
+
+def _translate_iface(message: str) -> str:
+    if bpy is None:
+        return message
+    translations = getattr(getattr(bpy, "app", None), "translations", None)
+    if translations is None:
+        return message
+    return str(translations.pgettext_iface(message))
+
+
+def _translate_diagnostic(message: str) -> str:
+    """Translate friendly exporter diagnostics while keeping their codes stable."""
+
+    code, separator, detail = str(message).partition(":")
+    templates = {
+        "MIKU_TIME_INPUT_UNSUPPORTED": (
+            "Time-dependent material outputs are not supported by the Blender "
+            "exporter. Remove the time dependency and export again."
+        ),
+    }
+    template = templates.get(code)
+    if template is None:
+        return _translate_iface(str(message))
+    localized = _translate_iface(template)
+    return f"{code}:{localized}" + (f" ({detail})" if separator and detail else "")
+
+
+def _register_translations() -> None:
+    global _TRANSLATIONS_REGISTERED
+    if bpy is None or _TRANSLATIONS_REGISTERED:
+        return
+    try:
+        bpy.app.translations.register(__name__, TRANSLATIONS)
+    except ValueError:
+        bpy.app.translations.unregister(__name__)
+        bpy.app.translations.register(__name__, TRANSLATIONS)
+    _TRANSLATIONS_REGISTERED = True
+
+
+def _unregister_translations() -> None:
+    global _TRANSLATIONS_REGISTERED
+    if bpy is None or not _TRANSLATIONS_REGISTERED:
+        return
+    try:
+        bpy.app.translations.unregister(__name__)
+    except (RuntimeError, ValueError):
+        pass
+    _TRANSLATIONS_REGISTERED = False
+GAME_WORKFLOWS = frozenset(
+    {"genshin_toon", "wuwa_toon", "hsr_toon", "endfield_toon"}
+)
 _SOURCE_ID_PROPERTY = "miku_source_id"
 _SOURCE_ORIGIN_PROPERTY = "_miku_source_identity_origin"
 _MATERIAL_ID_PROPERTY = "miku_material_id"
@@ -113,6 +200,7 @@ _RESERVED_ASSET_NAMES = {
     *(f"LPT{index}" for index in range(1, 10)),
 }
 _REGISTERED_CLASSES: list[type] = []
+_TRANSLATIONS_REGISTERED = False
 _PENDING_WORKFLOW_MIKUATIONS: set[int] = set()
 _SESSION_SOURCE_IDS: dict[int, tuple[Any, str]] = {}
 _SESSION_MATERIAL_IDS: dict[int, tuple[Any, str]] = {}
@@ -527,6 +615,9 @@ def _snapshot_node(
         params["extension"] = str(
             getattr(node, "extension", "REPEAT") or "REPEAT"
         ).upper()
+        params["mikuTextureRole"] = str(
+            getattr(node, "miku_texture_role", "AUTO") or "AUTO"
+        )
     if op == "Color.Ramp":
         ramp = getattr(node, "color_ramp", None)
         if ramp is not None:
@@ -555,6 +646,7 @@ def _snapshot_node(
         "source": {
             "stableId": node_id,
             "displayName": str(getattr(node, "name", "")),
+            "label": str(getattr(node, "label", "") or ""),
             "blenderNodeName": str(getattr(node, "name", "")),
             "blenderNodeType": blender_node_type,
             "blenderNodeKind": str(getattr(node, "type", "") or ""),
@@ -788,6 +880,7 @@ def _principled_slots_from_snapshot(
     edges: list[dict[str, Any]],
     *,
     displacement_method: str = "BUMP",
+    displacement_policy: str = "FOLLOW_BLENDER",
 ) -> tuple[
     dict[str, dict[str, Any]],
     dict[str, Any],
@@ -1496,10 +1589,212 @@ def _principled_slots_from_snapshot(
         state = closure_state(surface)
         if not state:
             return {}, {}, diagnostics
+        normalized_displacement_policy = str(
+            displacement_policy or "FOLLOW_BLENDER"
+        ).upper()
+        if normalized_displacement_policy not in {
+            "FOLLOW_BLENDER",
+            "ALWAYS_VERTEX",
+            "MAP_ONLY",
+        }:
+            raise RuntimeError(
+                "MIKU_DISPLACEMENT_POLICY_UNSUPPORTED:"
+                f"{normalized_displacement_policy}"
+            )
+        normalized_displacement_method = str(
+            displacement_method or "BUMP"
+        ).upper()
+        active_node_ids: set[str] = set()
+        pending_node_ids = [str(surface.get("node") or "")]
         if displacement is not None:
-            normalized_displacement_method = str(
-                displacement_method or "BUMP"
-            ).upper()
+            pending_node_ids.append(str(displacement.get("node") or ""))
+        while pending_node_ids:
+            active_node_id = pending_node_ids.pop()
+            if not active_node_id or active_node_id in active_node_ids:
+                continue
+            active_node_ids.add(active_node_id)
+            active_node = by_id.get(active_node_id) or {}
+            for input_socket in active_node.get("inputs", []) or []:
+                if not isinstance(input_socket, Mapping):
+                    continue
+                input_id = str(
+                    input_socket.get("id")
+                    or input_socket.get("name")
+                    or ""
+                )
+                input_source = incoming.get(
+                    (active_node_id, _normalize_socket_name(input_id))
+                )
+                if input_source is not None:
+                    pending_node_ids.append(
+                        str(input_source.get("node") or "")
+                    )
+
+        height_candidates: list[dict[str, Any]] = []
+        if normalized_displacement_policy in {"ALWAYS_VERTEX", "MAP_ONLY"}:
+            for candidate_id in sorted(active_node_ids):
+                candidate_node = by_id.get(candidate_id) or {}
+                candidate_op = str(candidate_node.get("op") or "")
+                if candidate_op not in {"Vector.Bump", "Vector.Displacement"}:
+                    continue
+                raw_height = _snapshot_input(
+                    candidate_node,
+                    incoming,
+                    ("Height",),
+                    0.0,
+                    "Scalar",
+                )
+                candidate = {
+                    "node": candidate_node,
+                    "kind": "Bump" if candidate_op == "Vector.Bump" else "Displacement",
+                    "height": raw_height,
+                    "midlevel": 0.5,
+                    "scale": None,
+                }
+                if candidate_op == "Vector.Bump":
+                    strength = _snapshot_input(
+                        candidate_node,
+                        incoming,
+                        ("Strength",),
+                        1.0,
+                        "Scalar",
+                    )
+                    distance = _snapshot_input(
+                        candidate_node,
+                        incoming,
+                        ("Distance",),
+                        1.0,
+                        "Scalar",
+                    )
+                    if (
+                        strength.get("source") is None
+                        and distance.get("source") is None
+                    ):
+                        strength_value = float(strength.get("default", 1.0))
+                        distance_value = float(distance.get("default", 1.0))
+                        scale_value = strength_value * distance_value
+                        if bool((candidate_node.get("params") or {}).get("invert")):
+                            scale_value = -scale_value
+                        if math.isfinite(scale_value):
+                            candidate["scale"] = scale_value
+                    if candidate["scale"] is None:
+                        diagnostics.append(
+                            {
+                                "severity": "warning",
+                                "code": "MIKU_BUMP_VERTEX_PROMOTION_PARAMETER_UNSUPPORTED",
+                                "translationQuality": "Unsupported",
+                                "nodeId": candidate_id,
+                                "message": (
+                                    "Dynamic or non-finite Bump Strength/Distance "
+                                    "cannot be promoted to vertex displacement."
+                                ),
+                            }
+                        )
+                else:
+                    midlevel = _snapshot_input(
+                        candidate_node,
+                        incoming,
+                        ("Midlevel",),
+                        0.5,
+                        "Scalar",
+                    )
+                    scale = _snapshot_input(
+                        candidate_node,
+                        incoming,
+                        ("Scale",),
+                        1.0,
+                        "Scalar",
+                    )
+                    if midlevel.get("source") is None and scale.get("source") is None:
+                        midlevel_value = float(midlevel.get("default", 0.5))
+                        scale_value = float(scale.get("default", 1.0))
+                        if math.isfinite(midlevel_value) and math.isfinite(scale_value):
+                            candidate["midlevel"] = midlevel_value
+                            candidate["scale"] = scale_value
+                height_candidates.append(candidate)
+        elif (
+            displacement is not None
+            and normalized_displacement_method in {"DISPLACEMENT", "BOTH"}
+        ):
+            displacement_node = by_id.get(str(displacement.get("node") or "")) or {}
+            if str(displacement_node.get("op") or "") == "Vector.Displacement":
+                follow_midlevel = _snapshot_input(
+                    displacement_node,
+                    incoming,
+                    ("Midlevel",),
+                    0.5,
+                    "Scalar",
+                )
+                follow_scale = _snapshot_input(
+                    displacement_node,
+                    incoming,
+                    ("Scale",),
+                    1.0,
+                    "Scalar",
+                )
+                height_candidates.append(
+                    {
+                        "node": displacement_node,
+                        "kind": "Displacement",
+                        "height": _snapshot_input(
+                            displacement_node,
+                            incoming,
+                            ("Height",),
+                            0.0,
+                            "Scalar",
+                        ),
+                        "midlevel": (
+                            float(follow_midlevel.get("default", 0.5))
+                            if follow_midlevel.get("source") is None
+                            else 0.5
+                        ),
+                        "scale": (
+                            float(follow_scale.get("default", 1.0))
+                            if follow_scale.get("source") is None
+                            else None
+                        ),
+                    }
+                )
+
+        height_by_source: dict[str, dict[str, Any]] = {}
+        for candidate in height_candidates:
+            raw_height = candidate["height"]
+            raw_source = raw_height.get("source")
+            source_key = (
+                f"{raw_source.get('node')}:{raw_source.get('socket')}"
+                if isinstance(raw_source, Mapping)
+                else "constant:" + repr(raw_height.get("default"))
+            )
+            height_by_source.setdefault(source_key, candidate)
+        selected_height = None
+        if len(height_by_source) > 1:
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "code": "MIKU_MULTIPLE_HEIGHT_SOURCES_NOT_COMBINED",
+                    "translationQuality": "Unsupported",
+                    "sourceCount": len(height_by_source),
+                    "message": (
+                        "Multiple active Height sources cannot be safely combined; "
+                        "no shared Height map or vertex displacement was emitted."
+                    ),
+                }
+            )
+        elif height_by_source:
+            selected_height = next(iter(height_by_source.values()))
+            state["slots"]["Height"] = dict(selected_height["height"])
+            state["requiredChannels"].add("Height")
+            state["heightChannel"] = {
+                "policy": normalized_displacement_policy,
+                "sourceKind": selected_height["kind"],
+                "source": dict(selected_height["height"].get("source") or {}),
+                "midlevel": float(selected_height.get("midlevel", 0.5)),
+                "scale": selected_height.get("scale"),
+                "format": "OpenEXRHalf",
+                "channel": "R",
+                "colorSpace": "Linear",
+            }
+        if displacement is not None:
             displacement_node = by_id.get(
                 str(displacement.get("node") or "")
             )
@@ -1588,7 +1883,15 @@ def _principled_slots_from_snapshot(
                     },
                 )
                 state["requiredChannels"].add("Normal")
-            if normalized_displacement_method in {"DISPLACEMENT", "BOTH"}:
+            if (
+                normalized_displacement_policy != "MAP_ONLY"
+                and (
+                    normalized_displacement_policy == "ALWAYS_VERTEX"
+                    or normalized_displacement_method in {"DISPLACEMENT", "BOTH"}
+                )
+                and selected_height is not None
+                and selected_height.get("scale") is not None
+            ):
                 state["slots"]["Displacement"] = {
                     "default": None,
                     "source": dict(displacement),
@@ -1620,6 +1923,39 @@ def _principled_slots_from_snapshot(
                     "MIKU_DISPLACEMENT_METHOD_UNSUPPORTED:"
                     f"{normalized_displacement_method}"
                 )
+        if (
+            displacement is None
+            and normalized_displacement_policy == "ALWAYS_VERTEX"
+            and selected_height is not None
+            and selected_height.get("scale") is not None
+        ):
+            owner = selected_height["node"]
+            state["slots"]["Displacement"] = synthetic_expression(
+                owner=owner,
+                semantic="Displacement",
+                op="Vector.Displacement",
+                inputs=(
+                    ("Height", selected_height["height"], 0.0, "Scalar"),
+                    ("Midlevel", {"default": selected_height["midlevel"]}, 0.5, "Scalar"),
+                    ("Scale", {"default": selected_height["scale"]}, 1.0, "Scalar"),
+                ),
+                value_type="Float3",
+                suffix="bump-vertex-promotion",
+                params={"space": "OBJECT"},
+            )
+            state["requiredChannels"].add("Displacement")
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "code": "MIKU_VERTEX_DISPLACEMENT_REQUIRES_SUBDIVIDED_MESH",
+                    "translationQuality": "RequiresProjectSetup",
+                    "nodeId": str(owner.get("id") or ""),
+                    "message": (
+                        "Unity vertex displacement requires a mesh with "
+                        "sufficient vertex subdivision."
+                    ),
+                }
+            )
         contract = {
             "model": (
                 "StandardLit"
@@ -1630,6 +1966,8 @@ def _principled_slots_from_snapshot(
             "requiredChannels": sorted(state["requiredChannels"]),
             "usesTransparency": bool(state["usesTransparency"]),
         }
+        if isinstance(state.get("heightChannel"), Mapping):
+            contract["heightChannel"] = dict(state["heightChannel"])
         return state["slots"], contract, diagnostics
     except RuntimeError as exc:
         text = str(exc)
@@ -1656,17 +1994,27 @@ def snapshot_material(
     displacement_method = str(
         getattr(material, "displacement_method", "BUMP") or "BUMP"
     )
+    displacement_policy = str(
+        getattr(material, "miku_displacement_policy", "FOLLOW_BLENDER")
+        or "FOLLOW_BLENDER"
+    )
     semantic_slots, surface_semantic, closure_diagnostics = (
         _principled_slots_from_snapshot(
             nodes,
             edges,
             displacement_method=displacement_method,
+            displacement_policy=displacement_policy,
         )
     )
     if not semantic_slots:
         semantic_slots = _principled_defaults(material)
     workflow = {"kind": normalize_workflow_kind(workflow_kind)}
-    if workflow["kind"] in {"genshin_toon", "wuwa_toon", "hsr_toon"}:
+    if workflow["kind"] in {
+        "genshin_toon",
+        "wuwa_toon",
+        "hsr_toon",
+        "endfield_toon",
+    }:
         workflow["part"] = normalize_workflow_part(workflow_part)
     parameters, driver_diagnostics = _snapshot_root_drivers(tree, source_nodes, nodes)
     color_management = _color_management_snapshot()
@@ -1722,6 +2070,11 @@ def snapshot_material(
             }
         )
         surface_semantic.pop("usesTransparency", None)
+    height_channel = (
+        dict(surface_semantic.pop("heightChannel"))
+        if isinstance(surface_semantic.get("heightChannel"), Mapping)
+        else {}
+    )
     legacy_resources, legacy_entry, semantic_slots, standard_pbr_metadata = (
         _augment_standard_pbr_semantics(
             nodes,
@@ -1783,6 +2136,8 @@ def snapshot_material(
             or "TangentOpenGLPositiveY"
         ),
         "displacementMethod": displacement_method,
+        "displacementPolicy": displacement_policy,
+        "heightChannel": height_channel,
         "diagnostics": [*driver_diagnostics, *closure_diagnostics],
     }
     snapshot["eeveeCapability"] = classify_eevee_graph(snapshot)
@@ -2288,6 +2643,864 @@ def _collect_static_image_resources(
     return [resources[key] for key in sorted(resources)]
 
 
+def _fixed_image_resource_id(image: Any) -> str:
+    size = list(getattr(image, "size", ()) or ())
+    value = (
+        f"{getattr(image, 'name_full', '') or getattr(image, 'name', '')}|"
+        f"{getattr(image, 'source', '')}|{getattr(image, 'file_format', '')}|"
+        f"{int(size[0]) if len(size) > 0 else 0}x"
+        f"{int(size[1]) if len(size) > 1 else 0}"
+    )
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _fixed_targa_png_bytes(image: Any, node_id: str) -> bytes:
+    """Encode a TARGA image as PNG without mutating the source datablock."""
+
+    if bpy is None:
+        raise RuntimeError(f"MIKU_IMAGE_TRANSCODE_UNAVAILABLE:{node_id}")
+    try:
+        import imbuf
+        from io import BytesIO
+    except ImportError as error:
+        raise RuntimeError(
+            f"MIKU_IMAGE_TRANSCODE_UNAVAILABLE:{node_id}"
+        ) from error
+    buffer = None
+    try:
+        buffer = imbuf.load_from_buffer(_static_image_bytes(image, node_id))
+        buffer.file_type = "PNG"
+        buffer.compress = 15
+        destination = BytesIO()
+        imbuf.write_to_buffer(buffer, destination)
+        data = destination.getvalue()
+        if not data:
+            raise RuntimeError(
+                f"MIKU_IMAGE_TRANSCODE_OUTPUT_MISSING:{node_id}"
+            )
+        return data
+    except (OSError, RuntimeError) as error:
+        raise RuntimeError(
+            f"MIKU_IMAGE_TRANSCODE_FAILED:{node_id}:TARGA:PNG:{error}"
+        ) from error
+    finally:
+        if buffer is not None:
+            buffer.free()
+
+
+def _fixed_node_role_candidate(
+    node: Any,
+    image: Any,
+    workflow_kind: str,
+    workflow_part: str = "Body",
+) -> tuple[int, str]:
+    explicit = str(
+        getattr(node, "miku_texture_role", "AUTO") or "AUTO"
+    )
+    role = normalize_texture_role(explicit) if explicit != "AUTO" else ""
+    if role and allowed_texture_role(workflow_kind, role):
+        return 0, role
+    label = str(getattr(node, "label", "") or "").strip()
+    if label.casefold().startswith("miku:"):
+        role = normalize_texture_role(label)
+        if role and allowed_texture_role(workflow_kind, role):
+            return 1, role
+    role = normalize_texture_role(label)
+    if role and allowed_texture_role(workflow_kind, role):
+        return 2, role
+    for value in (
+        str(getattr(image, "name", "") or ""),
+        str(getattr(image, "filepath", "") or ""),
+    ):
+        role = (
+            _infer_wuwa_eye_filename_texture_role(value)
+            if workflow_kind == "wuwa_toon" and workflow_part == "Eye"
+            else ""
+        ) or infer_filename_texture_role(value)
+        if role in {
+            "EyeHET",
+            "EyeHDMF",
+            "EyeUpperHighlight",
+            "EyeLowerHighlight",
+            "EyeEG",
+        } and not (
+            workflow_kind == "wuwa_toon" and workflow_part == "Eye"
+        ):
+            role = ""
+        if role and allowed_texture_role(workflow_kind, role):
+            return 3, role
+    return 99, ""
+
+
+def _infer_wuwa_eye_filename_texture_role(value: str) -> str:
+    """Recognize complete Wuwa Eye filenames only inside the Eye workflow."""
+
+    stem = os.path.splitext(os.path.basename(value or ""))[0]
+    normalized = re.sub(r"[\s.-]+", "_", stem.casefold()).strip("_")
+    if re.search(r"(?:^|_)eye_het$", normalized):
+        return "EyeHET"
+    if re.search(r"(?:^|_)hdmf(?:\d+)?_em$", normalized):
+        return "EyeHDMF"
+    if normalized == "t_highlight_1" or normalized.endswith(
+        "_t_highlight_1"
+    ):
+        return "EyeUpperHighlight"
+    if normalized == "bottomhighlight_1" or normalized.endswith(
+        "_bottomhighlight_1"
+    ):
+        return "EyeLowerHighlight"
+    compact = re.sub(r"[^0-9a-z]+", "", normalized)
+    if compact.endswith("eg") and (
+        compact.endswith("eyeeg")
+        or "eyesecondhighlight" in compact
+        or "eyessecondhighlight" in compact
+        or "eyesecondheightlight" in compact
+        or "eyessecondheightlight" in compact
+    ):
+        return "EyeEG"
+    return ""
+
+
+def _mix_selected_input_socket(
+    node: Mapping[str, Any],
+    node_edges: list[Mapping[str, Any]],
+) -> str:
+    """Return the sole effective Mix input for an unlinked exact 0/1 factor."""
+
+    op = str(node.get("op") or "")
+    if op not in {"Math.Mix", "Color.Mix", "Shader.Mix"}:
+        return ""
+    params = node.get("params") or {}
+    if op != "Shader.Mix" and str(
+        params.get("blend_type") or "MIX"
+    ).upper() != "MIX":
+        return ""
+    inputs = [
+        item
+        for item in node.get("inputs", []) or []
+        if isinstance(item, Mapping)
+        and bool(item.get("enabled", True))
+        and not bool(item.get("isUnavailable", False))
+    ]
+    factor = next(
+        (
+            item
+            for item in inputs
+            if _normalize_socket_name(item.get("name")) in {"factor", "fac"}
+            and str(item.get("valueType") or "").upper() in {"FLOAT", "VALUE"}
+        ),
+        None,
+    )
+    if factor is None:
+        return ""
+    factor_socket = _normalize_socket_name(
+        factor.get("id") or factor.get("name")
+    )
+    if any(
+        _normalize_socket_name((edge.get("to") or {}).get("socket"))
+        == factor_socket
+        for edge in node_edges
+    ):
+        return ""
+    value = factor.get("default")
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return ""
+    selected_index = 0 if abs(float(value)) <= 1.0e-8 else (
+        1 if abs(float(value) - 1.0) <= 1.0e-8 else -1
+    )
+    if selected_index < 0:
+        return ""
+    if op == "Shader.Mix":
+        candidates = [
+            item
+            for item in inputs
+            if _normalize_socket_name(item.get("name")) == "shader"
+        ]
+    else:
+        expected = "a" if selected_index == 0 else "b"
+        candidates = [
+            item
+            for item in inputs
+            if _normalize_socket_name(item.get("name")) == expected
+        ]
+    if op == "Shader.Mix":
+        if len(candidates) != 2:
+            return ""
+        selected = candidates[selected_index]
+    else:
+        if len(candidates) != 1:
+            return ""
+        selected = candidates[0]
+    return _normalize_socket_name(selected.get("id") or selected.get("name"))
+
+
+def _active_surface_node_ids(graph: Mapping[str, Any]) -> set[str]:
+    """Return nodes reachable upstream from the active material Surface."""
+
+    graph_nodes = {
+        str(node.get("id") or ""): node
+        for node in graph.get("nodes", []) or []
+        if isinstance(node, Mapping) and node.get("id")
+    }
+    outputs = [
+        node
+        for node in graph_nodes.values()
+        if str(node.get("op") or "") == "Output.Material"
+    ]
+    active_outputs = [
+        node
+        for node in outputs
+        if bool((node.get("params") or {}).get("isActiveOutput"))
+    ] or outputs
+    output_ids = {str(node["id"]) for node in active_outputs}
+    incoming_edges: dict[str, list[Mapping[str, Any]]] = {}
+    roots: set[str] = set()
+    for edge in graph.get("edges", []) or []:
+        if not isinstance(edge, Mapping):
+            continue
+        source = edge.get("from") or {}
+        target = edge.get("to") or {}
+        source_id = str(source.get("node") or "")
+        target_id = str(target.get("node") or "")
+        if not source_id or not target_id:
+            continue
+        incoming_edges.setdefault(target_id, []).append(edge)
+        if (
+            target_id in output_ids
+            and _normalize_socket_name(target.get("socket")) == "surface"
+        ):
+            roots.add(source_id)
+    reachable = set(output_ids)
+    pending = list(sorted(roots))
+    while pending:
+        node_id = pending.pop()
+        if node_id in reachable:
+            continue
+        reachable.add(node_id)
+        node_edges = incoming_edges.get(node_id, [])
+        selected_socket = _mix_selected_input_socket(
+            graph_nodes.get(node_id, {}),
+            node_edges,
+        )
+        sources = {
+            str((edge.get("from") or {}).get("node") or "")
+            for edge in node_edges
+            if not selected_socket
+            or _normalize_socket_name((edge.get("to") or {}).get("socket"))
+            == selected_socket
+        }
+        pending.extend(sorted((sources - {""}) - reachable))
+    return reachable
+
+
+def _input_default(
+    node: Mapping[str, Any],
+    name: str,
+) -> Any:
+    normalized = _normalize_socket_name(name)
+    matches = [
+        item
+        for item in node.get("inputs", []) or []
+        if isinstance(item, Mapping)
+        and bool(item.get("enabled", True))
+        and not bool(item.get("isUnavailable", False))
+        and _normalize_socket_name(item.get("name")) == normalized
+    ]
+    return matches[0].get("default") if len(matches) == 1 else None
+
+
+def _fixed_image_uv_transform(
+    graph: Mapping[str, Any],
+    image_node_id: str,
+) -> tuple[dict[str, Any] | None, str]:
+    """Lower static UV0 Point Mapping into a deterministic affine matrix."""
+
+    nodes = {
+        str(node.get("id") or ""): node
+        for node in graph.get("nodes", []) or []
+        if isinstance(node, Mapping) and node.get("id")
+    }
+    incoming: dict[tuple[str, str], Mapping[str, Any]] = {}
+    for edge in graph.get("edges", []) or []:
+        if not isinstance(edge, Mapping):
+            continue
+        target = edge.get("to") or {}
+        incoming[
+            (
+                str(target.get("node") or ""),
+                _normalize_socket_name(target.get("socket")),
+            )
+        ] = edge
+    image_vector = incoming.get((image_node_id, "vector"))
+    if image_vector is None:
+        return None, "Image Vector is not connected to UV0."
+    source = image_vector.get("from") or {}
+    source_id = str(source.get("node") or "")
+    source_socket = _normalize_socket_name(source.get("socket"))
+    source_node = nodes.get(source_id)
+    if source_node is None:
+        return None, "Image Vector source is missing."
+    if str(source_node.get("op") or "") in {
+        "Input.TextureCoordinate",
+        "Input.UVMap",
+    }:
+        if (
+            str(source_node.get("op") or "") == "Input.TextureCoordinate"
+            and source_socket != "uv"
+        ):
+            return None, "Only the Texture Coordinate UV output is supported."
+        uv_map = str((source_node.get("params") or {}).get("uv_map") or "")
+        if str(source_node.get("op") or "") == "Input.UVMap" and uv_map not in {
+            "",
+            "UVMap",
+        }:
+            return None, "Only the active UV0 map is supported."
+        return {
+            "coordinateSpace": "UV0",
+            "operation": "Affine2D",
+            "matrix": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+        }, ""
+    if str(source_node.get("op") or "") != "Vector.Mapping":
+        return None, "Image Vector must use a Point Mapping node."
+    if str((source_node.get("params") or {}).get("vectorType") or "") != "POINT":
+        return None, "Only Point Mapping is supported."
+    for socket_name in ("Location", "Rotation", "Scale"):
+        if (source_id, _normalize_socket_name(socket_name)) in incoming:
+            return None, f"Animated or linked Mapping {socket_name} is unsupported."
+    mapping_vector = incoming.get((source_id, "vector"))
+    if mapping_vector is None:
+        return None, "Mapping Vector is not connected to UV0."
+    vector_source = mapping_vector.get("from") or {}
+    vector_node = nodes.get(str(vector_source.get("node") or ""))
+    vector_socket = _normalize_socket_name(vector_source.get("socket"))
+    if vector_node is None or str(vector_node.get("op") or "") not in {
+        "Input.TextureCoordinate",
+        "Input.UVMap",
+    }:
+        return None, "Point Mapping source must be UV0."
+    if (
+        str(vector_node.get("op") or "") == "Input.TextureCoordinate"
+        and vector_socket != "uv"
+    ):
+        return None, "Point Mapping source must use Texture Coordinate UV."
+    uv_map = str((vector_node.get("params") or {}).get("uv_map") or "")
+    if str(vector_node.get("op") or "") == "Input.UVMap" and uv_map not in {
+        "",
+        "UVMap",
+    }:
+        return None, "Only the active UV0 map is supported."
+    location = _input_default(source_node, "Location")
+    rotation = _input_default(source_node, "Rotation")
+    scale = _input_default(source_node, "Scale")
+    if not all(
+        isinstance(value, (list, tuple)) and len(value) >= 3
+        for value in (location, rotation, scale)
+    ):
+        return None, "Point Mapping defaults are incomplete."
+    values = [float(item) for value in (location, rotation, scale) for item in value[:3]]
+    if not all(math.isfinite(item) for item in values):
+        return None, "Point Mapping contains a non-finite value."
+    lx, ly, _ = (float(item) for item in location[:3])
+    rx, ry, rz = (float(item) for item in rotation[:3])
+    sx, sy, _ = (float(item) for item in scale[:3])
+    cx, sxr = math.cos(rx), math.sin(rx)
+    cy, syr = math.cos(ry), math.sin(ry)
+    cz, szr = math.cos(rz), math.sin(rz)
+    r00 = cz * cy
+    r01 = cz * syr * sxr - szr * cx
+    r10 = szr * cy
+    r11 = szr * syr * sxr + cz * cx
+    matrix = [r00 * sx, r01 * sy, lx, r10 * sx, r11 * sy, ly]
+    if not all(math.isfinite(item) for item in matrix):
+        return None, "Point Mapping produced a non-finite affine matrix."
+    return {
+        "coordinateSpace": "UV0",
+        "operation": "Affine2D",
+        "matrix": matrix,
+    }, ""
+
+
+def _wuwa_stocking_id_node_ids(
+    graph: Mapping[str, Any],
+    active_node_ids: set[str],
+) -> set[str]:
+    """Recognize the authored linear ID -> Greater Than 0.5 mask chain."""
+
+    nodes = {
+        str(node.get("id") or ""): node
+        for node in graph.get("nodes", []) or []
+        if isinstance(node, Mapping) and node.get("id")
+    }
+    incoming: dict[str, list[Mapping[str, Any]]] = {}
+    for edge in graph.get("edges", []) or []:
+        if not isinstance(edge, Mapping):
+            continue
+        target_id = str((edge.get("to") or {}).get("node") or "")
+        if target_id:
+            incoming.setdefault(target_id, []).append(edge)
+    result: set[str] = set()
+
+    def texture_source_id(source_id: str) -> str:
+        source_node = nodes.get(source_id)
+        if source_node is None:
+            return ""
+        if str(source_node.get("op") or "") == "Texture.Image":
+            return source_id
+        if str(source_node.get("op") or "") != "Converter.SeparateColor":
+            return ""
+        for source_edge in incoming.get(source_id, []):
+            target = source_edge.get("to") or {}
+            if _normalize_socket_name(target.get("socket")) != "color":
+                continue
+            candidate_id = str(
+                (source_edge.get("from") or {}).get("node") or ""
+            )
+            candidate = nodes.get(candidate_id)
+            if (
+                candidate is not None
+                and str(candidate.get("op") or "") == "Texture.Image"
+            ):
+                return candidate_id
+        return ""
+
+    for node_id in sorted(active_node_ids):
+        node = nodes.get(node_id)
+        if node is None or str(node.get("op") or "") != "Math":
+            continue
+        operation = str(
+            (node.get("params") or {}).get("operation") or ""
+        ).upper()
+        if operation != "GREATER_THAN":
+            continue
+        node_edges = incoming.get(node_id, [])
+        for edge in node_edges:
+            source = edge.get("from") or {}
+            target = edge.get("to") or {}
+            source_id = str(source.get("node") or "")
+            texture_id = texture_source_id(source_id)
+            if not texture_id:
+                continue
+            linked_socket = _normalize_socket_name(target.get("socket"))
+            unlinked_defaults = [
+                item.get("default")
+                for item in node.get("inputs", []) or []
+                if isinstance(item, Mapping)
+                and _normalize_socket_name(item.get("id")) != linked_socket
+                and isinstance(item.get("default"), (int, float))
+            ]
+            if any(
+                abs(float(value) - 0.5) <= 1.0e-6
+                for value in unlinked_defaults
+            ):
+                result.add(texture_id)
+    return result
+
+
+def _same_object_eye_het_candidates(
+    material: Any,
+) -> list[tuple[Any, str]]:
+    """Find unique HET images authored by sibling materials on the same mesh."""
+
+    if bpy is None:
+        return []
+    siblings: dict[int, Any] = {}
+    for obj in getattr(bpy.data, "objects", []) or []:
+        data = getattr(obj, "data", None)
+        materials = list(getattr(data, "materials", []) or [])
+        if not any(candidate is material for candidate in materials):
+            continue
+        for candidate in materials:
+            if candidate is not None and candidate is not material:
+                siblings[id(candidate)] = candidate
+    result: dict[int, tuple[Any, str]] = {}
+    for sibling in siblings.values():
+        for node_id, node in sorted(
+            _shader_nodes_by_stable_id(
+                getattr(sibling, "node_tree", None)
+            ).items()
+        ):
+            if str(getattr(node, "bl_idname", "")) != "ShaderNodeTexImage":
+                continue
+            image = getattr(node, "image", None)
+            if image is None:
+                continue
+            _, role = _fixed_node_role_candidate(
+                node,
+                image,
+                "wuwa_toon",
+                "Eye",
+            )
+            if role == "EyeHET":
+                result[id(image)] = (image, node_id)
+    return [result[key] for key in sorted(result)]
+
+
+def _collect_fixed_workflow_image_resources(
+    material: Any,
+    target: Path,
+    workflow_kind: str,
+    graph: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Seal fixed-workflow images independently of closure translation."""
+
+    nodes = _shader_nodes_by_stable_id(getattr(material, "node_tree", None))
+    active_node_ids = _active_surface_node_ids(graph)
+    workflow = graph.get("workflow") or {}
+    workflow_part = str(workflow.get("part") or "Body")
+    stocking_id_node_ids = (
+        _wuwa_stocking_id_node_ids(graph, active_node_ids)
+        if workflow_kind == "wuwa_toon" and workflow_part == "Body"
+        else set()
+    )
+    images: dict[int, dict[str, Any]] = {}
+    diagnostics: list[dict[str, Any]] = []
+    for node_id, node in sorted(nodes.items()):
+        if str(getattr(node, "bl_idname", "")) != "ShaderNodeTexImage":
+            continue
+        image = getattr(node, "image", None)
+        if image is None:
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "code": "MIKU_FIXED_TEXTURE_NOT_EXPORTABLE",
+                    "translationQuality": "Approximate",
+                    "nodeId": node_id,
+                    "message": "Image Texture node has no image datablock.",
+                }
+            )
+            continue
+        key = id(image)
+        record = images.setdefault(
+            key,
+            {
+                "image": image,
+                "resourceId": _fixed_image_resource_id(image),
+                "nodes": [],
+                "candidates": [],
+                "active": False,
+            },
+        )
+        record["nodes"].append(node_id)
+        active = node_id in active_node_ids
+        record["active"] = bool(record["active"] or active)
+        rank, role = _fixed_node_role_candidate(
+            node,
+            image,
+            workflow_kind,
+            workflow_part,
+        )
+        if role:
+            record["candidates"].append((rank, role, node_id, active))
+        if node_id in stocking_id_node_ids:
+            record["candidates"].extend(
+                (
+                    (2, "IDMap", node_id, True),
+                    (2, "StockingsMap", node_id, True),
+                )
+            )
+
+    local_eye_het = any(
+        role == "EyeHET"
+        for record in images.values()
+        for _, role, _, _ in record["candidates"]
+    )
+    if (
+        workflow_kind == "wuwa_toon"
+        and workflow_part == "Eye"
+        and not local_eye_het
+    ):
+        inherited = _same_object_eye_het_candidates(material)
+        if len(inherited) == 1:
+            image, node_id = inherited[0]
+            key = id(image)
+            record = images.setdefault(
+                key,
+                {
+                    "image": image,
+                    "resourceId": _fixed_image_resource_id(image),
+                    "nodes": [],
+                    "candidates": [],
+                    "active": False,
+                },
+            )
+            record["nodes"].append(node_id)
+            record["candidates"].append((5, "EyeHET", node_id, False))
+            diagnostics.append(
+                {
+                    "severity": "info",
+                    "code": "MIKU_WUWA_EYE_HET_INHERITED",
+                    "translationQuality": "Equivalent",
+                    "nodeId": node_id,
+                    "message": (
+                        "Inherited the unique EyeHET image from another "
+                        "material on the same mesh."
+                    ),
+                }
+            )
+        elif len(inherited) > 1:
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "code": "MIKU_FIXED_TEXTURE_ROLE_AMBIGUOUS",
+                    "translationQuality": "Approximate",
+                    "role": "EyeHET",
+                    "message": (
+                        "Multiple sibling EyeHET images were found; none was "
+                        "inherited."
+                    ),
+                }
+            )
+
+    active_base_claims = [
+        record
+        for record in images.values()
+        if any(
+            role == "BaseMap" and active
+            for _, role, _, active in record["candidates"]
+        )
+    ]
+    if not active_base_claims:
+        active_unassigned = [
+            record
+            for record in images.values()
+            if record["active"] and not record["candidates"]
+        ]
+        if len(active_unassigned) == 1:
+            record = active_unassigned[0]
+            node_id = str(record["nodes"][0])
+            record["candidates"].append((4, "BaseMap", node_id, True))
+
+    role_claims: dict[
+        str,
+        list[tuple[tuple[int, int], bool, dict[str, Any], str]],
+    ] = {}
+    active_preferred_roles = {
+        "BaseMap",
+        "EmissionMap",
+        "EyeHET",
+        "EyeHDMF",
+        "EyeUpperHighlight",
+        "EyeLowerHighlight",
+        "EyeEG",
+    }
+    for record in images.values():
+        best_by_role: dict[str, tuple[tuple[int, int], bool, str]] = {}
+        for rank, role, node_id, active in record["candidates"]:
+            authority = (
+                (rank, 0)
+                if rank <= 1 or role not in active_preferred_roles
+                else (rank if active else rank + 100, rank)
+            )
+            candidate = (authority, active, str(node_id))
+            if role not in best_by_role or candidate[0] < best_by_role[role][0]:
+                best_by_role[role] = candidate
+        for role, (authority, active, node_id) in best_by_role.items():
+            role_claims.setdefault(role, []).append(
+                (authority, active, record, node_id)
+            )
+
+    bindings: dict[str, set[str]] = {
+        str(record["resourceId"]): set() for record in images.values()
+    }
+    binding_transforms: dict[tuple[str, str], dict[str, Any]] = {}
+    for role, claims in sorted(role_claims.items()):
+        best_rank = min(rank for rank, _, _, _ in claims)
+        winners = {
+            str(record["resourceId"]): (record, node_id)
+            for rank, _, record, node_id in claims
+            if rank == best_rank
+        }
+        if len(winners) != 1:
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "code": "MIKU_FIXED_TEXTURE_ROLE_AMBIGUOUS",
+                    "translationQuality": "Approximate",
+                    "role": role,
+                    "message": (
+                        "Multiple equally authoritative images claim this "
+                        "fixed-workflow texture role; none was bound."
+                    ),
+                }
+            )
+            continue
+        resource_id = next(iter(winners))
+        _, winner_node_id = winners[resource_id]
+        if role in {
+            "EyeUpperHighlight",
+            "EyeLowerHighlight",
+            "EyeEG",
+        }:
+            transform, reason = _fixed_image_uv_transform(
+                graph,
+                winner_node_id,
+            )
+            if transform is None:
+                diagnostics.append(
+                    {
+                        "severity": "warning",
+                        "code": "MIKU_WUWA_EYE_UV_MAPPING_UNSUPPORTED",
+                        "translationQuality": "Approximate",
+                        "role": role,
+                        "nodeId": winner_node_id,
+                        "message": reason,
+                    }
+                )
+                continue
+            binding_transforms[(resource_id, role)] = transform
+        bindings[resource_id].add(role)
+        if role in {"BaseMap", "EmissionMap"}:
+            winner_is_active = any(
+                rank == best_rank
+                and active
+                and str(record["resourceId"]) == resource_id
+                for rank, active, record, _ in claims
+            )
+            ignored_inactive = any(
+                not active and str(record["resourceId"]) != resource_id
+                for _, active, record, _ in claims
+            )
+            if winner_is_active and ignored_inactive:
+                diagnostics.append(
+                    {
+                        "severity": "warning",
+                        "code": "MIKU_FIXED_TEXTURE_INACTIVE_PRIMARY_IGNORED",
+                        "translationQuality": "Equivalent",
+                        "role": role,
+                        "message": (
+                            "An inactive image claimed this primary role; "
+                            "the active material Surface chain was used."
+                        ),
+                    }
+                )
+
+    format_contracts = {
+        "PNG": (".png", "image/png", 1),
+        "JPEG": (".jpg", "image/jpeg", 1),
+        "OPEN_EXR": (".exr", "image/x-exr", 4),
+        "TARGA": (".png", "image/png", 1),
+    }
+    resources: list[dict[str, Any]] = []
+    for record in sorted(
+        images.values(), key=lambda item: str(item["resourceId"])
+    ):
+        image = record["image"]
+        resource_id = str(record["resourceId"])
+        roles = sorted(bindings[resource_id])
+        color_spaces = {
+            texture_role_color_space([role]) for role in roles
+        }
+        if len(color_spaces) > 1 or (
+            "NormalMap" in roles and len(roles) > 1
+        ):
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "code": "MIKU_FIXED_TEXTURE_USAGE_CONFLICT",
+                    "translationQuality": "Approximate",
+                    "resourceId": resource_id,
+                    "message": (
+                        "One image claimed incompatible color/data roles; it "
+                        "was imported without material bindings."
+                    ),
+                }
+            )
+            roles = []
+        image_format = str(
+            getattr(image, "file_format", "") or ""
+        ).upper()
+        contract = format_contracts.get(image_format)
+        try:
+            if contract is None:
+                raise RuntimeError(
+                    "MIKU_IMAGE_FORMAT_UNSUPPORTED:"
+                    f"{image_format or '<missing>'}"
+                )
+            node_id = str((record.get("nodes") or [resource_id])[0])
+            data = (
+                _fixed_targa_png_bytes(image, node_id)
+                if image_format == "TARGA"
+                else _static_image_bytes(image, node_id)
+            )
+        except (OSError, RuntimeError) as error:
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "code": "MIKU_FIXED_TEXTURE_NOT_EXPORTABLE",
+                    "translationQuality": "Approximate",
+                    "resourceId": resource_id,
+                    "message": str(error),
+                }
+            )
+            continue
+        extension, media_type, component_bytes = contract
+        relative_path = Path("Textures") / f"{resource_id}{extension}"
+        destination = target / relative_path
+        _write_bytes(destination, data)
+        resource = make_file_reference(
+            target,
+            destination,
+            media_type=media_type,
+        )
+        size = list(getattr(image, "size", ()) or ())
+        color_space = texture_role_color_space(roles)
+        resource.update(
+            {
+                "id": resource_id,
+                "semantic": "FixedWorkflowTexture",
+                "bindingKey": "FixedTexture_" + resource_id[:20],
+                "materialBindings": [
+                    {
+                        "role": role,
+                        **(
+                            {
+                                "uvTransform": binding_transforms[
+                                    (resource_id, role)
+                                ]
+                            }
+                            if (resource_id, role) in binding_transforms
+                            else {}
+                        ),
+                    }
+                    for role in roles
+                ],
+                "usage": "Normal" if roles == ["NormalMap"] else (
+                    "Scalar" if color_space == "Linear" else "Color"
+                ),
+                "channel": "RGB",
+                "colorSpace": color_space,
+                "width": int(size[0]) if len(size) > 0 else 0,
+                "height": int(size[1]) if len(size) > 1 else 0,
+                "channelCount": int(getattr(image, "channels", 4) or 4),
+                "componentBytes": component_bytes,
+                "uvSet": "UV0",
+                "projection": "FLAT",
+                "interpolation": "LINEAR",
+                "extension": "REPEAT",
+                **(
+                    {"normalConvention": "TangentOpenGLPositiveY"}
+                    if roles == ["NormalMap"]
+                    else {}
+                ),
+            }
+        )
+        resources.append(resource)
+        if not roles:
+            diagnostics.append(
+                {
+                    "severity": "warning",
+                    "code": "MIKU_FIXED_TEXTURE_UNASSIGNED",
+                    "translationQuality": "Approximate",
+                    "resourceId": resource_id,
+                    "message": (
+                        "The image was exported but has no recognized material "
+                        "texture role."
+                    ),
+                }
+            )
+    return resources, diagnostics
+
+
 def export_material_bundle(
     material: Any,
     output_root: str,
@@ -2300,12 +3513,25 @@ def export_material_bundle(
     allow_appearance_approximation: bool = False,
     fidelity_policy: str = "AllowDeclaredApproximation",
     add_shader_energy_policy: str = "PreserveBlender",
+    bake_resolution: int = DEFAULT_BAKE_RESOLUTION,
 ) -> dict[str, Any]:
     if not source_blend_id or not persistent_material_id:
         raise RuntimeError("MIKU_PERSISTENT_ID_REQUIRED")
+    bake_resolution = normalize_bake_resolution(bake_resolution)
+    workflow_kind = normalize_workflow_kind(workflow_kind)
+    graph, material_key, ir = _prepare_material_export(
+        material,
+        source_blend_id=source_blend_id,
+        material_key=str(getattr(material, "name", "Material") or "Material"),
+        workflow_kind=workflow_kind,
+        fidelity_policy=fidelity_policy,
+        add_shader_energy_policy=add_shader_energy_policy,
+        conversion_mode=mode,
+        workflow_part=workflow_part,
+    )
+    _assert_no_export_time_inputs(ir)
     root = Path(output_root).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    material_key = str(getattr(material, "name", "Material") or "Material")
     asset_name = _safe_asset_name(material_key)
     target = _resolve_bundle_directory(
         root,
@@ -2331,6 +3557,10 @@ def export_material_bundle(
             allow_appearance_approximation=allow_appearance_approximation,
             fidelity_policy=fidelity_policy,
             add_shader_energy_policy=add_shader_energy_policy,
+            bake_resolution=bake_resolution,
+            graph=graph,
+            ir=ir,
+            material_key=material_key,
         )
         # Re-resolve after the potentially long bake so another exporter cannot
         # silently claim the candidate directory while this bundle is staged.
@@ -2349,6 +3579,65 @@ def export_material_bundle(
         raise
 
 
+def _prepare_material_export(
+    material: Any,
+    *,
+    source_blend_id: str,
+    material_key: str,
+    workflow_kind: str,
+    fidelity_policy: str,
+    add_shader_energy_policy: str,
+    conversion_mode: str,
+    workflow_part: str,
+) -> tuple[dict[str, Any], str, dict[str, Any]]:
+    """Snapshot and lower a material before any export filesystem mutation."""
+
+    graph = snapshot_material(
+        material,
+        workflow_kind=workflow_kind,
+        workflow_part=workflow_part,
+    )
+    material_key = str((graph.get("material") or {}).get("name") or material_key)
+    try:
+        ir = build_material_ir(
+            graph,
+            source_blend_id=source_blend_id,
+            material_key=material_key,
+            workflow_kind=workflow_kind,
+            fidelity_policy=fidelity_policy,
+            add_shader_energy_policy=add_shader_energy_policy,
+            conversion_mode=conversion_mode,
+        )
+    except ValueError as error:
+        if conversion_mode == "AllowMeshBake" and str(error).startswith(
+            "MIKU_CLOSURE_INPUT_MISSING:"
+        ):
+            raise RuntimeError(
+                "MIKU_FULL_PBR_BAKE_REQUIRED:Source Mesh Fidelity cannot "
+                "safely lower this legacy closure graph. Select Full PBR "
+                "Bake for this material."
+            ) from error
+        raise
+    return graph, material_key, ir
+
+
+def _assert_no_export_time_inputs(ir: Mapping[str, Any]) -> None:
+    """Reject reachable time expressions before creating export artifacts."""
+
+    operations = sorted(
+        {
+            str(expression.get("op") or "")
+            for expression in ir.get("expressions", []) or []
+            if isinstance(expression, Mapping)
+            and str(expression.get("op") or "").startswith("Input.Time.")
+        }
+    )
+    if operations:
+        raise RuntimeError(
+            "MIKU_TIME_INPUT_UNSUPPORTED:" + ",".join(operations)
+        )
+
+
 def _export_material_bundle_to_directory(
     material: Any,
     target: Path,
@@ -2361,42 +3650,46 @@ def _export_material_bundle_to_directory(
     allow_appearance_approximation: bool,
     fidelity_policy: str,
     add_shader_energy_policy: str,
+    bake_resolution: int,
+    graph: Mapping[str, Any] | None = None,
+    ir: dict[str, Any] | None = None,
+    material_key: str | None = None,
 ) -> dict[str, Any]:
     workflow_kind = normalize_workflow_kind(workflow_kind)
-    graph = snapshot_material(
-        material,
-        workflow_kind=workflow_kind,
-        workflow_part=workflow_part,
-    )
-    material_key = str((graph.get("material") or {}).get("name") or "Material")
-    asset_name = _safe_asset_name(material_key)
-    target.mkdir(parents=True, exist_ok=True)
-    profile = default_target_profile()
-    try:
-        ir = build_material_ir(
-            graph,
+    if graph is None or ir is None or material_key is None:
+        graph, material_key, ir = _prepare_material_export(
+            material,
             source_blend_id=source_blend_id,
-            material_key=material_key,
+            material_key=str(getattr(material, "name", "Material") or "Material"),
             workflow_kind=workflow_kind,
             fidelity_policy=fidelity_policy,
             add_shader_energy_policy=add_shader_energy_policy,
             conversion_mode=mode,
+            workflow_part=workflow_part,
         )
-    except ValueError as error:
-        if mode == "AllowMeshBake" and str(error).startswith(
-            "MIKU_CLOSURE_INPUT_MISSING:"
-        ):
-            raise RuntimeError(
-                "MIKU_FULL_PBR_BAKE_REQUIRED:Source Mesh Fidelity cannot "
-                "safely lower this legacy closure graph. Select Full PBR "
-                "Bake for this material."
-            ) from error
-        raise
-    direct_resources = _collect_static_image_resources(
-        material,
-        ir,
-        target,
-    )
+    asset_name = _safe_asset_name(material_key)
+    target.mkdir(parents=True, exist_ok=True)
+    profile = default_target_profile()
+    if workflow_kind in FIXED_WORKFLOWS:
+        direct_resources, fixed_diagnostics = (
+            _collect_fixed_workflow_image_resources(
+                material,
+                target,
+                workflow_kind,
+                graph,
+            )
+        )
+        ir["diagnostics"] = [
+            *list(ir.get("diagnostics") or []),
+            *fixed_diagnostics,
+        ]
+        ir = _rebuild_document(ir)
+    else:
+        direct_resources = _collect_static_image_resources(
+            material,
+            ir,
+            target,
+        )
     source_map = build_source_map(graph, source_blend_id=source_blend_id, material_key=material_key)
     source_map["source"]["persistentMaterialId"] = persistent_material_id
     source_map = _rebuild_document(source_map)
@@ -2442,6 +3735,7 @@ def _export_material_bundle_to_directory(
         and _has_unresolved_required_channels(ir)
     ):
         plan = _force_appearance_snapshot_plan(plan, ir)
+    plan = _apply_bake_resolution_to_plan(plan, bake_resolution)
     resources: list[dict[str, Any]] = list(direct_resources)
     bake_result = None
     if plan.get("bakeJobs"):
@@ -2455,33 +3749,36 @@ def _export_material_bundle_to_directory(
             persistent_source_id=source_blend_id,
             persistent_material_id=persistent_material_id,
             allow_appearance_approximation=allow_appearance_approximation,
+            bake_resolution=bake_resolution,
         )
         resources.extend(
             dict(item) for item in bake_result.get("resources") or []
         )
+    validate_portable_hybrid_resources(mode, resources)
     full_pbr_bake = any(
         str(job.get("route") or "") == "FullPBRBake"
         for job in plan.get("bakeJobs", []) or []
         if isinstance(job, Mapping)
     )
     source_mesh_pbr_projection = _has_source_mesh_pbr_projection(ir)
-    try:
-        ir = _apply_channel_values(
-            ir,
-            resources,
-            validate_baked_resources=not full_pbr_bake,
-            authoritative_bake=full_pbr_bake,
-        )
-    except RuntimeError as error:
-        if mode == "AllowMeshBake" and str(error).startswith(
-            "MIKU_REQUIRED_CHANNEL_UNRESOLVED:"
-        ):
-            raise RuntimeError(
-                "MIKU_FULL_PBR_BAKE_REQUIRED:Source Mesh Fidelity left a "
-                "required PBR channel unresolved. Select Full PBR Bake for "
-                "this material."
-            ) from error
-        raise
+    if workflow_kind not in FIXED_WORKFLOWS:
+        try:
+            ir = _apply_channel_values(
+                ir,
+                resources,
+                validate_baked_resources=not full_pbr_bake,
+                authoritative_bake=full_pbr_bake,
+            )
+        except RuntimeError as error:
+            if mode == "AllowMeshBake" and str(error).startswith(
+                "MIKU_REQUIRED_CHANNEL_UNRESOLVED:"
+            ):
+                raise RuntimeError(
+                    "MIKU_FULL_PBR_BAKE_REQUIRED:Source Mesh Fidelity left a "
+                    "required PBR channel unresolved. Select Full PBR Bake "
+                    "for this material."
+                ) from error
+            raise
     if full_pbr_bake:
         ir = _apply_full_pbr_surface_model(ir)
     elif source_mesh_pbr_projection:
@@ -2544,7 +3841,7 @@ def _export_material_bundle_to_directory(
     bundle_payload["sealedDigest"] = compute_sealed_digest(bundle_payload)
     bundle_kind = "miku-bundle-1.0"
     bundle = make_document(bundle_kind, bundle_payload)
-    validate_document(ir, "miku-material-ir-1.0")
+    validate_document(ir, "miku-material-ir-2.0")
     validate_document(plan, "miku-conversion-plan-1.0")
     validate_document(source_map, "miku-blender-source-map-1.0")
     validate_document(manifest, "miku-conversion-manifest-1.0")
@@ -2700,7 +3997,9 @@ def export_selected_materials(
     allow_appearance_approximation: bool = False,
     fidelity_policy: str = "AllowDeclaredApproximation",
     add_shader_energy_policy: str = "PreserveBlender",
+    bake_resolution: int = DEFAULT_BAKE_RESOLUTION,
 ) -> list[dict[str, Any]]:
+    bake_resolution = normalize_bake_resolution(bake_resolution)
     try:
         import bpy
     except ImportError as exc:  # pragma: no cover - only used outside Blender
@@ -2776,6 +4075,7 @@ def export_selected_materials(
             allow_appearance_approximation=allow_appearance_approximation,
             fidelity_policy=fidelity_policy,
             add_shader_energy_policy=add_shader_energy_policy,
+            bake_resolution=bake_resolution,
         )
         result["sourceIdentityTemporary"] = temporary_source_identity
         result["identityWarnings"] = list(identity_warnings)
@@ -3273,8 +4573,11 @@ def fork_source_identity(
 
 
 def _safe_workflow_kind(value: Any, fallback: str = "standard_pbr") -> str:
+    raw = str(value or fallback)
+    if raw.strip().casefold() == "generic_toon":
+        raise ValueError("MIKU_WORKFLOW_RETIRED:generic_toon")
     try:
-        return normalize_workflow_kind(str(value or fallback))
+        return normalize_workflow_kind(raw)
     except (TypeError, ValueError):
         return fallback
 
@@ -3349,6 +4652,7 @@ def export_current_material(
     allow_appearance_approximation: bool = False,
     fidelity_policy: str = "AllowDeclaredApproximation",
     add_shader_energy_policy: str = "PreserveBlender",
+    bake_resolution: int = DEFAULT_BAKE_RESOLUTION,
     data: Any | None = None,
 ) -> dict[str, Any]:
     """Export exactly the active object's active-slot material."""
@@ -3398,6 +4702,7 @@ def export_current_material(
         allow_appearance_approximation=allow_appearance_approximation,
         fidelity_policy=fidelity_policy,
         add_shader_energy_policy=add_shader_energy_policy,
+        bake_resolution=bake_resolution,
     )
     result["sourceIdentityTemporary"] = temporary_identity
     result["identityWarnings"] = identity_warnings
@@ -4023,6 +5328,24 @@ def _rebuild_document(document: Mapping[str, Any]) -> dict[str, Any]:
     return make_document(str(document["documentKind"]), payload, document_id=str(document["id"]))
 
 
+def _apply_bake_resolution_to_plan(
+    plan: Mapping[str, Any],
+    bake_resolution: int,
+) -> dict[str, Any]:
+    resolution = normalize_bake_resolution(bake_resolution)
+    jobs = list(plan.get("bakeJobs") or [])
+    if not jobs:
+        return dict(plan)
+    updated = dict(plan)
+    updated["bakeJobs"] = [
+        {**dict(job), "resolution": resolution}
+        if isinstance(job, Mapping)
+        else job
+        for job in jobs
+    ]
+    return _rebuild_document(updated)
+
+
 def _has_unresolved_required_channels(ir: Mapping[str, Any]) -> bool:
     return any(
         bool(channel.get("required"))
@@ -4162,6 +5485,8 @@ def register() -> None:
     if _REGISTERED_CLASSES:
         return
 
+    _register_translations()
+
     class MIKU_PG_scene_settings(bpy.types.PropertyGroup):
         output_root: bpy.props.StringProperty(
             name="Output Folder",
@@ -4190,8 +5515,8 @@ def register() -> None:
                 ("NativeOnly", "Native Only", "Reject regions that require baking"),
                 (
                     "PreferNative",
-                    "Prefer Native",
-                    "Prefer editable portable regions; no mesh-bound bakes",
+                    "Portable Hybrid (Prefer Native)",
+                    "Keep View/Camera/Time live and allow only reusable UV0 bakes; never export a source mesh",
                 ),
                 (
                     "ReusableBakeOnly",
@@ -4203,7 +5528,11 @@ def register() -> None:
                     "Source Mesh Fidelity",
                     "Bake against and export the evaluated source mesh",
                 ),
-                ("FullPBRBake", "Full PBR Bake", "Bake the complete PBR channel set"),
+                (
+                    "FullPBRBake",
+                    "Full PBR Bake (Source Mesh)",
+                    "Bake the complete source-mesh-bound PBR channel set; runtime View/Camera/Time inputs are rejected",
+                ),
                 (
                     "AppearanceSnapshot",
                     "Appearance Snapshot",
@@ -4254,6 +5583,36 @@ def register() -> None:
             description="Show advanced conversion settings",
             default=False,
         )
+        bake_texture_quality: bpy.props.EnumProperty(
+            name="Bake Texture Quality",
+            description=(
+                "Resolution for generated 2D bake textures; this setting is "
+                "used only when conversion schedules a bake"
+            ),
+            items=(
+                (
+                    "LOW_512",
+                    "Low (512 × 512)",
+                    "Faster baking with lower texture detail",
+                ),
+                (
+                    "STANDARD_1024",
+                    "Standard (1024 × 1024)",
+                    "Balanced default bake texture resolution",
+                ),
+                (
+                    "HIGH_2048",
+                    "High (2048 × 2048)",
+                    "Higher texture detail with increased bake time and memory use",
+                ),
+                (
+                    "ULTRA_4096",
+                    "Ultra (4096 × 4096)",
+                    "Maximum texture detail with significantly increased bake time and memory use",
+                ),
+            ),
+            default="STANDARD_1024",
+        )
 
     class MIKU_OT_export_materials(bpy.types.Operator):
         bl_idname = "miku.export_materials"
@@ -4265,7 +5624,7 @@ def register() -> None:
         def poll(cls, context):  # noqa: N802
             material, diagnostic = _active_material_slot_state(context)
             if material is None and hasattr(cls, "poll_message_set"):
-                cls.poll_message_set(str(diagnostic))
+                cls.poll_message_set(_translate_iface(str(diagnostic)))
             return material is not None
 
         def execute(self, context):  # noqa: N802
@@ -4278,20 +5637,27 @@ def register() -> None:
                     allow_appearance_approximation=(settings.mode == "AppearanceSnapshot"),
                     fidelity_policy=settings.fidelity_policy,
                     add_shader_energy_policy=settings.add_shader_energy_policy,
+                    bake_resolution=bake_resolution_for_quality(
+                        settings.bake_texture_quality
+                    ),
                 )
             except Exception as exc:
-                self.report({"ERROR"}, str(exc))
+                self.report({"ERROR"}, _translate_diagnostic(str(exc)))
                 return {"CANCELLED"}
             if result.get("sourceIdentityTemporary"):
                 self.report(
                     {"WARNING"},
-                    "The source identity is session-only. Save the blend and ensure it is writable.",
+                    _translate_iface(
+                        "The source identity is session-only. Save the blend and ensure it is writable."
+                    ),
                 )
             for warning in result.get("identityWarnings", ()):
                 self.report({"WARNING"}, str(warning))
             self.report(
                 {"INFO"},
-                f"Exported current material: {result['materialKey']}",
+                _translate_iface("Exported current material: {material}").format(
+                    material=result["materialKey"]
+                ),
             )
             return {"FINISHED"}
 
@@ -4302,13 +5668,13 @@ def register() -> None:
             "Add a versioned Time node whose Seconds, Frame, Sine and Cosine "
             "outputs remain dynamic in Unity Shader Graph"
         )
-        bl_options = {"REGISTER", "UNDO"}
+        bl_options = {"INTERNAL", "UNDO"}
 
         @classmethod
         def poll(cls, context):  # noqa: N802
             material, diagnostic = _active_material_slot_state(context)
             if material is None and hasattr(cls, "poll_message_set"):
-                cls.poll_message_set(str(diagnostic))
+                cls.poll_message_set(_translate_iface(str(diagnostic)))
             return material is not None
 
         def execute(self, context):  # noqa: N802
@@ -4321,7 +5687,7 @@ def register() -> None:
             except Exception as exc:
                 self.report({"ERROR"}, str(exc))
                 return {"CANCELLED"}
-            self.report({"INFO"}, "Added Miku Time v1")
+            self.report({"INFO"}, _translate_iface("Added Miku Time v1"))
             return {"FINISHED"}
 
     class MIKU_OT_fork_source_identity(bpy.types.Operator):
@@ -4331,7 +5697,7 @@ def register() -> None:
             "Declare this blend as an independent source; future Unity assets "
             "will receive new stable GUIDs"
         )
-        bl_options = {"REGISTER", "UNDO"}
+        bl_options = {"INTERNAL", "UNDO"}
 
         def invoke(self, context, event):  # noqa: N802
             return context.window_manager.invoke_confirm(self, event)
@@ -4345,8 +5711,9 @@ def register() -> None:
                 self.report({"WARNING"}, str(warning))
             self.report(
                 {"INFO"},
-                "Forked Miku source identity for "
-                f"{result['materialCount']} material(s). Save the blend to persist it.",
+                _translate_iface(
+                    "Forked Miku source identity for {count} material(s). Save the blend to persist it."
+                ).format(count=result["materialCount"]),
             )
             return {"FINISHED"}
 
@@ -4357,7 +5724,7 @@ def register() -> None:
             "Copy matching IDs from the legacy .migr-identities.json into "
             "this blend without modifying the registry"
         )
-        bl_options = {"REGISTER", "UNDO"}
+        bl_options = {"INTERNAL", "UNDO"}
 
         def execute(self, context):  # noqa: N802
             settings = context.scene.miku_settings
@@ -4372,8 +5739,9 @@ def register() -> None:
                 return {"CANCELLED"}
             self.report(
                 {"INFO"},
-                "Migrated legacy source identity and "
-                f"{result['materialCount']} material identity value(s).",
+                _translate_iface(
+                    "Migrated legacy source identity and {count} material identity value(s)."
+                ).format(count=result["materialCount"]),
             )
             return {"FINISHED"}
 
@@ -4393,10 +5761,24 @@ def register() -> None:
             layout.prop(settings, "output_root")
             material, diagnostic = _active_material_slot_state(context)
             if material is not None:
-                workflow = _material_workflow_preview(material, settings)
+                try:
+                    workflow = _material_workflow_preview(material, settings)
+                except ValueError as exc:
+                    if str(exc) != "MIKU_WORKFLOW_RETIRED:generic_toon":
+                        raise
+                    layout.label(
+                        text=(
+                            "Generic Toon is retired. Select Standard PBR or a "
+                            "game workflow, then export again."
+                        ),
+                        icon="ERROR",
+                    )
+                    return
                 _queue_material_workflow_migration(material, settings)
                 layout.label(
-                    text=f"Material: {getattr(material, 'name', 'Material')}",
+                    text=_translate_iface("Material: {material}").format(
+                        material=getattr(material, "name", "Material")
+                    ),
                     icon="MATERIAL",
                 )
                 layout.prop(material, "miku_workflow_kind", text="Workflow")
@@ -4412,9 +5794,39 @@ def register() -> None:
                         "miku_normal_convention",
                         text="Normal Map",
                     )
+                    layout.prop(
+                        material,
+                        "miku_displacement_policy",
+                        text="Displacement",
+                    )
+                if workflow in FIXED_WORKFLOWS:
+                    active_node = getattr(
+                        getattr(material, "node_tree", None),
+                        "nodes",
+                        None,
+                    )
+                    active_node = (
+                        getattr(active_node, "active", None)
+                        if active_node is not None
+                        else None
+                    )
+                    if (
+                        active_node is not None
+                        and str(getattr(active_node, "bl_idname", ""))
+                        == "ShaderNodeTexImage"
+                    ):
+                        layout.prop(
+                            active_node,
+                            "miku_texture_role",
+                            text="Texture Role",
+                        )
             else:
                 message = layout.box()
-                message.label(text=str(diagnostic), icon="ERROR")
+                message.label(
+                    text=_translate_iface(str(diagnostic)),
+                    icon="ERROR",
+                    translate=False,
+                )
 
             advanced = layout.box()
             header = advanced.row()
@@ -4429,13 +5841,10 @@ def register() -> None:
                 advanced.prop(settings, "mode")
                 advanced.prop(settings, "fidelity_policy")
                 advanced.prop(settings, "add_shader_energy_policy")
-                advanced.operator(
-                    MIKU_OT_add_time_node.bl_idname,
-                    icon="TIME",
-                )
-                advanced.operator(
-                    MIKU_OT_migrate_legacy_identities.bl_idname,
-                    icon="IMPORT",
+                advanced.prop(settings, "bake_texture_quality")
+                advanced.label(
+                    text="Used only when conversion schedules a bake.",
+                    icon="INFO",
                 )
                 advanced.operator(
                     MIKU_OT_fork_source_identity.bl_idname,
@@ -4477,6 +5886,10 @@ def register() -> None:
             ("Face", "Face", "Face shader"),
             ("Eye", "Eye", "Eye shader"),
             ("Effect", "Effect", "Effect shader when supported"),
+            ("Skin", "Skin", "Skin shader when supported"),
+            ("Mouth", "Mouth", "Mouth or teeth shader when supported"),
+            ("Overlay", "Overlay", "Eyelash, eye-shadow, or expression overlay"),
+            ("HairShadow", "Hair Shadow", "Texture-driven hair shadow overlay"),
         ),
         default="Body",
     )
@@ -4500,6 +5913,43 @@ def register() -> None:
         ),
         default="TangentOpenGLPositiveY",
     )
+    bpy.types.Material.miku_displacement_policy = bpy.props.EnumProperty(
+        name="Miku Displacement Policy",
+        description=(
+            "Choose whether Miku follows Blender displacement, promotes a "
+            "safe Bump height to vertex displacement, or exports only Height"
+        ),
+        items=(
+            (
+                "FOLLOW_BLENDER",
+                "Follow Blender",
+                "Preserve Blender's displacement method",
+            ),
+            (
+                "ALWAYS_VERTEX",
+                "Always Vertex",
+                "Export Height and connect safe finite sources to Vertex Position",
+            ),
+            (
+                "MAP_ONLY",
+                "Map Only",
+                "Export Height and controls without connecting Vertex Position",
+            ),
+        ),
+        default="FOLLOW_BLENDER",
+    )
+    bpy.types.ShaderNodeTexImage.miku_texture_role = bpy.props.EnumProperty(
+        name="Miku Texture Role",
+        description=(
+            "Explicit fixed-workflow material texture role; Auto uses only "
+            "strict node/image/file aliases"
+        ),
+        items=(
+            ("AUTO", "Auto", "Use strict controlled aliases"),
+            *tuple((role, role, role) for role in FIXED_TEXTURE_ROLES),
+        ),
+        default="AUTO",
+    )
 
 
 def unregister() -> None:
@@ -4507,6 +5957,8 @@ def unregister() -> None:
     if bpy is None:
         return
     for owner, attribute in (
+        (bpy.types.ShaderNodeTexImage, "miku_texture_role"),
+        (bpy.types.Material, "miku_displacement_policy"),
         (bpy.types.Material, "miku_normal_convention"),
         (bpy.types.Material, "miku_workflow_part"),
         (bpy.types.Material, "miku_workflow_kind"),
@@ -4521,3 +5973,4 @@ def unregister() -> None:
         except RuntimeError:
             pass
     _REGISTERED_CLASSES = []
+    _unregister_translations()

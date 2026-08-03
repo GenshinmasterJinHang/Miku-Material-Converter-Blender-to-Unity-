@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Shader Graph 17.4 Standard PBR wrapper deterministically.
-
-The Generic Toon wrapper is the immutable source fixture for the former shared
-wrapper. This builder keeps all of its existing objects, IDs, property references,
-and Sub Graph input edges, then adds only the Standard PBR authoring layer.
-"""
+"""Build the Shader Graph 17.4 Standard PBR wrapper deterministically."""
 
 from __future__ import annotations
 

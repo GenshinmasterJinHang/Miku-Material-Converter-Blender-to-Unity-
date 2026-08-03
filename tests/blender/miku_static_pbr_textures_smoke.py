@@ -278,7 +278,10 @@ with tempfile.TemporaryDirectory(prefix="miku-static-pbr-2.2-") as temp:
     )
     assert Path(repeated["bundlePath"]).read_bytes() == first_bytes
 
-    def export_height_mode(mode: str):
+    def export_height_mode(
+        mode: str,
+        policy: str = "FOLLOW_BLENDER",
+    ):
         mode_material = bpy.data.materials.new(
             f"Miku Height {mode}"
         )
@@ -341,12 +344,19 @@ with tempfile.TemporaryDirectory(prefix="miku-static-pbr-2.2-") as temp:
         mode_material.miku_normal_convention = (
             "TangentOpenGLPositiveY"
         )
+        mode_material.miku_displacement_policy = policy
+        policy_suffix = policy.lower().replace("_", "-")
         mode_result = miku_blender.export_material_bundle(
             mode_material,
-            str(root / f"bundle-output-{mode.lower()}"),
-            source_blend_id=f"static-pbr-{mode.lower()}-source",
+            str(
+                root
+                / f"bundle-output-{mode.lower()}-{policy_suffix}"
+            ),
+            source_blend_id=(
+                f"static-pbr-{mode.lower()}-{policy_suffix}-source"
+            ),
             persistent_material_id=(
-                f"static-pbr-{mode.lower()}-material"
+                f"static-pbr-{mode.lower()}-{policy_suffix}-material"
             ),
             mode="Auto",
         )
@@ -388,6 +398,33 @@ with tempfile.TemporaryDirectory(prefix="miku-static-pbr-2.2-") as temp:
     assert (
         displacement_channel["value"]["kind"] == "Expression"
     ), displacement_channel
+
+    _, promoted_ir = export_height_mode("BUMP", "ALWAYS_VERTEX")
+    promoted_channels = {
+        item["semantic"]: item for item in promoted_ir["channels"]
+    }
+    assert promoted_ir["displacementPolicy"] == "ALWAYS_VERTEX"
+    assert promoted_ir["heightChannel"]["midlevel"] == 0.5
+    assert abs(promoted_ir["heightChannel"]["scale"] - 0.14) < 1.0e-6
+    assert "Height" in promoted_channels
+    assert (
+        promoted_channels["Displacement"]["value"]["kind"]
+        == "Expression"
+    )
+    promoted_ops = {
+        item["op"] for item in promoted_ir["expressions"]
+    }
+    assert "Input.MaterialChannel" in promoted_ops
+
+    _, map_only_ir = export_height_mode("BUMP", "MAP_ONLY")
+    map_only_channels = {
+        item["semantic"]: item for item in map_only_ir["channels"]
+    }
+    assert "Height" in map_only_channels
+    assert not (
+        (map_only_channels.get("Displacement", {}).get("value") or {})
+        .get("kind") == "Expression"
+    )
 
     opaque_alpha = bpy.data.materials.new(
         "Miku Opaque Linked Alpha"

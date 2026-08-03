@@ -52,16 +52,18 @@ namespace Miku.ShaderConverter.Editor
                             MikuWorkflowBackends.DielectricWrapperTemplate),
                 };
 
-        public static bool IsMaterialIr2(JObject materialIr)
+        public static bool HasSurfaceModelPlan(JObject materialIr)
         {
-            return string.Equals(
-                       materialIr?["documentKind"]?.Value<string>(),
-                       "miku-material-ir-1.0",
-                       StringComparison.Ordinal) &&
-                   string.Equals(
-                       materialIr?["schemaVersion"]?.Value<string>(),
-                       "1.0",
-                       StringComparison.Ordinal) &&
+            var documentKind = materialIr?["documentKind"]?.Value<string>();
+            var validDocument = string.Equals(
+                                    documentKind,
+                                    "miku-material-ir-1.0",
+                                    StringComparison.Ordinal) ||
+                                string.Equals(
+                                    documentKind,
+                                    "miku-material-ir-2.0",
+                                    StringComparison.Ordinal);
+            return validDocument &&
                    string.Equals(
                        materialIr?["surfaceModelPlan"]?["schema"]
                            ?.Value<string>(),
@@ -71,7 +73,7 @@ namespace Miku.ShaderConverter.Editor
 
         public static ISurfaceGraphGenerator Resolve(JObject materialIr)
         {
-            if (!IsMaterialIr2(materialIr))
+            if (!HasSurfaceModelPlan(materialIr))
                 throw new InvalidDataException(
                     "MIKU_SURFACE_MODEL_IR_VERSION_REQUIRED");
             var plan = materialIr["surfaceModelPlan"] as JObject
@@ -93,11 +95,15 @@ namespace Miku.ShaderConverter.Editor
             if (!Generators.TryGetValue(kind, out var generator))
                 throw new InvalidDataException(
                     "MIKU_SURFACE_MODEL_UNKNOWN:" + kind);
-            if (string.Equals(
-                    kind,
-                    "OpaquePBR",
-                    StringComparison.Ordinal) &&
-                RequiresClearCoat(materialIr))
+            if (RequiresClearCoat(materialIr) &&
+                (string.Equals(
+                     kind,
+                     "OpaquePBR",
+                     StringComparison.Ordinal) ||
+                 string.Equals(
+                     kind,
+                     "CustomMultiLobe",
+                     StringComparison.Ordinal)))
             {
                 return new ShaderGraph17SurfaceGenerator(
                     kind,

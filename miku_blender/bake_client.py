@@ -7,9 +7,17 @@ from pathlib import Path
 from typing import Any, Mapping
 
 try:
-    from ..miku.bake_protocol import make_bake_request, validate_bake_result
+    from ..miku.bake_protocol import (
+        DEFAULT_BAKE_RESOLUTION,
+        make_bake_request,
+        validate_bake_result,
+    )
 except ImportError:
-    from miku.bake_protocol import make_bake_request, validate_bake_result
+    from miku.bake_protocol import (
+        DEFAULT_BAKE_RESOLUTION,
+        make_bake_request,
+        validate_bake_result,
+    )
 
 
 def execute_bake(
@@ -21,6 +29,7 @@ def execute_bake(
     persistent_source_id: str,
     persistent_material_id: str,
     allow_appearance_approximation: bool = False,
+    bake_resolution: int = DEFAULT_BAKE_RESOLUTION,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Exchange only versioned JSON artifacts with the separately licensed worker."""
 
@@ -32,6 +41,7 @@ def execute_bake(
         source_material_name=material_name,
         source_snapshot=graph,
         allow_appearance_approximation=allow_appearance_approximation,
+        resolution=bake_resolution,
     )
     request_path = target / f"{persistent_material_id}.miku-bake-request.json"
     _write_json(request_path, request)
@@ -63,14 +73,11 @@ def _invoke_gpl_worker(request_path: Path, target: Path) -> None:
     )
     if "FINISHED" not in set(outcome or ()):
         result_path = target / (
-            request_path.name.removesuffix(".miku-bake-request.json")
-            + ".miku-bake-result.json"
+            request_path.name.removesuffix(".miku-bake-request.json") + ".miku-bake-result.json"
         )
         if result_path.is_file():
             try:
-                failed = json.loads(
-                    result_path.read_text(encoding="utf-8")
-                )
+                failed = json.loads(result_path.read_text(encoding="utf-8"))
                 diagnostics = failed.get("diagnostics")
                 first = (
                     diagnostics[0]

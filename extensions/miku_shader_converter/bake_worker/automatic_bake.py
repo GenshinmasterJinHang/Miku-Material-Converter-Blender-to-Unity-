@@ -46,7 +46,7 @@ except ImportError:
 
 
 BAKE_SCHEMA = "miku-bake-cache-1.0"
-BAKE_ALGORITHM_REVISION = 12
+BAKE_ALGORITHM_REVISION = 13
 CHANNELS = (
     ("BaseColor", "Base Color", "RGB", "sRGB"),
     ("Metalness", "Metallic", "R", "Linear"),
@@ -55,6 +55,7 @@ CHANNELS = (
     ("Emission", "Emission Color", "RGB", "sRGB"),
     ("Alpha", "Alpha", "R", "Linear"),
     ("IOR", "IOR", "R", "Linear"),
+    ("Height", "Height", "R", "Linear"),
 )
 
 _COMPLEX_OP_TOKENS = (
@@ -721,7 +722,7 @@ def _select_only(context, objects):
         obj.select_set(True)
 
 
-def _save_float_image_atomic(image, output_path):
+def _save_float_image_atomic(image, output_path, *, color_mode="RGBA"):
     scene = getattr(getattr(bpy, "context", None), "scene", None)
     settings = getattr(getattr(scene, "render", None), "image_settings", None)
     if settings is None:
@@ -736,7 +737,7 @@ def _save_float_image_atomic(image, output_path):
     temporary = output_path + ".tmp.exr"
     try:
         settings.file_format = "OPEN_EXR"
-        settings.color_mode = "RGBA"
+        settings.color_mode = color_mode
         settings.color_depth = "16"
         settings.exr_codec = "ZIP"
         image.save_render(temporary, scene=scene)
@@ -1451,6 +1452,7 @@ def bake_material(
                         "Emission": (0.0, 0.0, 0.0, 1.0),
                         "Alpha": (1.0, 1.0, 1.0, 1.0),
                         "IOR": (1.45, 1.45, 1.45, 1.0),
+                        "Height": (0.0, 0.0, 0.0, 1.0),
                     }[semantic]
                     result = _write_constant_channel(
                         material,
@@ -1476,6 +1478,7 @@ def bake_material(
                         margin,
                         appearance_approximation=appearance_approximation,
                         semantic_plan=semantic_plan,
+                        source_graph=graph,
                     )
                 channel_results[semantic] = result
             except Exception as exc:
@@ -1562,32 +1565,119 @@ def bake_expression_islands(
     samples = max(1, int(getattr(settings, "bake_samples", 16) or 16))
     bake_dir = os.path.join(os.path.dirname(miku_path), "Baked")
     os.makedirs(bake_dir, exist_ok=True)
-    material_objects = _objects_using_material(objects, material)
-    if not material_objects:
+    reusable_jobs = [
+        item
+        for item in jobs
+        if str(item.get("route") or "") == "ReusableBake"
+        and item.get("meshBindingRequired") is False
+        and str(item.get("coordinateDomain") or "") in {"Uniform", "UV0"}
+    ]
+    portable = bool(jobs) and len(reusable_jobs) == len(jobs)
+    if reusable_jobs and not portable:
         return {
             "status": "failed",
             "islands": {},
             "failures": [
                 {
-                    "code": "MIKU_STATIC_EXPRESSION_ISLAND_BAKE_FAILED",
-                    "message": "No exported mesh uses this material.",
+                    "code": "MIKU_BAKE_JOB_SCOPE_CONFLICT",
+                    "message": (
+                        "Reusable and mesh-bound expression-island jobs cannot "
+                        "share one bake request."
+                    ),
                 }
             ],
         }
-    for obj in material_objects:
-        if not _ensure_uv(context, obj, False):
+    cache_path = os.path.join(
+        os.path.dirname(miku_path),
+        ".miku-reusable-bake-cache.json",
+    )
+    cache_key = ""
+    if portable:
+        cache_dependencies = {
+            "scope": "PortableExpressionIslands",
+            "coordinateDomain": "UV0",
+            "meshBindingRequired": False,
+            "jobs": [
+                {
+                    key: item.get(key)
+                    for key in (
+                        "jobId",
+                        "expressionId",
+                        "resourceId",
+                        "referenceName",
+                        "usage",
+                        "channel",
+                        "colorSpace",
+                        "coordinateDomain",
+                        "meshBindingRequired",
+                        "sourceNodeId",
+                        "sourceSocketId",
+                    )
+                }
+                for item in sorted(
+                    jobs,
+                    key=lambda value: str(value.get("jobId") or ""),
+                )
+            ],
+            "sourceImages": _resource_file_fingerprints(graph),
+            "materialNodeTree": _node_tree_fingerprint(
+                getattr(material, "node_tree", None)
+            ),
+        }
+        cache_key = bake_cache_key(
+            graph,
+            resolution,
+            samples,
+            margin,
+            cache_dependencies,
+        )
+        cached = _read_cache(cache_path)
+        if (
+            cached
+            and cached.get("cacheKey") == cache_key
+            and not cached.get("failures")
+            and _expression_island_cache_outputs_exist(
+                cached,
+                os.path.dirname(miku_path),
+            )
+        ):
+            reused = dict(cached)
+            reused["status"] = "reused"
+            return reused
+    canonical_object = None
+    canonical_mesh = None
+    if portable:
+        canonical_object, canonical_mesh = _create_canonical_uv_bake_object(
+            context, material
+        )
+        material_objects = [canonical_object]
+    else:
+        material_objects = _objects_using_material(objects, material)
+        if not material_objects:
             return {
                 "status": "failed",
                 "islands": {},
                 "failures": [
                     {
                         "code": "MIKU_STATIC_EXPRESSION_ISLAND_BAKE_FAILED",
-                        "message": (
-                            f"Mesh {getattr(obj, 'name', 'Mesh')} has no UV map."
-                        ),
+                        "message": "No exported mesh uses this material.",
                     }
                 ],
             }
+        for obj in material_objects:
+            if not _ensure_uv(context, obj, False):
+                return {
+                    "status": "failed",
+                    "islands": {},
+                    "failures": [
+                        {
+                            "code": "MIKU_STATIC_EXPRESSION_ISLAND_BAKE_FAILED",
+                            "message": (
+                                f"Mesh {getattr(obj, 'name', 'Mesh')} has no UV map."
+                            ),
+                        }
+                    ],
+                }
     snapshot_nodes = {
         str(item.get("id") or ""): item
         for item in graph.get("nodes", []) or []
@@ -1639,6 +1729,23 @@ def bake_expression_islands(
                             f"Node {source.get('blenderNodeName')!r} has no "
                             f"output {source_socket_id!r}."
                         )
+                    if portable:
+                        runtime_dependencies = sorted(
+                            _non_bakeable_output_dependencies(source_socket)
+                        )
+                        if runtime_dependencies:
+                            raise RuntimeError(
+                                "MIKU_RUNTIME_INPUT_UNSUPPORTED:"
+                                + ",".join(runtime_dependencies)
+                            )
+                        mesh_dependencies = sorted(
+                            _portable_mesh_output_dependencies(source_socket)
+                        )
+                        if mesh_dependencies:
+                            raise RuntimeError(
+                                "MIKU_PORTABLE_HYBRID_MESH_DEPENDENCY:"
+                                + ",".join(mesh_dependencies)
+                            )
                     root_socket = _expose_nested_output(
                         scratch.node_tree,
                         source_tree,
@@ -1754,6 +1861,12 @@ def bake_expression_islands(
                         "usage": usage,
                         "sourceNodeId": source_node_id,
                         "sourceSocketId": source_socket_id,
+                        "coordinateDomain": str(
+                            job.get("coordinateDomain") or "MeshSurface"
+                        ),
+                        "meshBindingRequired": bool(
+                            job.get("meshBindingRequired", True)
+                        ),
                     }
                 finally:
                     for state in reversed(target_states):
@@ -1772,14 +1885,21 @@ def bake_expression_islands(
                             pass
                     _remove_private_material(scratch, owned_trees)
             except Exception as exc:
+                failure_message = str(exc)
+                failure_code = (
+                    failure_message.split(":", 1)[0]
+                    if failure_message.startswith("MIKU_")
+                    else "MIKU_STATIC_EXPRESSION_ISLAND_BAKE_FAILED"
+                )
                 failures.append(
                     {
-                        "code": "MIKU_STATIC_EXPRESSION_ISLAND_BAKE_FAILED",
+                        "code": failure_code,
                         "expressionId": expression_id,
                         "sourceNodeId": source_node_id,
                         "sourceSocketId": source_socket_id,
                         "message": (
-                            f"{source_node_id}:{source_socket_id}: {exc}"
+                            f"{source_node_id}:{source_socket_id}: "
+                            f"{failure_message}"
                         ),
                     }
                 )
@@ -1793,22 +1913,193 @@ def bake_expression_islands(
                 cycles.samples = original_samples
             except Exception:
                 pass
-    return {
+        if canonical_object is not None:
+            _remove_resource_bake_object(canonical_object, canonical_mesh)
+    payload = {
+        "documentKind": BAKE_SCHEMA,
+        "schemaVersion": "1.0",
+        "algorithmRevision": BAKE_ALGORITHM_REVISION,
         "status": "completed" if not failures else "failed",
+        "cacheKey": cache_key,
+        "evaluator": (
+            "BLENDER_CANONICAL_UV0_BAKE"
+            if portable
+            else "BLENDER_EXPRESSION_ISLAND_BAKE"
+        ),
         "islands": results,
         "failures": failures,
         "resolution": resolution,
         "samples": samples,
         "margin": margin,
         "dependencies": {
-            "targetMeshes": [
-                _mesh_fingerprint(obj)
-                for obj in sorted(
-                    material_objects, key=lambda item: item.name
-                )
-            ]
+            "coordinateDomain": "UV0" if portable else "MeshSurface",
+            "meshBindingRequired": not portable,
+            **(
+                {}
+                if portable
+                else {
+                    "targetMeshes": [
+                        _mesh_fingerprint(obj)
+                        for obj in sorted(
+                            material_objects, key=lambda item: item.name
+                        )
+                    ]
+                }
+            ),
         },
     }
+    if portable and not failures:
+        _write_cache(cache_path, payload)
+    return payload
+
+
+def _create_canonical_uv_bake_object(context, material):
+    """Create a deterministic 0-1 UV plane owned only by the bake operation."""
+
+    mesh = bpy.data.meshes.new("__MIKU_PORTABLE_UV_MESH__")
+    mesh.from_pydata(
+        [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0)],
+        [],
+        [(0, 1, 2, 3)],
+    )
+    mesh.update()
+    uv_layer = mesh.uv_layers.new(name="UVMap")
+    uv_by_vertex = {
+        0: (0.0, 0.0),
+        1: (1.0, 0.0),
+        2: (1.0, 1.0),
+        3: (0.0, 1.0),
+    }
+    for polygon in mesh.polygons:
+        for loop_index in polygon.loop_indices:
+            vertex_index = mesh.loops[loop_index].vertex_index
+            uv_layer.data[loop_index].uv = uv_by_vertex[vertex_index]
+    obj = bpy.data.objects.new("__MIKU_PORTABLE_UV_OBJECT__", mesh)
+    context.scene.collection.objects.link(obj)
+    obj.data.materials.append(material)
+    return obj, mesh
+
+
+def _non_bakeable_output_dependencies(socket):
+    """Apply the runtime-dependency proof to an output socket itself."""
+
+    node = getattr(socket, "node", None)
+    if node is None:
+        return set()
+    dependencies = set()
+    node_dependencies = {
+        "ShaderNodeLayerWeight": "ViewDirection",
+        "ShaderNodeFresnel": "ViewDirection",
+        "ShaderNodeLightPath": "LightPath",
+        "ShaderNodeCameraData": "Camera",
+    }
+    queue = [(node, socket)]
+    seen = set()
+    while queue:
+        current, output_socket = queue.pop(0)
+        key = (
+            _pointer_key(current),
+            str(
+                getattr(output_socket, "identifier", "")
+                or getattr(output_socket, "name", "")
+            ),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        dependency = node_dependencies.get(getattr(current, "bl_idname", ""))
+        if (
+            getattr(current, "bl_idname", "") == "ShaderNodeNewGeometry"
+            and str(getattr(output_socket, "name", ""))
+            in {"Backfacing", "Incoming"}
+        ):
+            dependency = "ViewDirection"
+        if getattr(current, "bl_idname", "") == "ShaderNodeGroup":
+            group = getattr(current, "node_tree", None)
+            if (
+                group is not None
+                and str(
+                    getattr(group, "get", lambda *_: "")(
+                        "miku.semantic", ""
+                    )
+                )
+                == "Input.Time"
+            ):
+                dependency = "Time"
+        if dependency:
+            dependencies.add(dependency)
+        for input_socket in list(getattr(current, "inputs", []) or []):
+            queue.extend(
+                (link.from_node, link.from_socket)
+                for link in list(getattr(input_socket, "links", []) or [])
+            )
+    return dependencies
+
+
+def _portable_mesh_output_dependencies(socket):
+    """Reject source-mesh inputs even if a request claims a reusable bake."""
+
+    node = getattr(socket, "node", None)
+    if node is None:
+        return set()
+    dependencies = set()
+    mesh_nodes = {
+        "ShaderNodeAmbientOcclusion",
+        "ShaderNodeAttribute",
+        "ShaderNodeBevel",
+        "ShaderNodeNewGeometry",
+        "ShaderNodeObjectInfo",
+        "ShaderNodeVertexColor",
+        "ShaderNodeWireframe",
+    }
+    queue = [(node, socket)]
+    seen = set()
+    while queue:
+        current, output_socket = queue.pop(0)
+        output_name = str(
+            getattr(output_socket, "identifier", "")
+            or getattr(output_socket, "name", "")
+        )
+        key = (_pointer_key(current), output_name)
+        if key in seen:
+            continue
+        seen.add(key)
+        node_type = str(getattr(current, "bl_idname", "") or "")
+        node_name = str(getattr(current, "name", "") or node_type)
+        if node_type == "ShaderNodeTexCoord" and output_name not in {
+            "UV",
+        }:
+            dependencies.add(f"{node_name}.{output_name}")
+        elif node_type in mesh_nodes:
+            if not (
+                node_type == "ShaderNodeNewGeometry"
+                and output_name in {"Backfacing", "Incoming"}
+            ):
+                dependencies.add(f"{node_name}.{output_name}")
+        elif node_type.startswith("ShaderNodeTex") and node_type not in {
+            "ShaderNodeTexEnvironment",
+            "ShaderNodeTexIES",
+            "ShaderNodeTexImage",
+            "ShaderNodeTexSky",
+        }:
+            vector_input = next(
+                (
+                    item
+                    for item in list(getattr(current, "inputs", []) or [])
+                    if str(getattr(item, "name", "") or "") == "Vector"
+                ),
+                None,
+            )
+            if vector_input is not None and not list(
+                getattr(vector_input, "links", []) or []
+            ):
+                dependencies.add(f"{node_name}.implicit-generated-coordinate")
+        for input_socket in list(getattr(current, "inputs", []) or []):
+            queue.extend(
+                (link.from_node, link.from_socket)
+                for link in list(getattr(input_socket, "links", []) or [])
+            )
+    return dependencies
 
 
 def _bake_channel(
@@ -1825,8 +2116,9 @@ def _bake_channel(
     margin,
     appearance_approximation=False,
     semantic_plan=None,
+    source_graph=None,
 ):
-    floating_output = semantic in {"BaseColor", "Emission"}
+    floating_output = semantic in {"BaseColor", "Emission", "Height"}
     if floating_output:
         output_path = os.path.splitext(output_path)[0] + ".exr"
         color_space = "Linear"
@@ -1883,7 +2175,59 @@ def _bake_channel(
             node_states.append(_install_bake_target(material, assigned_image))
 
         if semantic_plan is not None:
-            if semantic == "Normal":
+            if semantic == "Height":
+                height_contract = (
+                    source_graph.get("heightChannel")
+                    if isinstance(source_graph, dict)
+                    and isinstance(source_graph.get("heightChannel"), dict)
+                    else {}
+                )
+                height_endpoint = (
+                    height_contract.get("source")
+                    if isinstance(height_contract.get("source"), dict)
+                    else {}
+                )
+                source_node_id = str(height_endpoint.get("node") or "")
+                source_socket_id = str(height_endpoint.get("socket") or "")
+                snapshot_nodes = {
+                    str(item.get("id") or ""): item
+                    for item in (source_graph or {}).get("nodes", []) or []
+                    if isinstance(item, dict)
+                }
+                source_record = snapshot_nodes.get(source_node_id) or {}
+                source_metadata = (
+                    source_record.get("source")
+                    if isinstance(source_record.get("source"), dict)
+                    else None
+                )
+                if not source_metadata or not source_socket_id:
+                    raise RuntimeError(
+                        "MIKU_HEIGHT_SOURCE_ENDPOINT_MISSING:"
+                        f"{source_node_id}:{source_socket_id}"
+                    )
+                source_tree, source_node = _find_private_source_node(
+                    working_material, source_metadata
+                )
+                source_socket = _output_by_identifier(
+                    source_node, source_socket_id
+                )
+                if source_socket is None:
+                    raise RuntimeError(
+                        "MIKU_HEIGHT_SOURCE_SOCKET_MISSING:"
+                        f"{source_node_id}:{source_socket_id}"
+                    )
+                root_socket = _expose_nested_output(
+                    working_material.node_tree,
+                    source_tree,
+                    source_node,
+                    source_socket,
+                    socket_type="NodeSocketFloat",
+                )
+                _route_private_output_to_emission(
+                    working_material.node_tree, root_socket
+                )
+                bake_type = "EMIT"
+            elif semantic == "Normal":
                 surface_state = _route_semantic_normal_to_surface(
                     working_material,
                     working_plan,
@@ -1924,7 +2268,11 @@ def _bake_channel(
         if "FINISHED" not in set(outcome or []):
             raise RuntimeError(f"Blender bake operator returned {outcome!r}.")
         if floating_output:
-            _save_float_image_atomic(image, output_path)
+            _save_float_image_atomic(
+                image,
+                output_path,
+                color_mode="BW" if semantic == "Height" else "RGBA",
+            )
         else:
             _save_image_atomic(image, output_path, ".png")
         if not os.path.isfile(output_path):
@@ -1962,7 +2310,7 @@ def _bake_channel(
 
 
 def _write_constant_channel(material, semantic, channel, color_space, color, output_path, resolution):
-    floating_output = semantic in {"BaseColor", "Emission"}
+    floating_output = semantic in {"BaseColor", "Emission", "Height"}
     if floating_output:
         output_path = os.path.splitext(output_path)[0] + ".exr"
         color_space = "Linear"
@@ -1978,7 +2326,11 @@ def _write_constant_channel(material, semantic, channel, color_space, color, out
         image.file_format = "OPEN_EXR" if floating_output else "PNG"
         _set_image_color_space(image, color_space)
         if floating_output:
-            _save_float_image_atomic(image, output_path)
+            _save_float_image_atomic(
+                image,
+                output_path,
+                color_mode="BW" if semantic == "Height" else "RGBA",
+            )
         else:
             _save_image_atomic(image, output_path, ".png")
         if not os.path.isfile(output_path):
@@ -3263,6 +3615,24 @@ def _write_cache(path, result):
 def _cache_outputs_exist(cache, bake_dir):
     channels = cache.get("channels") or {}
     return bool(channels) and all(os.path.isfile(os.path.join(bake_dir, item.get("file", ""))) for item in channels.values())
+
+
+def _expression_island_cache_outputs_exist(cache, output_root):
+    islands = cache.get("islands") or {}
+    if not islands:
+        return False
+    root = os.path.abspath(output_root)
+    for item in islands.values():
+        relative = str(item.get("relativePath") or "")
+        candidate = os.path.abspath(os.path.join(root, relative))
+        try:
+            if os.path.commonpath((root, candidate)) != root:
+                return False
+        except ValueError:
+            return False
+        if not os.path.isfile(candidate):
+            return False
+    return True
 
 
 def _failed_result(cache_key, resolution, samples, margin, message):

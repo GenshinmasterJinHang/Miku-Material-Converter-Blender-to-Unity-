@@ -1,5 +1,9 @@
 # ADR 0012: Use a fixed URP backend for Generic Toon
 
+> Historical: superseded by ADR 0013 on 2026-08-01. This record describes the
+> Miku 1.x implementation and is retained without changing its historical
+> decision.
+
 ## Status
 
 Accepted — 2026-07-30

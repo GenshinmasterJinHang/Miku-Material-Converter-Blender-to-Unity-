@@ -5,7 +5,6 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "../NPR/NPR_FaceSDF.hlsl"
 
 float3 Genshin_SampleSH_Indirect(float3 normalWS)
@@ -25,10 +24,16 @@ float3 Genshin_ReferenceCurve(float3 color, float midX, float midY)
     return saturate(lerp(lower, upper, step(midX.xxx, color)));
 }
 
-float3 Genshin_ReferenceBaseGrade(float3 color)
+float3 Genshin_ReferenceBaseGrade(float3 color, float highlightCompression)
 {
     // RGB Curves master point (0.6333339, 0.3691861), followed by HSV Value=2.
-    return saturate(Genshin_ReferenceCurve(color, 0.6333339, 0.3691861) * 2.0);
+    float3 unboundedGrade = Genshin_ReferenceCurve(color, 0.6333339, 0.3691861) * 2.0;
+    return lerp(saturate(unboundedGrade), unboundedGrade, saturate(highlightCompression));
+}
+
+float3 Genshin_ReferenceBaseGrade(float3 color)
+{
+    return Genshin_ReferenceBaseGrade(color, 0.0);
 }
 
 float3 Genshin_ReferenceRampGrade(float3 color)
@@ -37,13 +42,39 @@ float3 Genshin_ReferenceRampGrade(float3 color)
     return Genshin_ReferenceCurve(color, 0.4468749, 0.3437501);
 }
 
-float3 Genshin_ReferenceSkinTone(float3 color)
+float3 Genshin_ReferenceSkinTone(float3 color, float highlightCompression)
 {
     // Blender's display transform compresses the very bright diffuse skin
     // texture while lifting its warm shadow band. Reconstruct that response in
     // shader space so Unity does not produce clipped white highlights and dull
     // grey-brown shadows.
-    return saturate(float3(0.765, 0.258, 0.106) + saturate(color) * float3(0.140, 0.613, 0.765));
+    float3 legacyTone = saturate(float3(0.765, 0.258, 0.106) + saturate(color) * float3(0.140, 0.613, 0.765));
+    return lerp(legacyTone, color, saturate(highlightCompression));
+}
+
+float3 Genshin_ReferenceSkinTone(float3 color)
+{
+    return Genshin_ReferenceSkinTone(color, 0.0);
+}
+
+float3 Genshin_HuePreservingSoftShoulder(float3 color, float knee, float ceiling)
+{
+    float safeKnee = max(0.0, knee);
+    float safeCeiling = max(safeKnee + 1e-4, ceiling);
+    float peak = max(color.r, max(color.g, color.b));
+    if (peak <= safeKnee)
+    {
+        return color;
+    }
+
+    float shoulderRange = safeCeiling - safeKnee;
+    float compressedPeak = safeKnee + shoulderRange * (1.0 - exp(-(peak - safeKnee) / shoulderRange));
+    return color * (compressedPeak / max(peak, 1e-5));
+}
+
+float3 Genshin_CompressNonEmissive(float3 color, float compression, float knee, float ceiling)
+{
+    return lerp(color, Genshin_HuePreservingSoftShoulder(color, knee, ceiling), saturate(compression));
 }
 
 float Genshin_ReferenceRampRow(float materialId, float inNight)
@@ -91,6 +122,7 @@ float3 Genshin_BodyDiffuse(
     float shadowAttenuation,
     float bodyShadowSmooth,
     float inNight,
+    float highlightCompression,
     TEXTURE2D_PARAM(shadowRampMap, sampler_shadowRampMap))
 {
     float ndotLRaw = dot(normalize(normalWS), normalize(lightDirWS));
@@ -101,7 +133,7 @@ float3 Genshin_BodyDiffuse(
         SAMPLE_TEXTURE2D(shadowRampMap, sampler_shadowRampMap, float2(rampU, rampV)).rgb);
     float transition = max(0.001, bodyShadowSmooth * 0.02);
     float inLight = smoothstep(0.998 - transition, 0.998, lightingSignal);
-    return Genshin_ReferenceBaseGrade(baseColor) * lerp(rampShadow, mainLightColor, inLight);
+    return Genshin_ReferenceBaseGrade(baseColor, highlightCompression) * lerp(rampShadow, mainLightColor, inLight);
 }
 
 float3 Genshin_HairDoubleShadow(
@@ -116,6 +148,7 @@ float3 Genshin_HairDoubleShadow(
     float hairDarkShadowArea,
     float hairShadowSmooth,
     float hairSmoothShadowIntensity,
+    float highlightCompression,
     TEXTURE2D_PARAM(hairRampMap, sampler_hairRampMap))
 {
     float lightingSignal = Genshin_ReferenceLightingSignal(ndotLRaw, lightMap.g, shadowAttenuation);
@@ -138,7 +171,7 @@ float3 Genshin_HairDoubleShadow(
         saturate(deepShadowBand * hairSmoothShadowIntensity));
     float transition = max(0.001, hairShadowSmooth * 0.02);
     float inLight = smoothstep(0.998 - transition, 0.998, lightingSignal);
-    return Genshin_ReferenceBaseGrade(baseColor) * lerp(rampShadow, mainLightColor, inLight);
+    return Genshin_ReferenceBaseGrade(baseColor, highlightCompression) * lerp(rampShadow, mainLightColor, inLight);
 }
 
 float Genshin_RoughnessToSpecularExponent(float roughness)
@@ -155,7 +188,8 @@ float3 Genshin_ComputeSpecular(
     float3 lightDirWS,
     float strokeRange,
     float patternRange,
-    float metalIntensity)
+    float metalIntensity,
+    float highlightCompression)
 {
     float3 halfDir = normalize(viewDirWS + lightDirWS);
     float NoH = saturate(dot(normalWS, halfDir));
@@ -175,7 +209,7 @@ float3 Genshin_ComputeSpecular(
         graphicLobe);
     float highlightMask = metalMask * specularIntensity * graphicBlob;
 
-    float3 gradedBase = Genshin_ReferenceBaseGrade(baseColor);
+    float3 gradedBase = Genshin_ReferenceBaseGrade(baseColor, highlightCompression);
     float sphereTint = lerp(0.85, 1.0, dot(saturate(metalMap.rgb), float3(0.299, 0.587, 0.114)));
     float3 highlightTint = lerp(gradedBase, 1.0.xxx, 0.45) * sphereTint;
     float3 rawHighlight = highlightTint * highlightMask * (0.50 * max(0.0, metalIntensity));
@@ -183,7 +217,8 @@ float3 Genshin_ComputeSpecular(
     // Reserve headroom for the authored diffuse/ramp color.  This keeps metal
     // readable without letting the additive lobe erase texture detail.
     float3 highlightHeadroom = max(0.0.xxx, 0.98.xxx - gradedBase);
-    return min(rawHighlight, highlightHeadroom * 0.90);
+    float3 legacyHighlight = min(rawHighlight, highlightHeadroom * 0.90);
+    return lerp(legacyHighlight, rawHighlight, saturate(highlightCompression));
 }
 
 float3 Genshin_HairSpecular(
@@ -198,7 +233,8 @@ float3 Genshin_HairSpecular(
     float hairViewSpecularThreshold,
     float hairSpecAreaBaseline,
     float hairAccGroveBaseline,
-    float hairViewSpecularIntensity)
+    float hairViewSpecularIntensity,
+    float highlightCompression)
 {
     // Hair accessories share the same ILM/metal-map contract as body metal.
     // Reuse the energy-limited response so bright ornaments do not clip.
@@ -211,17 +247,18 @@ float3 Genshin_HairSpecular(
         lightDirWS,
         0.35,
         0.70,
-        hairViewSpecularIntensity);
+        hairViewSpecularIntensity,
+        highlightCompression);
 }
 
-float3 Genshin_HairViewHighlight(float3 baseColor, float4 lightMap, float hairSpecMask, float intensity)
+float3 Genshin_HairViewHighlight(float3 baseColor, float4 lightMap, float hairSpecMask, float intensity, float highlightCompression)
 {
     // The reference graph samples hair_s with the camera-space normal rather
     // than the mesh UV. This gives a broad graphic highlight without turning
     // the hair into a glossy PBR surface.
     float mask = smoothstep(0.18, 0.82, saturate(hairSpecMask));
     float lightMask = lerp(0.45, 1.0, saturate(lightMap.b));
-    return Genshin_ReferenceBaseGrade(baseColor) * mask * lightMask * intensity;
+    return Genshin_ReferenceBaseGrade(baseColor, highlightCompression) * mask * lightMask * intensity;
 }
 
 float3 Genshin_EmissionPulse(float baseAlpha, float lightMapAlpha, float3 baseColor, float3 mainLightColor, float emissionIntensity)
@@ -282,42 +319,15 @@ float3 Genshin_FaceDiffuse(
     float inLight,
     float3 mainLightColor,
     float inNight,
+    float highlightCompression,
     TEXTURE2D_PARAM(shadowRampMap, sampler_shadowRampMap))
 {
     float rampU = lerp(0.01, 0.998, saturate(inLight));
     float rampV = Genshin_ReferenceRampRow(1.0, inNight);
     float3 faceShadowColor = Genshin_ReferenceRampGrade(
         SAMPLE_TEXTURE2D(shadowRampMap, sampler_shadowRampMap, float2(rampU, rampV)).rgb);
-    float3 faceColor = Genshin_ReferenceBaseGrade(baseColor) * lerp(faceShadowColor, mainLightColor, saturate(inLight));
-    return Genshin_ReferenceSkinTone(faceColor);
-}
-
-float3 Genshin_DepthRimLight(
-    float4 positionCS,
-    float3 normalWS,
-    float3 viewDirWS,
-    float3 mainLightColor,
-    float3 rimLightTintColor,
-    float rimLightBrightness,
-    float rimLightWidth,
-    float rimLightThreshold,
-    float rimLightFadeout,
-    float fresnelPower,
-    float fresnelClamp)
-{
-    float linearEyeDepth = LinearEyeDepth(positionCS.z, _ZBufferParams);
-    float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalize(normalWS));
-    float2 uvOffset = float2(sign(normalVS.x), 0.0) * rimLightWidth / (1.0 + linearEyeDepth) / 100.0;
-    int2 loadTexPos = int2(positionCS.xy + uvOffset * _ScaledScreenParams.xy);
-    int2 maxTexPos = max(int2(_ScaledScreenParams.xy) - 1, int2(0, 0));
-    loadTexPos = min(max(loadTexPos, int2(0, 0)), maxTexPos);
-    float offsetSceneDepth = LoadSceneDepth(loadTexPos);
-    float offsetLinearEyeDepth = LinearEyeDepth(offsetSceneDepth, _ZBufferParams);
-    float rimLight = saturate((offsetLinearEyeDepth - (linearEyeDepth + rimLightThreshold)) / max(rimLightFadeout, 1e-5));
-    float NoV = dot(normalize(normalWS), normalize(viewDirWS));
-    float fresnel = pow(1.0 - saturate(NoV), fresnelPower);
-    fresnel = fresnel * saturate(fresnelClamp) + (1.0 - saturate(fresnelClamp));
-    return rimLight * fresnel * rimLightTintColor * mainLightColor * rimLightBrightness;
+    float3 faceColor = Genshin_ReferenceBaseGrade(baseColor, highlightCompression) * lerp(faceShadowColor, mainLightColor, saturate(inLight));
+    return Genshin_ReferenceSkinTone(faceColor, highlightCompression);
 }
 
 float3 Genshin_GetOutlineNormalOS(float3 smoothNormalOS, float3 fallbackNormalOS)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 import re
 import shutil
@@ -12,6 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from .contracts import DocumentValidationError, canonical_hash, validate_document
+from .fixed_workflows import FIXED_TEXTURE_ROLES
 
 
 MAX_RESOURCE_COUNT = 64
@@ -48,6 +50,7 @@ _SEMANTICS = {
     "AmbientOcclusion",
     "Height",
     "ExpressionIsland",
+    "FixedWorkflowTexture",
     "SourceMesh",
 }
 _EXPRESSION_ISLAND_USAGES = {"Color", "Scalar", "Normal"}
@@ -237,6 +240,73 @@ def validate_bundle_document(bundle: Mapping[str, Any]) -> dict[str, Any]:
                     usage,
                     path,
                 )
+        if semantic == "FixedWorkflowTexture":
+            if not isinstance(reference.get("bindingKey"), str) or not reference[
+                "bindingKey"
+            ]:
+                raise DocumentValidationError(
+                    "MIKU_FIXED_TEXTURE_BINDING_KEY_INVALID",
+                    "bindingKey is required for fixed-workflow textures",
+                    path,
+                )
+            material_bindings = reference.get("materialBindings", [])
+            if not isinstance(material_bindings, list) or len(material_bindings) > 24:
+                raise DocumentValidationError(
+                    "MIKU_FIXED_TEXTURE_MATERIAL_BINDINGS_INVALID",
+                    "materialBindings must contain at most 24 entries",
+                    path,
+                )
+            roles: set[str] = set()
+            for binding_index, binding in enumerate(material_bindings):
+                binding_path = (
+                    f"{path}.materialBindings[{binding_index}]"
+                )
+                role = (
+                    str(binding.get("role") or "")
+                    if isinstance(binding, Mapping)
+                    else ""
+                )
+                if role not in FIXED_TEXTURE_ROLES or role in roles:
+                    raise DocumentValidationError(
+                        "MIKU_FIXED_TEXTURE_ROLE_INVALID",
+                        role,
+                        binding_path,
+                    )
+                roles.add(role)
+                uv_transform = binding.get("uvTransform")
+                if uv_transform is None:
+                    continue
+                if not isinstance(uv_transform, Mapping):
+                    raise DocumentValidationError(
+                        "MIKU_FIXED_TEXTURE_UV_TRANSFORM_INVALID",
+                        "uvTransform must be an object",
+                        binding_path,
+                    )
+                if (
+                    str(uv_transform.get("coordinateSpace") or "") != "UV0"
+                    or str(uv_transform.get("operation") or "") != "Affine2D"
+                ):
+                    raise DocumentValidationError(
+                        "MIKU_FIXED_TEXTURE_UV_TRANSFORM_UNSUPPORTED",
+                        "Only UV0 Affine2D transforms are supported",
+                        binding_path,
+                    )
+                matrix = uv_transform.get("matrix")
+                if (
+                    not isinstance(matrix, list)
+                    or len(matrix) != 6
+                    or any(
+                        not isinstance(value, (int, float))
+                        or isinstance(value, bool)
+                        or not math.isfinite(float(value))
+                        for value in matrix
+                    )
+                ):
+                    raise DocumentValidationError(
+                        "MIKU_FIXED_TEXTURE_UV_MATRIX_INVALID",
+                        "Affine2D matrix must contain six finite numbers",
+                        binding_path,
+                    )
         color_space = str(reference.get("colorSpace") or "")
         if color_space not in {"sRGB", "Linear"}:
             raise DocumentValidationError("MIKU_RESOURCE_COLOR_SPACE_INVALID", color_space, path)
@@ -304,9 +374,7 @@ def validate_bundle_document(bundle: Mapping[str, Any]) -> dict[str, Any]:
         decoded_bytes += pixels
         if decoded_bytes > MAX_DECODED_IMAGE_BYTES:
             raise DocumentValidationError("MIKU_RESOURCE_DECODED_LIMIT", "Decoded image budget exceeded")
-        is_normal = semantic == "Normal" or (
-            semantic == "ExpressionIsland" and reference.get("usage") == "Normal"
-        )
+        is_normal = semantic == "Normal" or reference.get("usage") == "Normal"
         if is_normal and reference.get("normalConvention") not in _NORMAL_CONVENTIONS:
             raise DocumentValidationError(
                 "MIKU_NORMAL_CONVENTION_INVALID",
@@ -373,6 +441,38 @@ def validate_bundle_document(bundle: Mapping[str, Any]) -> dict[str, Any]:
     if str(value.get("sealedDigest") or "") != compute_sealed_digest(value):
         raise DocumentValidationError("MIKU_BUNDLE_SEAL_MISMATCH", "sealedDigest does not match artifact references")
     return value
+
+
+def validate_portable_hybrid_resources(
+    mode: str,
+    resources: Iterable[Mapping[str, Any]],
+) -> None:
+    """Reject source-mesh state from the public PreferNative contract."""
+
+    if str(mode or "") != "PreferNative":
+        return
+    for index, resource in enumerate(resources):
+        if not isinstance(resource, Mapping):
+            continue
+        if (
+            str(resource.get("semantic") or "") == "SourceMesh"
+            or str(resource.get("kind") or "") == "SourceMesh"
+            or isinstance(resource.get("meshBinding"), Mapping)
+            or (
+                str(resource.get("semantic") or "") == "ExpressionIsland"
+                and (
+                    resource.get("meshBindingRequired") is not False
+                    or str(resource.get("coordinateDomain") or "")
+                    not in {"Uniform", "UV0"}
+                )
+            )
+        ):
+            raise DocumentValidationError(
+                "MIKU_PORTABLE_RESOURCE_MESH_BOUND",
+                "Portable Hybrid output may contain only unbound Uniform/UV0 "
+                "expression resources and no SourceMesh or meshBinding",
+                f"$.resources[{index}]",
+            )
 
 
 def stage_bundle_artifacts(bundle_path: Path, staging_root: Path) -> tuple[dict[str, Any], Path]:

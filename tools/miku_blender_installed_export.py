@@ -27,7 +27,6 @@ def arguments() -> argparse.Namespace:
         default="standard_pbr",
         choices=(
             "standard_pbr",
-            "generic_toon",
             "genshin_toon",
             "wuwa_toon",
             "hsr_toon",
@@ -121,7 +120,7 @@ def main() -> int:
             "bl_ext.user_default.miku_shader_converter",
             "miku_shader_converter",
             args.extension_zip,
-            "1.0.1",
+            "2.2.8",
         )
     ]
     exporter = importlib.import_module(

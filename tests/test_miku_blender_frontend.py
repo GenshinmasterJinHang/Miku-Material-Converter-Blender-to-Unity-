@@ -11,6 +11,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import miku_blender
+from miku.contracts import make_document
+from miku_blender.translations import TRANSLATIONS
 
 
 class FakeMaterial(dict):
@@ -122,6 +124,7 @@ class CurrentMaterialSelectionTests(unittest.TestCase):
         self.assertIs(active, args[0])
         self.assertEqual("wuwa_toon", kwargs["workflow_kind"])
         self.assertEqual("Body", kwargs["workflow_part"])
+        self.assertEqual(1024, kwargs["bake_resolution"])
 
     def test_switching_active_slot_switches_material_and_workflow(self):
         first = FakeMaterial("First", legacy_workflow="standard_pbr")
@@ -318,7 +321,7 @@ class HiddenIdentityTests(unittest.TestCase):
         )
 
     def test_repeated_export_keeps_bundle_identities_stable(self):
-        material = FakeMaterial("Stable", legacy_workflow="generic_toon")
+        material = FakeMaterial("Stable", legacy_workflow="standard_pbr")
         context = make_context(StrictSlots([material]))
         data = FakeData("C:/projects/stable.blend")
 
@@ -617,6 +620,14 @@ class SharedOutputDirectoryTests(unittest.TestCase):
                 miku_blender,
                 "_export_material_bundle_to_directory",
                 side_effect=stage_bundle,
+            ), patch.object(
+                miku_blender,
+                "_prepare_material_export",
+                return_value=(
+                    {"material": {"name": "Rock"}},
+                    "Rock",
+                    {"expressions": []},
+                ),
             ):
                 with self.assertRaisesRegex(
                     RuntimeError,
@@ -711,16 +722,11 @@ class WorkflowFrontendTests(unittest.TestCase):
             SimpleNamespace(default_workflow="wuwa_toon"),
         )
         material.miku_workflow_kind = "generic_toon"
-        self.assertEqual(
-            "generic_toon",
-            miku_blender._resolved_material_workflow(
-                material,
-                "standard_pbr",
-            ),
-        )
+        with self.assertRaisesRegex(ValueError, r"MIKU_WORKFLOW_RETIRED:generic_toon"):
+            miku_blender._resolved_material_workflow(material, "standard_pbr")
 
     def test_game_part_is_serialized_only_for_game_workflows(self):
-        for workflow in ("standard_pbr", "generic_toon"):
+        for workflow in ("standard_pbr",):
             with self.subTest(workflow=workflow):
                 snapshot = miku_blender.snapshot_material(
                     FakeMaterial("Material"),
@@ -748,13 +754,129 @@ class WorkflowFrontendTests(unittest.TestCase):
         self.assertNotIn('layout.prop(settings, "source_id")', draw_source)
         self.assertNotIn('layout.prop(settings, "default_workflow")', draw_source)
         self.assertIn('"show_advanced"', draw_source)
+        self.assertIn('"bake_texture_quality"', draw_source)
+        self.assertIn("Used only when conversion schedules a bake.", draw_source)
         self.assertIn('"miku_workflow_kind"', draw_source)
         self.assertIn("if workflow in GAME_WORKFLOWS", draw_source)
         self.assertIn("MIKU_OT_fork_source_identity.bl_idname", draw_source)
-        self.assertIn(
+        self.assertNotIn(
+            "MIKU_OT_add_time_node.bl_idname",
+            draw_source,
+        )
+        self.assertNotIn(
             "MIKU_OT_migrate_legacy_identities.bl_idname",
             draw_source,
         )
+
+    def test_reachable_time_expression_is_rejected_before_output_root_creation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "new-output"
+            with patch.object(
+                miku_blender,
+                "_prepare_material_export",
+                return_value=(
+                    {"material": {"name": "Timed"}},
+                    "Timed",
+                    {"expressions": [{"op": "Input.Time.Frame"}]},
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "MIKU_TIME_INPUT_UNSUPPORTED:Input.Time.Frame",
+                ):
+                    miku_blender.export_material_bundle(
+                        FakeMaterial("Timed"),
+                        str(output),
+                        source_blend_id="source",
+                        persistent_material_id="material",
+                    )
+            self.assertFalse(output.exists())
+
+    def test_disconnected_time_expression_is_not_an_export_error(self):
+        miku_blender._assert_no_export_time_inputs({"expressions": []})
+
+    def test_internal_operators_remain_script_compatible_but_hidden(self):
+        source = inspect.getsource(miku_blender.register)
+        self.assertIn("MIKU_OT_add_time_node", source)
+        self.assertIn("MIKU_OT_migrate_legacy_identities", source)
+        self.assertIn('"INTERNAL", "UNDO"', source)
+
+
+class BakeQualityAndTranslationTests(unittest.TestCase):
+    def test_quality_presets_map_to_supported_resolutions(self):
+        self.assertEqual(
+            {
+                "LOW_512": 512,
+                "STANDARD_1024": 1024,
+                "HIGH_2048": 2048,
+                "ULTRA_4096": 4096,
+            },
+            miku_blender.BAKE_QUALITY_RESOLUTIONS,
+        )
+        for quality, resolution in miku_blender.BAKE_QUALITY_RESOLUTIONS.items():
+            with self.subTest(quality=quality):
+                self.assertEqual(
+                    resolution,
+                    miku_blender.bake_resolution_for_quality(quality),
+                )
+        with self.assertRaisesRegex(RuntimeError, "MIKU_BAKE_QUALITY_INVALID"):
+            miku_blender.bake_resolution_for_quality("UNKNOWN")
+
+    def test_bake_resolution_rewrites_jobs_and_rebuilds_only_plan_hash(self):
+        plan = make_document(
+            "miku-conversion-plan-1.0",
+            {
+                "materialKey": "Material",
+                "bakeJobs": [
+                    {
+                        "jobId": "job-a",
+                        "route": "MeshBake",
+                        "resolution": 1024,
+                        "samples": 16,
+                    },
+                    {
+                        "jobId": "job-b",
+                        "route": "ReusableBake",
+                        "resolution": 1024,
+                        "samples": 16,
+                    },
+                ],
+            },
+        )
+        updated = miku_blender._apply_bake_resolution_to_plan(plan, 2048)
+        self.assertEqual(plan["id"], updated["id"])
+        self.assertNotEqual(plan["canonicalHash"], updated["canonicalHash"])
+        self.assertEqual(
+            [2048, 2048],
+            [job["resolution"] for job in updated["bakeJobs"]],
+        )
+        self.assertEqual([16, 16], [job["samples"] for job in updated["bakeJobs"]])
+        self.assertEqual(1024, plan["bakeJobs"][0]["resolution"])
+        self.assertEqual(
+            updated,
+            miku_blender._apply_bake_resolution_to_plan(plan, 2048),
+        )
+
+    def test_simplified_chinese_catalog_covers_visible_quality_ui(self):
+        catalog = TRANSLATIONS["zh_HANS"]
+        expected = {
+            "Advanced": "高级",
+            "Bake Texture Quality": "烘焙贴图质量",
+            "Low (512 × 512)": "低（512 × 512）",
+            "Standard (1024 × 1024)": "标准（1024 × 1024）",
+            "High (2048 × 2048)": "高（2048 × 2048）",
+            "Ultra (4096 × 4096)": "超高（4096 × 4096）",
+            "Export Current Material": "导出当前材质",
+        }
+        for source, translation in expected.items():
+            with self.subTest(source=source):
+                self.assertEqual(translation, catalog[("*", source)])
+
+    def test_registration_uses_blender_translation_lifecycle(self):
+        source = inspect.getsource(miku_blender)
+        self.assertIn("_register_translations()", source)
+        self.assertIn("_unregister_translations()", source)
+        self.assertIn("bpy.app.translations.register(__name__, TRANSLATIONS)", source)
 
 
 if __name__ == "__main__":

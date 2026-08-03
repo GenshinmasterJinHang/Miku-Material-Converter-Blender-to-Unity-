@@ -101,7 +101,8 @@
             "EmissionMask",
             "Alpha",
             "AmbientOcclusion",
-            "ExpressionIsland"
+            "ExpressionIsland",
+            "FixedWorkflowTexture"
           ]
         },
         "channel": {"enum": ["R", "G", "B", "A", "RGB"]},
@@ -119,6 +120,11 @@
           ]
         },
         "bindingKey": {"type": "string", "minLength": 1},
+        "materialBindings": {
+          "type": "array",
+          "maxItems": 24,
+          "items": {"$ref": "#/$defs/materialBinding"}
+        },
         "expressionId": {"type": "string", "minLength": 1},
         "usage": {"enum": ["Color", "Scalar", "Normal"]},
         "width": {"type": "integer", "minimum": 1, "maximum": 4096},
@@ -129,6 +135,8 @@
         "projection": {"const": "FLAT"},
         "interpolation": {"enum": ["LINEAR", "CLOSEST"]},
         "extension": {"enum": ["REPEAT", "EXTEND"]},
+        "coordinateDomain": {"enum": ["Uniform", "UV0", "MeshSurface"]},
+        "meshBindingRequired": {"type": "boolean"},
         "meshBinding": {"type": "object"}
       },
       "additionalProperties": false
@@ -148,6 +156,59 @@
           ]
         },
         "channel": {"enum": ["R", "G", "B", "A"]}
+      },
+      "additionalProperties": false
+    },
+    "materialBinding": {
+      "type": "object",
+      "required": ["role"],
+      "properties": {
+        "role": {
+          "enum": [
+            "BaseMap",
+            "LightMap",
+            "ShadowRampMap",
+            "MetalMap",
+            "EmissionMap",
+            "HairRampMap",
+            "HairSpecMap",
+            "FaceSDF",
+            "NormalMap",
+            "IDMap",
+            "MatCap",
+            "HairHM",
+            "FaceID",
+            "FaceHET",
+            "SkinRamp",
+            "EyeHET",
+            "EyeHDMF",
+            "EyeUpperHighlight",
+            "EyeLowerHighlight",
+            "EyeEG",
+            "BodyCoolRamp",
+            "BodyWarmRamp",
+            "StockingsMap",
+            "HairCoolRamp",
+            "HairWarmRamp",
+            "FaceMap"
+          ]
+        },
+        "uvTransform": {"$ref": "#/$defs/fixedUvTransform"}
+      },
+      "additionalProperties": false
+    },
+    "fixedUvTransform": {
+      "type": "object",
+      "required": ["coordinateSpace", "operation", "matrix"],
+      "properties": {
+        "coordinateSpace": {"const": "UV0"},
+        "operation": {"const": "Affine2D"},
+        "matrix": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {"type": "number"}
+        }
       },
       "additionalProperties": false
     },

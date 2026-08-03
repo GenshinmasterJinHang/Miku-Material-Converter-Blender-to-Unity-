@@ -27,6 +27,10 @@ def build() -> Path:
         ):
             relative = "package/" + path.relative_to(PACKAGE).as_posix()
             data = path.read_bytes()
+            if path.suffix == ".meta":
+                # Keep deterministic Unity metadata readable by tools whose
+                # anchored YAML patterns do not treat CRLF as a line ending.
+                data = data.replace(b"\r\n", b"\n")
             info = tarfile.TarInfo(relative)
             info.size = len(data)
             info.mode = 0o644

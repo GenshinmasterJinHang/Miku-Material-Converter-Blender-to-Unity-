@@ -16,7 +16,7 @@ class MikuPackageIdentityTests(unittest.TestCase):
     def test_package_is_mit_and_versioned(self):
         package = json.loads((PACKAGE / "package.json").read_text(encoding="utf8"))
         self.assertEqual(package["name"], "com.miku.shaderconverter")
-        self.assertEqual(package["version"], "1.0.1")
+        self.assertEqual(package["version"], "2.2.8")
         self.assertEqual(package["license"], "MIT")
 
     def test_public_miku_importer_and_binding_exist(self):
@@ -79,7 +79,7 @@ class MikuPackageIdentityTests(unittest.TestCase):
         from tools.build_miku_unity_package import build
 
         artifact = build()
-        self.assertEqual("com.miku.shaderconverter-1.0.1.tgz", artifact.name)
+        self.assertEqual("com.miku.shaderconverter-2.2.8.tgz", artifact.name)
         first = artifact.read_bytes()
         second = build().read_bytes()
         self.assertEqual(first, second)
@@ -131,26 +131,20 @@ class MikuPackageIdentityTests(unittest.TestCase):
             hashlib.sha256(dielectric.read_bytes()).hexdigest(),
             hashes["dielectricWrapper"],
         )
-        toon_root = PACKAGE / "Runtime" / "GenericToon"
-        common = toon_root / "MikuGenericToonCommon.hlsl"
-        self.assertEqual(
-            hashlib.sha256(common.read_bytes()).hexdigest(),
-            hashes["genericToonCommon"],
-        )
+        toon_root = PACKAGE / "Runtime" / "GameToon"
         family = hashlib.sha256()
         for path in sorted(
-            (
-                *toon_root.glob("*.shader"),
-                *toon_root.glob("*.hlsl"),
-            ),
-            key=lambda item: item.name,
+            toon_root.iterdir(), key=lambda item: item.name
         ):
-            family.update(path.name.encode("utf-8"))
+            if path.suffix == ".meta":
+                continue
+            relative = "Runtime/GameToon/" + path.name
+            family.update(relative.encode("utf-8"))
             family.update(b"\0")
             family.update(path.read_bytes())
         self.assertEqual(
             family.hexdigest(),
-            hashes["genericToonShaderFamily"],
+            hashes["gameToonScreenRim"],
         )
         self.assertEqual(hashlib.sha256(subgraph.read_bytes()).hexdigest(), hashes["generatedSubGraph"])
         runtime = PACKAGE / "Editor" / "MikuShaderGraph17RuntimeBackend.cs"
@@ -275,38 +269,16 @@ class MikuPackageIdentityTests(unittest.TestCase):
         ]
         self.assertEqual([], direct_output_edges)
 
-    def test_generic_toon_uses_fixed_semantic_shader_family(self):
-        backend = (
-            PACKAGE / "Editor" / "MikuWorkflowBackends.cs"
-        ).read_text(encoding="utf8")
-        self.assertIn("StaticGenericToonBackend", backend)
-        self.assertIn('"Miku/GenericToon/GenericOpaque"', backend)
-        self.assertNotIn("GenericWrapperTemplate", backend)
-        toon_root = PACKAGE / "Runtime" / "GenericToon"
-        names = (
-            "Face",
-            "BodySkin",
-            "Hair",
-            "Eye",
-            "Mouth",
-            "Cloth",
-            "MetalAccessory",
-            "GenericOpaque",
-        )
-        for semantic in names:
-            shader = toon_root / f"Miku{semantic}.shader"
-            text = shader.read_text(encoding="utf8")
-            self.assertIn(f'Shader "Miku/GenericToon/{semantic}"', text)
-            for light_mode in (
-                "UniversalForwardOnly",
-                "ShadowCaster",
-                "DepthOnly",
-                "DepthNormalsOnly",
-                "MotionVectors",
-                "MikuToonOutline",
-                "MikuToonCharacterMask",
-            ):
-                self.assertIn(f'"{light_mode}"', text)
+    def test_generic_toon_assets_and_entries_are_absent(self):
+        retired_root = PACKAGE / "Runtime" / "GenericToon"
+        self.assertFalse(retired_root.exists() and any(retired_root.rglob("*")))
+        for path in PACKAGE.rglob("*"):
+            if not path.is_file() or path.suffix == ".meta":
+                continue
+            text = path.read_text(encoding="utf8", errors="ignore")
+            if "MIKU_WORKFLOW_RETIRED:generic_toon" in text:
+                continue
+            self.assertNotIn("Miku/GenericToon/", text, path)
 
 
 if __name__ == "__main__":

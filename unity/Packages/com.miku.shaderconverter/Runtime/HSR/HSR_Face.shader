@@ -26,13 +26,20 @@ Shader "MIKU/HSR/Face"
         _ShadowRampOffset ("Shadow Ramp Offset", Range(0,1)) = 0.75
         _FaceRampRowIndex ("Face Ramp Row Index", Range(0,7)) = 0
         _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 0.35
+        _SkinSSSIntensity ("Skin SSS Intensity", Range(0,1)) = 0
+        _SSSColor ("SSS Color", Color) = (1,0.5,0.4,1)
+        _SSSArea ("SSS Area", Range(0,1)) = 0.35
+        _SkinToneBrightness ("Skin Tone Brightness", Range(0,2)) = 1
+        _SkinToneWhitening ("Skin Tone Whitening", Range(0,1)) = 0
+        _SkinToneTarget ("Skin Tone Target", Color) = (1,0.93,0.90,1)
+        _SkinMaskDebugMode ("Skin Mask Debug Mode", Range(0,1)) = 0
         _RimLightBrightness ("Rim Brightness", Range(0,4)) = 0.18
         _RimLightTintColor ("Rim Tint", Color) = (0.92,0.96,1,1)
         _RimLightWidth ("Rim Width", Range(0,10)) = 1
         _RimLightThreshold ("Rim Depth Threshold", Range(0,1)) = 0.03
         _RimLightFadeout ("Rim Fadeout", Range(0.001,1)) = 0.2
-        _FresnelPower ("Fresnel Power", Range(0.1,8)) = 3
-        _FresnelClamp ("Fresnel Clamp", Range(0,1)) = 1
+        [HideInInspector] _FresnelPower ("Legacy Fresnel Power", Range(0.1,8)) = 3
+        [HideInInspector] _FresnelClamp ("Legacy Fresnel Clamp", Range(0,1)) = 1
         _OutlineWidth ("Outline Width", Range(0,0.1)) = 0.001
         _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
         _OutlineDistanceScale ("Outline Distance Scale", Range(0,1)) = 1
@@ -58,6 +65,7 @@ Shader "MIKU/HSR/Face"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "HSRCommon.hlsl"
+            #include "../GameToon/MikuGameToonSkin.hlsl"
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
             TEXTURE2D(_FaceMap); SAMPLER(sampler_FaceMap);
             TEXTURE2D(_BodyCoolRamp); SAMPLER(sampler_BodyCoolRamp);
@@ -67,6 +75,7 @@ Shader "MIKU/HSR/Face"
                 float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
                 float _FaceShadowOffset; float _FaceShadowTransitionSoftness; float _FaceShadowStrength; float _FaceSdfDebugMode;
                 float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal; float _ShadowRampOffset; float _FaceRampRowIndex; float _MainLightColorUsage;
+                float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
@@ -82,7 +91,9 @@ Shader "MIKU/HSR/Face"
                 float3 lightDirWS = normalize(mainLight.direction);
                 float3 normalWS = normalize(input.normalWS);
                 float3 viewDirWS = normalize(input.viewDirWS);
-                float3 baseColor = baseSample.rgb;
+                float skinMask = saturate(1.0 - faceMap.r);
+                float3 skinBase = MikuGameToonApplySkinTone(baseSample.rgb, skinMask, _SkinToneBrightness, _SkinToneWhitening, _SkinToneTarget.rgb);
+                float3 baseColor = skinBase;
                 float3x3 objectToWorld = (float3x3)GetObjectToWorldMatrix();
                 float3 fallbackRightWS = normalize(mul(objectToWorld, float3(1.0, 0.0, 0.0)));
                 float3 fallbackUpWS = normalize(mul(objectToWorld, float3(0.0, 1.0, 0.0)));
@@ -97,6 +108,7 @@ Shader "MIKU/HSR/Face"
                 if (debugMode == 3) return half4(faceMap.bbb, 1.0);
                 if (debugMode == 4) return half4(faceMap.aaa, 1.0);
                 if (debugMode == 5) return half4(faceShadow.xxx, 1.0);
+                if (_SkinMaskDebugMode > 0.5) return half4(skinMask.xxx, 1.0);
                 float3 rampColor = HSR_SampleRampRow(faceShadow, _FaceRampRowIndex, lightDirWS, TEXTURE2D_ARGS(_BodyCoolRamp, sampler_BodyCoolRamp), TEXTURE2D_ARGS(_BodyWarmRamp, sampler_BodyWarmRamp), 8.0, _ShadowRampOffset);
                 // Strength belongs on the resulting shadow colour. Applying it
                 // to the SDF coordinate first can push the complete 0..1 mask
@@ -112,18 +124,37 @@ Shader "MIKU/HSR/Face"
                 indirect *= lerp(1.0.xxx, baseColor, _IndirectLightMixBaseColor);
                 float3 mainLightColor = lerp(HSR_Desaturate(mainLight.color.rgb), mainLight.color.rgb, _MainLightColorUsage);
                 float3 direct = mainLightColor * baseColor * rampColor;
-                float3 rim = HSR_FresnelRimLight(
-                    normalWS,
-                    viewDirWS,
-                    _RimLightTintColor.rgb,
-                    _RimLightBrightness,
-                    _FresnelPower,
-                    _FresnelClamp);
-                float3 finalColor = indirect + direct + rim;
+                float3 sss = MikuGameToonSkinSSS(skinBase, skinMask, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, faceShadow, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb);
+                float3 finalColor = indirect + direct + sss;
                 return half4(finalColor, 1.0);
             }
             ENDHLSL
         }
+        Pass
+        {
+            Name "MikuToonCharacterMask"
+            Tags { "LightMode"="MikuToonCharacterMask" }
+            Cull Back
+            ZWrite Off
+            ZTest Equal
+            HLSLPROGRAM
+            #pragma target 4.5
+            #pragma vertex MikuGameScreenRimVertex
+            #pragma fragment MikuGameScreenRimFragment
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float4 _BaseColorTint;
+                float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
+                float _FaceShadowOffset; float _FaceShadowTransitionSoftness; float _FaceShadowStrength; float _FaceSdfDebugMode;
+                float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal; float _ShadowRampOffset; float _FaceRampRowIndex; float _MainLightColorUsage;
+                float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
+                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
+                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
+            CBUFFER_END
+            #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonScreenRimPass.hlsl"
+            ENDHLSL
+        }
+
         Pass
         {
             Name "Outline"
