@@ -112,7 +112,8 @@ Progress:
   public tools, and retired the four synthetic localized captures and renderer.
 - [x] 2026-08-03: extended public-documentation regression coverage; the focused
   8-test module, full 253-test Python suite, and PR profile passed.
-- [ ] Publish, review, and merge the documentation PR without touching v2.2.8.
+- [x] 2026-08-03: published ready PR #5; its initial GitHub `core` check passed.
+  The final recording commit must pass the same required check before merge.
 
 Discoveries:
 
@@ -163,4 +164,9 @@ Results and follow-up:
 - Blender and Unity runtime suites were not rerun because no package, runtime,
   API, schema, Shader, or menu behavior changed. The PR profile still rebuilt
   both packages and verified their canonical identity.
-- GitHub PR/CI/merge results remain to be appended before delivery.
+- Ready PR #5 targets `main` at
+  `https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/pull/5`.
+  Its first GitHub `core` run passed. The PR will be merged only after the
+  replacement run for this delivery-record commit passes. GitHub remains the
+  authoritative record of the resulting merge commit; the existing v2.2.8 tag
+  and Release assets are not changed.
