@@ -2,6 +2,20 @@
 
 ## 2.2.8 - 2026-08-03
 
+- Made the Blender-facing current-material panel Standard PBR only. Existing
+  workflow properties, explicit lower-level workflow calls, old game Bundles,
+  and Unity import compatibility remain available to scripts and historical
+  assets without changing `.blend` values during a current export.
+- Replaced the Unity Game Toon template menu with
+  `Miku > Game Toon > Materials > Create Material`. The creator filters the 22
+  supported parts, enumerates public 2D shader textures in declaration order,
+  requires `_BaseMap` except for Endfield Mouth, binds Wuwa Body's ID texture
+  to both ID and stockings properties, and creates a user-owned `.mat` only
+  after all validation and keyword/profile work succeeds.
+- Added bilingual English/Simplified Chinese README and Manual pages, exact
+  Blender/Unity compatibility documentation, reproducible release builders,
+  Blender smoke orchestration, Mermaid workflow sources, and documentation
+  regression tests.
 - Added an independent Unity Editor language preference under `Miku/Settings`;
   Miku-authored windows, inspectors, ShaderGUI labels, dialogs, and status
   messages can use English or Simplified Chinese without following the Unity

@@ -1,72 +1,88 @@
 # Miku 2.2.8
 
-Miku converts Blender 5.2 materials into target-neutral MaterialIR 2.0 and
-imports them into Unity 6000.4.5f1, URP 17.4.0, and Shader Graph 17.4.0.
+[![CI](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml/badge.svg)](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Blender](https://img.shields.io/badge/Blender-5.2.0-orange.svg)](docs/compatibility.md)
+[![Unity](https://img.shields.io/badge/Unity-6000.4.5f1-black.svg)](docs/compatibility.md)
 
-The Unity package provides an independent English / Simplified Chinese Miku
-Editor UI switch at `Miku/Settings`. It is a per-user `EditorPrefs` preference
-and does not follow the Unity Editor language or affect generated assets.
+Miku converts Blender 5.2 EEVEE materials into target-neutral MaterialIR 2.0,
+then imports deterministic, editable Standard PBR Shader Graph assets into
+Unity 6 URP. Game-specific Toon materials remain available as Unity-side
+authoring tools and are no longer selected in the Blender export panel.
 
-Supported workflows are:
+![Miku conversion flow](docs/images/miku-workflow-en.svg)
 
-- `standard_pbr`
-- `genshin_toon`
-- `wuwa_toon`
-- `hsr_toon`
-- `endfield_toon`
+English is the canonical public documentation language. See the
+[简体中文 README](docs/zh-CN/README.md) and the full
+[English Manual](docs/manual.md) / [中文手册](docs/zh-CN/manual.md).
 
-The public identities remain `miku`, `miku_blender`, the
-`miku_shader_converter` Blender extension, and the
-`com.miku.shaderconverter` Unity package. The Blender extension is version
-`2.2.8`; the independently installable Unity package is `2.2.8`.
+## What Miku does
 
-## Blender
+- Blender exporter: one visible Standard PBR path with editable semantic
+  conversion, declared approximations, and isolated texture baking when it is
+  required.
+- Unity importer: deterministic `.mikubundle` import, editable Shader Graph
+  wrappers, generated Sub Graph ownership, stable IDs, and structured reports.
+- Unity Game Toon creator: explicit texture inputs for Genshin, Wuthering
+  Waves, HSR, and Endfield materials under `Miku > Game Toon > Materials >
+  Create Material`.
+- Independent Unity UI language preference at `Miku > Settings` for English or
+  Simplified Chinese. The preference is per-user and never enters generated
+  assets.
 
-Build `miku_shader_converter-2.2.8.zip`, select a material workflow, choose an
-output directory, and export. New exports contain MaterialIR 2.0 and a
-deterministic `.mikubundle`. Generic Toon is retired: saved `generic_toon`
-properties and old Generic Toon inputs fail with
-`MIKU_WORKFLOW_RETIRED:generic_toon`; they never silently fall back to
-Standard PBR.
+## Install the release
 
-The extension follows Blender's interface language for English and Simplified
-Chinese. Under **Advanced**, **Bake Texture Quality** selects 512, 1024, 2048,
-or 4096 resolution for generated 2D bake textures. The default remains 1024;
-the setting has no effect when conversion does not schedule a bake.
-New Blender exports reject effective `Input.Time.*` dependencies before any
-output or bake request is written (`MIKU_TIME_INPUT_UNSUPPORTED`); disconnected
-time nodes remain harmless. Historical time-dependent Bundles remain importable
-in Unity, while the legacy Blender time-node and identity-migration operators
-are retained only for scripts and are hidden from Advanced.
+1. Download the two assets from the [v2.2.8 Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.8):
+   `miku_shader_converter-2.2.8.zip` and
+   `com.miku.shaderconverter-2.2.8.tgz`.
+2. In Blender 5.2, open **Edit > Preferences > Extensions**, choose **Install
+   from Disk**, select the Blender ZIP, and enable Miku.
+3. In Unity 6000.4.5f1, open **Window > Package Manager > + > Add package from
+   tarball**, then select the Unity TGZ.
+4. Export a material bundle from Blender and copy the complete bundle directory
+   under the Unity project's `Assets/` folder.
 
-## Unity
+For a source checkout, add `unity/Packages/com.miku.shaderconverter/package.json`
+from disk. The complete installation, ownership, diagnostics, and upgrade
+guidance are in the [Manual](docs/manual.md).
 
-Install `com.miku.shaderconverter` and copy a complete `.mikubundle` directory
-under `Assets/`. Standard PBR creates editable Shader Graph assets. The four
-game workflows use their fixed ShaderLab/HLSL materials and shared Game Toon
-Screen Rim and Mesh tools. The 2.2.8 package also ships the opt-in
-`MikuAnimeGlobalVolumeProfile` with a ten-component URP 17.4 grading stack;
-the Vertex Color Initializer and Combined Mesh Data menu entries are hidden,
-while their public mesh APIs remain available to existing editor scripts.
-Generated assets retain stable identities and do not overwrite user-owned
-wrapper graphs.
+## Five-minute workflow
 
-Existing Generic Toon materials, recipes, and wrappers in a Unity project are
-not deleted by package installation. Their removed shaders may show Missing
-Shader. Back up the project and manually choose Standard PBR or a game workflow,
-then re-export, import, and bind each material; see
-[the Miku 2.0 migration guide](docs/migrations/retire-generic-toon-2.0.md).
+1. Select an object with a material in Blender's Shader Editor.
+2. Open the **Miku** sidebar, choose an output directory, and confirm the
+   **Standard PBR** path.
+3. Export the current material. A reachable `Input.Time.*` dependency stops
+   before any output or bake request is written; disconnected time nodes are
+   harmless.
+4. Copy the resulting `.mikubundle` directory to Unity `Assets/` and let the
+   importer create the editable graph and report files.
+5. For a game material, use the Unity Game Toon material creator, choose a
+   workflow and part, assign the visible texture slots explicitly, and save a
+   user-owned `.mat`.
 
-## Compatibility and validation
+![Blender Standard PBR panel](docs/images/blender-standard-pbr-en.png)
 
-The certified Windows tuple is Blender 5.2.0 at
-`C:\SteamLibrary\steamapps\common\Blender\blender.exe`, Unity 6000.4.5f1,
-URP 17.4.0, and Shader Graph 17.4.0. Run:
+## Compatibility
 
-```text
-py -3.13 tools/ci/run_checks.py --profile pr
+The validated Windows tuple is Blender 5.2.0, Unity 6000.4.5f1, URP 17.4.0,
+and Shader Graph 17.4.0. The project is currently marked **Experimental**;
+unsupported version combinations must fail clearly. See the
+[compatibility matrix](docs/compatibility.md) for format and workflow details.
+
+MaterialIR 2.0, Bundle 1.0, conversion-plan, bake-result, and public Shader
+property/reference names are unchanged in 2.2.8. Historical bundles remain
+importable, but the current Blender UI does not create new game-workflow or
+time-dependent bundles.
+
+## Development
+
+```powershell
 py -3.13 -m unittest discover -s tests -p "test_*.py"
+py -3.13 tools/ci/run_checks.py --profile pr
+py -3.13 tools/release/build_release.py --output-dir artifacts
 ```
 
-MaterialIR 1.0 remains frozen for the four non-retired workflows. Bundle,
-plan, manifest, and target-profile schemas remain 1.0.
+The exact Blender and Unity validation commands, screenshot sources, schema
+policy, security guidance, and contribution rules are documented in the
+[Manual](docs/manual.md), [CONTRIBUTING.md](CONTRIBUTING.md),
+[SECURITY.md](SECURITY.md), and [SUPPORT.md](SUPPORT.md).

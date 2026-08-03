@@ -61,8 +61,8 @@ def _write_deterministic_zip(files: dict[Path, str], output: Path) -> Path:
     return output
 
 
-def build() -> Path:
-    return _write_deterministic_zip(_extension_files(), OUTPUT)
+def build(output: Path | None = None) -> Path:
+    return _write_deterministic_zip(_extension_files(), output or OUTPUT)
 
 
 if __name__ == "__main__":

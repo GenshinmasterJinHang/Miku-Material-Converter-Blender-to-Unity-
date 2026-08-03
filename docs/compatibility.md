@@ -15,15 +15,19 @@
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.0.0 | Windows D3D11 | Experimental |
 | Any other tuple | Any | Any | Any | 2.2.8 | Any | Unsupported |
 
-## Workflow matrix
+## Public workflow matrix
 
-| `workflow.kind` | Backend | Outputs |
+| Surface | Supported choices | Contract |
 | --- | --- | --- |
-| `standard_pbr` | Shader Graph 17.4 adapter | Editable wrapper, generated Sub Graph, base material, optional user variant |
-| `genshin_toon` | Static game Toon ShaderLab/HLSL | Game material, recipe, user variant; Body/Hair/Face Screen Rim |
-| `wuwa_toon` | Static game Toon ShaderLab/HLSL | Game material, recipe, user variant; Body/Hair/Face Screen Rim; Effect excluded |
-| `hsr_toon` | Static game Toon ShaderLab/HLSL | Game material, recipe, user variant; Body/Hair/Face Screen Rim |
-| `endfield_toon` | Static game Toon ShaderLab/HLSL | User-owned templates for Body/Skin/Hair/Face/Eye/Mouth/Overlay/Effect/HairShadow; Body/Skin/Hair/Face Screen Rim |
+| Blender current-material panel | Standard PBR only | Emits `standard_pbr`; no game-workflow or texture-role guessing |
+| Unity Game Toon creator | Genshin, Wuwa, HSR, Endfield | Explicit public 2D texture fields, filtered material parts, user-owned `.mat` |
+| Python/legacy API | Explicit historical workflow values | Retained for scripts, old fixtures, and historical Bundle imports |
+
+The Unity creator uses these ordered parts: Genshin (Body, Hair, Face, Eye),
+Wuwa (Body, Hair, Face, Eye, Effect), HSR (Body, Hair, Face, Eye), and Endfield
+(Body, Skin, Hair, Face, Eye, Mouth, Overlay, Effect, HairShadow). `_BaseMap`
+is required except for Endfield Mouth. Wuwa Body's visible ID / Stockings Map
+binds both `_IDMap` and `_StockingsMap`.
 
 Endfield 2.2.5 retains the 2.2.4 validation with local axes Right `+X`, Forward `-Y`, and Up
 `+Z`. The renderer object-to-world matrix supplies the world-space basis, so

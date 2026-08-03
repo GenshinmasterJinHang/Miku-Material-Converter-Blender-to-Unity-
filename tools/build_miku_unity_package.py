@@ -17,8 +17,9 @@ VERSION = str(
 OUTPUT = ROOT / "dist" / f"com.miku.shaderconverter-{VERSION}.tgz"
 
 
-def build() -> Path:
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+def build(output: Path | None = None) -> Path:
+    output = output or OUTPUT
+    output.parent.mkdir(parents=True, exist_ok=True)
     payload = io.BytesIO()
     with tarfile.open(fileobj=payload, mode="w", format=tarfile.PAX_FORMAT) as archive:
         for path in sorted(
@@ -40,7 +41,7 @@ def build() -> Path:
             info.uname = ""
             info.gname = ""
             archive.addfile(info, io.BytesIO(data))
-    temporary = OUTPUT.with_suffix(OUTPUT.suffix + ".tmp")
+    temporary = output.with_suffix(output.suffix + ".tmp")
     with temporary.open("wb") as raw:
         with gzip.GzipFile(
             filename="",
@@ -50,8 +51,8 @@ def build() -> Path:
             compresslevel=9,
         ) as compressed:
             compressed.write(payload.getvalue())
-    temporary.replace(OUTPUT)
-    return OUTPUT
+    temporary.replace(output)
+    return output
 
 
 if __name__ == "__main__":

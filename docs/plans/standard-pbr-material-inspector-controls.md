@@ -171,7 +171,7 @@ Implementation and validation completed on 2026-07-28.
   Strength all produced distinct image hashes from the neutral baseline without
   writing changes to the material assets.
 - The final live inspector evidence is stored at
-  `docs/images/standard-pbr-material-inspector.png`.
+  `docs/images/blender-standard-pbr-en.png`.
 
 There is no MiGR IR or bundle schema change. Public Shader API impact is additive:
 `_BaseColor`, `_Metallic`, `_Roughness`, `_NormalStrength`, `_EmissionColor`, and
