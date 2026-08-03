@@ -63,6 +63,7 @@ _ZH_HANS_ENTRIES = {
         + "-identities.json into this blend without modifying the registry"
     ): "将旧版标识文件中匹配的 ID 复制到此 blend，而不修改注册表",
     "Material: {material}": "材质：{material}",
+    "Standard PBR": "Standard PBR",
     "Workflow": "工作流",
     "Game Part": "游戏部件",
     "Normal Map": "法线贴图",

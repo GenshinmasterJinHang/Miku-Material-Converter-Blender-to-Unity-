@@ -4675,8 +4675,11 @@ def export_current_material(
             getattr(context, "scene", None),
         ),
     )
-    workflow_kind = _migrate_material_workflow(material, settings)
-    workflow_part = normalize_workflow_part(getattr(material, "miku_workflow_part", "Body"))
+    # The Blender-facing export contract is intentionally Standard PBR only.
+    # The lower-level export_material_bundle API still accepts explicit legacy
+    # workflow values for scripts and historical fixture compatibility.
+    workflow_kind = "standard_pbr"
+    workflow_part = "Body"
     identities, identity_warnings = _ensure_material_identities(
         _data_materials(data, [material]),
         source_id,
@@ -5761,65 +5764,26 @@ def register() -> None:
             layout.prop(settings, "output_root")
             material, diagnostic = _active_material_slot_state(context)
             if material is not None:
-                try:
-                    workflow = _material_workflow_preview(material, settings)
-                except ValueError as exc:
-                    if str(exc) != "MIKU_WORKFLOW_RETIRED:generic_toon":
-                        raise
-                    layout.label(
-                        text=(
-                            "Generic Toon is retired. Select Standard PBR or a "
-                            "game workflow, then export again."
-                        ),
-                        icon="ERROR",
-                    )
-                    return
-                _queue_material_workflow_migration(material, settings)
                 layout.label(
                     text=_translate_iface("Material: {material}").format(
                         material=getattr(material, "name", "Material")
                     ),
                     icon="MATERIAL",
                 )
-                layout.prop(material, "miku_workflow_kind", text="Workflow")
-                if workflow in GAME_WORKFLOWS:
-                    layout.prop(
-                        material,
-                        "miku_workflow_part",
-                        text="Game Part",
-                    )
-                if workflow == "standard_pbr":
-                    layout.prop(
-                        material,
-                        "miku_normal_convention",
-                        text="Normal Map",
-                    )
-                    layout.prop(
-                        material,
-                        "miku_displacement_policy",
-                        text="Displacement",
-                    )
-                if workflow in FIXED_WORKFLOWS:
-                    active_node = getattr(
-                        getattr(material, "node_tree", None),
-                        "nodes",
-                        None,
-                    )
-                    active_node = (
-                        getattr(active_node, "active", None)
-                        if active_node is not None
-                        else None
-                    )
-                    if (
-                        active_node is not None
-                        and str(getattr(active_node, "bl_idname", ""))
-                        == "ShaderNodeTexImage"
-                    ):
-                        layout.prop(
-                            active_node,
-                            "miku_texture_role",
-                            text="Texture Role",
-                        )
+                layout.label(
+                    text=_translate_iface("Standard PBR"),
+                    icon="SHADING_RENDERED",
+                )
+                layout.prop(
+                    material,
+                    "miku_normal_convention",
+                    text=_translate_iface("Normal Map"),
+                )
+                layout.prop(
+                    material,
+                    "miku_displacement_policy",
+                    text=_translate_iface("Displacement"),
+                )
             else:
                 message = layout.box()
                 message.label(

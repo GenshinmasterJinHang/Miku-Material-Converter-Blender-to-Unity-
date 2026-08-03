@@ -122,7 +122,7 @@ class CurrentMaterialSelectionTests(unittest.TestCase):
         self.assertFalse(result["sourceIdentityTemporary"])
         args, kwargs = exporter.call_args
         self.assertIs(active, args[0])
-        self.assertEqual("wuwa_toon", kwargs["workflow_kind"])
+        self.assertEqual("standard_pbr", kwargs["workflow_kind"])
         self.assertEqual("Body", kwargs["workflow_part"])
         self.assertEqual(1024, kwargs["bake_resolution"])
 
@@ -163,8 +163,8 @@ class CurrentMaterialSelectionTests(unittest.TestCase):
             ],
         )
         self.assertEqual("standard_pbr", exporter.call_args_list[0].kwargs["workflow_kind"])
-        self.assertEqual("hsr_toon", exporter.call_args_list[1].kwargs["workflow_kind"])
-        self.assertEqual("Hair", exporter.call_args_list[1].kwargs["workflow_part"])
+        self.assertEqual("standard_pbr", exporter.call_args_list[1].kwargs["workflow_kind"])
+        self.assertEqual("Body", exporter.call_args_list[1].kwargs["workflow_part"])
 
     def test_invalid_active_material_states_have_specific_diagnostics(self):
         cases = (
@@ -756,8 +756,10 @@ class WorkflowFrontendTests(unittest.TestCase):
         self.assertIn('"show_advanced"', draw_source)
         self.assertIn('"bake_texture_quality"', draw_source)
         self.assertIn("Used only when conversion schedules a bake.", draw_source)
-        self.assertIn('"miku_workflow_kind"', draw_source)
-        self.assertIn("if workflow in GAME_WORKFLOWS", draw_source)
+        self.assertNotIn('"miku_workflow_kind"', draw_source)
+        self.assertNotIn("GAME_WORKFLOWS", draw_source)
+        self.assertIn('"miku_normal_convention"', draw_source)
+        self.assertIn('"miku_displacement_policy"', draw_source)
         self.assertIn("MIKU_OT_fork_source_identity.bl_idname", draw_source)
         self.assertNotIn(
             "MIKU_OT_add_time_node.bl_idname",
