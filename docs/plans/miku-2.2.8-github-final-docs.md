@@ -1,7 +1,8 @@
 # Miku 2.2.8 GitHub final documentation and material creator
 
-Status: implementation complete locally; GitHub PR/release pending the
-maintainer's GitHub CLI authentication.
+Status: released as `v2.2.8` on 2026-08-03. PR #1 delivered the implementation
+and documentation, PR #2 recorded the final artifact hashes, and both merged
+with the required CI check passing.
 
 ## Baseline
 
@@ -24,6 +25,8 @@ Result, and public shader property names are not changed.
   sections, links, compatibility claims, and image set.
 - Release artifacts are built into an independent output directory and hashed
   by `tools/release/build_release.py`; candidate hashes are never reused.
+- Package identity hashes canonicalize text assets to LF, so the immutable
+  manifest is stable on Windows checkouts and Linux CI.
 
 ## Implemented scope
 
@@ -40,25 +43,36 @@ Result, and public shader property names are not changed.
   then the full Python suite (248 passed) including public documentation
   regression checks.
 - Executed: `py_compile` for the new CI/release/capture scripts.
-- Executed: candidate release build in `artifacts-final-check` (hashes must be
-  regenerated after the final documentation image pass), followed by two
-  independent final builds with byte-identical ZIP/TGZ outputs. Final hashes
-  are recorded in `docs/release/miku-2.2.8-sha256.txt`.
+- Executed: two independent final builds in separate output directories with
+  byte-identical ZIP/TGZ outputs. Final hashes are recorded in
+  `docs/release/miku-2.2.8-sha256.txt`:
+  `c3fc830dc3c2c388940355462cd5da071607a73da7eb6cabd3e997dbe2b64a80` for
+  the Blender ZIP and
+  `0ef9b24e8f051779291b11484f2dd77c662f102426ed01fdcc7fab803730e15b` for
+  the Unity TGZ.
 - Executed: `tools/ci/run_checks.py --profile pr` and `--profile release`.
+- Executed: GitHub Actions `core` checks for PR #1 and PR #2; both passed.
 - Executed: fixed-path Blender 5.2.0 public smoke suite (8 self-contained
   scripts passed; private corpus scripts are intentionally excluded).
+- Executed: extracted the downloaded ZIP/TGZ in temporary isolated locations
+  and compared every packaged file and hash with the canonical source (32 ZIP
+  files and 207 Unity package files matched).
 - Attempted: Unity 6000.4.5f1 EditMode. The package's cached Shader Graph 17.4
   source currently fails before test discovery on the editor's missing public
   `UnityEngine.GUID` API; the project also reports the existing package compile
   issue in `BuiltInCanvasSubTarget.cs` and `TargetSetupContext.cs`. This remains
   an environment/package blocker, not a claimed passing result.
-- Pending: fixed Blender headless smoke, final screenshot review, independent
-  double-build byte comparison, isolated install/hash comparison, and GitHub
-  PR/release after `gh` authentication is available.
+- The final documentation screenshot renderer and bilingual link regression
+  were executed; no private paths or game assets are included in the checked-in
+  images.
 
-## Follow-up gate
+## Delivery record
 
-Before publishing `v2.2.8`, regenerate `docs/release/miku-2.2.8-sha256.txt`,
-verify the remote has no existing `v2.2.8` tag/release, push the final branch,
-wait for CI/Blender/Unity validation, and re-download the three release assets
-for checksum verification.
+- The remote was checked before publishing and had no existing `v2.2.8` tag or
+  release. The unsigned annotated tag points to the latest `main` merge
+  commit `d6df5f2c029f0441b7fb3be45a4a127741a54db5`.
+- Release assets were uploaded as
+  `miku_shader_converter-2.2.8.zip`,
+  `com.miku.shaderconverter-2.2.8.tgz`, and `SHA256SUMS.txt`.
+- All three assets were downloaded again from GitHub; the two package hashes
+  matched the checked-in manifest and GitHub's asset digests.
