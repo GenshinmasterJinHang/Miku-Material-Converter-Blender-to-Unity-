@@ -88,9 +88,16 @@ def blender_capture(chinese: bool, path: Path) -> None:
         text(draw, (right + 34, y + 32), value, 16)
         y += 82
     draw.rounded_rectangle((right + 22, y + 4, W - 22, y + 48), 4, fill=(62, 62, 62))
-    text(draw, (right + 40, y + 14), ("高级" if chinese else "Advanced"), 16)
+    text(draw, (right + 40, y + 14), ("高级" if chinese else "Advanced"), 16, TEXT, chinese)
     draw.rounded_rectangle((right + 22, y + 70, W - 22, y + 120), 4, fill=BLUE)
-    text(draw, (right + 84, y + 84), ("导出当前材质" if chinese else "Export Current Material"), 16)
+    text(
+        draw,
+        (right + 84, y + 84),
+        ("导出当前材质" if chinese else "Export Current Material"),
+        16,
+        TEXT,
+        chinese,
+    )
     image.save(path)
 
 
