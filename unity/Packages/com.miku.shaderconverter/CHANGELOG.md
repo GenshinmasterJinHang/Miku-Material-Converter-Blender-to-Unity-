@@ -2,6 +2,11 @@
 
 ## [2.2.8] - 2026-08-03
 
+- Replace the template menu with `Miku > Game Toon > Materials > Create
+  Material` and add explicit, localized texture inputs for the four supported
+  game workflows. The creator validates every required field before creating a
+  user-owned `.mat`, applies recommended profiles, synchronizes keywords, and
+  binds Wuwa Body's ID / Stockings Map to both shader properties.
 - Add the per-user `Miku/Settings` language selector for English and
   Simplified Chinese. The selection is stored in `EditorPrefs` and does not
   affect generated assets or the Unity Editor language.

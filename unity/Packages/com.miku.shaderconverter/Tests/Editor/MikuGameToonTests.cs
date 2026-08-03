@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using UnityEditor;
@@ -76,6 +77,47 @@ namespace Miku.ShaderConverter.Tests.Editor
                     "HairShadow"));
             Assert.That(error.Message, Does.StartWith(
                 "MIKU_WORKFLOW_PART_INVALID:"));
+        }
+
+        [Test]
+        public void MaterialCreatorFiltersTheTwentyTwoSupportedParts()
+        {
+            Assert.That(
+                MikuFixedWorkflowTextureBindings.AllowedParts("genshin_toon"),
+                Is.EqualTo(new[]
+                {
+                    MikuGameMaterialPart.Body,
+                    MikuGameMaterialPart.Hair,
+                    MikuGameMaterialPart.Face,
+                    MikuGameMaterialPart.Eye,
+                }));
+            Assert.That(
+                MikuFixedWorkflowTextureBindings.AllowedParts("wuwa_toon"),
+                Has.Count.EqualTo(5));
+            Assert.That(
+                MikuFixedWorkflowTextureBindings.AllowedParts("hsr_toon"),
+                Has.Count.EqualTo(4));
+            Assert.That(
+                MikuFixedWorkflowTextureBindings.AllowedParts("endfield_toon"),
+                Has.Count.EqualTo(9));
+        }
+
+        [Test]
+        public void MaterialCreatorUsesVisibleTexturePropertiesAndBaseMapRules()
+        {
+            var body = MikuGameToonMaterialTemplateWindow.GetTextureSlots(
+                "MIKU/Wuwa/Body",
+                "wuwa_toon");
+            Assert.That(body.Select(slot => slot.Property), Does.Contain("_BaseMap"));
+            Assert.That(body.Select(slot => slot.Property), Does.Contain("_IDMap"));
+            Assert.That(body.Select(slot => slot.Property), Does.Not.Contain("_MainTex"));
+            Assert.That(body.Select(slot => slot.Property), Does.Not.Contain("_StockingsMap"));
+            Assert.That(body.Single(slot => slot.Property == "_BaseMap").Required, Is.True);
+
+            var mouth = MikuGameToonMaterialTemplateWindow.GetTextureSlots(
+                "MIKU/Endfield/Mouth",
+                "endfield_toon");
+            Assert.That(mouth.Single(slot => slot.Property == "_BaseMap").Required, Is.False);
         }
 
         [Test]
@@ -792,6 +834,10 @@ namespace Miku.ShaderConverter.Tests.Editor
                 "Miku/Game Toon/Mesh/Combined Mesh Data"));
             Assert.That(menu, Does.Contain(
                 "Miku/Game Toon/Rendering/Screen Rim Installer"));
+            Assert.That(menu, Does.Contain(
+                "Miku/Game Toon/Materials/Create Material"));
+            Assert.That(menu, Does.Not.Contain(
+                "Miku/Game Toon/Materials/Create Material Template"));
             Assert.That(menu, Has.None.Contains("Generic Toon"));
         }
 

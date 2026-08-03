@@ -86,6 +86,50 @@ namespace Miku.ShaderConverter.Editor
             return "MIKU/" + family + "/" + NormalizePart(workflow, part);
         }
 
+        internal static IReadOnlyList<MikuGameMaterialPart> AllowedParts(
+            string workflow)
+        {
+            return workflow switch
+            {
+                "genshin_toon" => new[]
+                {
+                    MikuGameMaterialPart.Body,
+                    MikuGameMaterialPart.Hair,
+                    MikuGameMaterialPart.Face,
+                    MikuGameMaterialPart.Eye,
+                },
+                "wuwa_toon" => new[]
+                {
+                    MikuGameMaterialPart.Body,
+                    MikuGameMaterialPart.Hair,
+                    MikuGameMaterialPart.Face,
+                    MikuGameMaterialPart.Eye,
+                    MikuGameMaterialPart.Effect,
+                },
+                "hsr_toon" => new[]
+                {
+                    MikuGameMaterialPart.Body,
+                    MikuGameMaterialPart.Hair,
+                    MikuGameMaterialPart.Face,
+                    MikuGameMaterialPart.Eye,
+                },
+                "endfield_toon" => new[]
+                {
+                    MikuGameMaterialPart.Body,
+                    MikuGameMaterialPart.Skin,
+                    MikuGameMaterialPart.Hair,
+                    MikuGameMaterialPart.Face,
+                    MikuGameMaterialPart.Eye,
+                    MikuGameMaterialPart.Mouth,
+                    MikuGameMaterialPart.Overlay,
+                    MikuGameMaterialPart.Effect,
+                    MikuGameMaterialPart.HairShadow,
+                },
+                _ => throw new ArgumentException(
+                    "MIKU_WORKFLOW_UNSUPPORTED:" + workflow),
+            };
+        }
+
         internal static string TextureProperty(string workflow, string role)
         {
             if (string.Equals(

@@ -4,11 +4,13 @@ This package imports deterministic `.mikubundle` artifacts produced by the
 Miku Blender 2.2.8 exporter for Unity 6000.4.5f1, URP 17.4.0, and Shader Graph
 17.4.0.
 
-Supported `workflow.kind` values are `standard_pbr`, `genshin_toon`,
-`wuwa_toon`, `hsr_toon`, and `endfield_toon`. Standard PBR uses version-specific
-Shader Graph wrappers. The four game workflows use package-owned game Toon shaders,
-recipes, and the shared Screen Rim and Mesh editor tools under
-**Miku/Game Toon/**.
+Blender's visible exporter creates `standard_pbr` only. The package also keeps
+explicit legacy `workflow.kind` readers for `genshin_toon`, `wuwa_toon`,
+`hsr_toon`, and `endfield_toon`, plus the package-owned game Toon shaders and
+recipes. New game materials are created in Unity through
+**Miku > Game Toon > Materials > Create Material**; the creator exposes the
+filtered 22 parts and explicit public `Texture2D` fields documented in the
+Manual.
 
 Open `Miku/Settings` to select the Miku Editor UI language independently of
 the Unity Editor. English and Simplified Chinese are stored per user in
