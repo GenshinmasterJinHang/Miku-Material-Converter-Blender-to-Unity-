@@ -1,6 +1,6 @@
 # Game workflow backend provenance
 
-This document is current for Miku 2.2.7. Generic Toon references below are
+This document is current for Miku 2.2.8. Generic Toon references below are
 historical contract context only; the supported game workflows are Genshin,
 WuWa, HSR, and Endfield.
 
@@ -74,3 +74,10 @@ reported as an approximation rather than copied.
 
 Locally supplied Endfield model and texture assets are validation inputs and are
 not distributed in the package.
+
+The four character-render examples added to the GitHub manuals after the
+v2.2.8 package release are documentation images outside the installable
+packages. They carry separate non-commercial documentation-reference terms and
+do not change the MIT provenance of these independently implemented Shader/HLSL
+backends. Their exact identities are recorded in
+`docs/provenance/documentation-images.md`.
