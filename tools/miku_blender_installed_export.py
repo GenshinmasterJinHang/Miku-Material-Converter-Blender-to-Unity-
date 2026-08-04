@@ -120,7 +120,7 @@ def main() -> int:
             "bl_ext.user_default.miku_shader_converter",
             "miku_shader_converter",
             args.extension_zip,
-            "2.2.8",
+            "2.2.9",
         )
     ]
     exporter = importlib.import_module(

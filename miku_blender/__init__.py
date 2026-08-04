@@ -1,4 +1,4 @@
-"""Blender 5.2 integration for Miku semantic material bundles.
+"""Blender 5.0 through 5.2 integration for Miku material bundles.
 
 The module imports bpy only when Blender loads the add-on.  The target-neutral
 planner remains importable and testable in ordinary Python.
@@ -26,6 +26,7 @@ except ImportError:  # Ordinary Python unit tests do not provide Blender.
 
 from .capabilities import classify_eevee_graph
 from .translations import TRANSLATIONS
+from .versioning import classify_blender_version, require_supported_blender
 
 try:
     from ..miku.bundle import (
@@ -102,8 +103,8 @@ except (ImportError, ValueError):
 bl_info = {
     "name": "Miku Semantic Material Converter",
     "author": "Miku contributors",
-    "version": (2, 2, 8),
-    "blender": (5, 2, 0),
+    "version": (2, 2, 9),
+    "blender": (5, 0, 0),
     "location": "Shader Editor > Sidebar > Miku",
     "description": "Export Blender materials as target-neutral semantic regions and deterministic Unity bundles.",
     "category": "Import-Export",
@@ -200,6 +201,7 @@ _RESERVED_ASSET_NAMES = {
     *(f"LPT{index}" for index in range(1, 10)),
 }
 _REGISTERED_CLASSES: list[type] = []
+_VERSION_WARNING_EMITTED = False
 _TRANSLATIONS_REGISTERED = False
 _PENDING_WORKFLOW_MIKUATIONS: set[int] = set()
 _SESSION_SOURCE_IDS: dict[int, tuple[Any, str]] = {}
@@ -3515,6 +3517,7 @@ def export_material_bundle(
     add_shader_energy_policy: str = "PreserveBlender",
     bake_resolution: int = DEFAULT_BAKE_RESOLUTION,
 ) -> dict[str, Any]:
+    _require_supported_blender_runtime()
     if not source_blend_id or not persistent_material_id:
         raise RuntimeError("MIKU_PERSISTENT_ID_REQUIRED")
     bake_resolution = normalize_bake_resolution(bake_resolution)
@@ -3608,6 +3611,18 @@ def _prepare_material_export(
             add_shader_energy_policy=add_shader_energy_policy,
             conversion_mode=conversion_mode,
         )
+        version_diagnostic = _blender_version_diagnostic()
+        if version_diagnostic:
+            ir["diagnostics"] = [
+                *list(ir.get("diagnostics") or []),
+                {
+                    "severity": "warning",
+                    "code": "MIKU_BLENDER_VERSION_UNVALIDATED",
+                    "translationQuality": "RequiresProjectSetup",
+                    "message": version_diagnostic,
+                },
+            ]
+            ir = _rebuild_document(ir)
     except ValueError as error:
         if conversion_mode == "AllowMeshBake" and str(error).startswith(
             "MIKU_CLOSURE_INPUT_MISSING:"
@@ -4003,7 +4018,9 @@ def export_selected_materials(
     try:
         import bpy
     except ImportError as exc:  # pragma: no cover - only used outside Blender
-        raise RuntimeError("miku_blender export requires Blender 5.2") from exc
+        raise RuntimeError(
+            "miku_blender export requires Blender 5.0.0 through 5.2.0"
+        ) from exc
     identity_storage = _source_identity_storage(
         bpy.data,
         getattr(getattr(bpy, "context", None), "scene", None),
@@ -4662,7 +4679,9 @@ def export_current_material(
         raise RuntimeError("MIKU_ACTIVE_MATERIAL_REQUIRED: " + str(diagnostic))
     if data is None:
         if bpy is None:
-            raise RuntimeError("miku_blender export requires Blender 5.2")
+            raise RuntimeError(
+                "miku_blender export requires Blender 5.0.0 through 5.2.0"
+            )
         data = bpy.data
 
     settings = getattr(getattr(context, "scene", None), "miku_settings", None)
@@ -5418,21 +5437,35 @@ def _force_appearance_snapshot_plan(
     )
 
 
-def _assert_blender_52() -> None:
+def _blender_compatibility():
     if bpy is None:
-        return
-    actual = tuple(getattr(bpy.app, "version", ()))
-    if actual != (5, 2, 0):
-        raise RuntimeError(
-            "MIKU_BLENDER_VERSION_MISMATCH:"
-            f"expected=(5, 2, 0):got={actual or '<unknown>'}"
-        )
+        return None
+    return classify_blender_version(getattr(bpy.app, "version", ()))
+
+
+def _require_supported_blender_runtime():
+    if bpy is None:
+        return None
+    return require_supported_blender(getattr(bpy.app, "version", ()))
+
+
+def _blender_version_diagnostic() -> str | None:
+    compatibility = _blender_compatibility()
+    return compatibility.diagnostic if compatibility is not None else None
+
+
+def _emit_blender_version_warning_once() -> None:
+    global _VERSION_WARNING_EMITTED
+    diagnostic = _blender_version_diagnostic()
+    if diagnostic and not _VERSION_WARNING_EMITTED:
+        print(diagnostic)
+        _VERSION_WARNING_EMITTED = True
 
 
 def create_miku_time_node(material: Any) -> Any:
     """Create the versioned Miku Time group in a material root node tree."""
 
-    _assert_blender_52()
+    _require_supported_blender_runtime()
     if bpy is None:
         raise RuntimeError("MIKU_BLENDER_REQUIRED")
     tree = getattr(material, "node_tree", None)
@@ -5483,7 +5516,9 @@ def register() -> None:
     global _REGISTERED_CLASSES
     if bpy is None:
         return
-    _assert_blender_52()
+    compatibility = _require_supported_blender_runtime()
+    if compatibility is not None:
+        _emit_blender_version_warning_once()
 
     if _REGISTERED_CLASSES:
         return
@@ -5761,6 +5796,14 @@ def register() -> None:
         def draw(self, context):
             layout = self.layout
             settings = context.scene.miku_settings
+            version_diagnostic = _blender_version_diagnostic()
+            if version_diagnostic:
+                warning = layout.box()
+                warning.label(
+                    text=version_diagnostic,
+                    icon="ERROR",
+                    translate=False,
+                )
             layout.prop(settings, "output_root")
             material, diagnostic = _active_material_slot_state(context)
             if material is not None:

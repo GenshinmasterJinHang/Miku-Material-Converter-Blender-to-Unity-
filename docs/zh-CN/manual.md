@@ -1,6 +1,6 @@
-# Miku 2.2.8 使用手册
+# Miku 2.2.9 使用手册
 
-Miku 是面向生产使用的 Blender 5.2 到 Unity 6 材质转换器。公开 Blender 前端将
+Miku 是面向生产使用的 Blender 5.0 至 5.2 到 Unity 6 材质转换器。公开 Blender 前端将
 Standard PBR 语义导出为目标无关的 MaterialIR 2.0；Unity 导入可编辑 Shader Graph
 资产，并提供四套由 Miku 独立编写的 Game Toon Shader/HLSL 预设供用户显式创建材质。
 
@@ -17,23 +17,24 @@ Standard PBR 语义导出为目标无关的 MaterialIR 2.0；Unity 导入可编�
 | Unity Editor | 6000.4.5f1 | Windows 已验证 |
 | Universal Render Pipeline | 17.4.0 | 必需 |
 | Shader Graph | 17.4.0 | 版本专用后端 |
-| Miku | 2.2.8 | Experimental（实验性） |
+| Miku | 2.2.9 | Experimental（实验性） |
 
-其他版本必须单独验证。遇到不兼容 Shader Graph 格式时，Miku 应明确报错，不会猜测
-序列化字段。
+Blender 5.0.0 至 5.2.0、Unity 6000.0.0f1 至 6000.4.5f1，以及 URP / Shader
+Graph 17.0.0 至 17.4.0 可以安装和运行。除表中精确组合外，其余区间内版本会显示
+“未经完整验证”诊断；超出闭区间时会在写入资产前失败。
 
 ## 2. 从 Release 安装
 
-从 [v2.2.8 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.8)
+从 [v2.2.9 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.9)
 下载：
 
-- `miku_shader_converter-2.2.8.zip`：Blender 5.2 扩展。
-- `com.miku.shaderconverter-2.2.8.tgz`：Unity 包。
+- `miku_shader_converter-2.2.9.zip`：Blender 5.0 至 5.2 扩展。
+- `com.miku.shaderconverter-2.2.9.tgz`：Unity 包。
 - `SHA256SUMS.txt`：发布完整性清单。
 
 在 Blender 中选择 **编辑 > 偏好设置 > 扩展 > 从磁盘安装**并选中 ZIP。在 Unity 中
 选择 **Window > Package Manager > + > Add package from tarball** 并选中 TGZ。
-导入 Bundle 前，项目应使用 URP 17.4.0 和 Shader Graph 17.4.0。
+导入 Bundle 前，项目应使用 17.0.0 至 17.4.0 的 URP 和 Shader Graph。
 
 源码开发时，从磁盘添加
 `unity/Packages/com.miku.shaderconverter/package.json`。不要修改已安装 Blender 扩展
@@ -82,7 +83,7 @@ Blender 界面不再提供 Game Toon 工作流选择、贴图角色猜测或旧�
 - 包装 `*.shadergraph` 在首次创建后由用户拥有。
 - 只有明确选择完全重新生成时，才允许替换用户修改过的包装图。
 
-2.2.8 不改变 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开
+2.2.9 不改变 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开
 Shader property/reference 名称。Unity 仍可读取历史 Bundle，包括旧的运行时契约；
 当前 Blender 前端不会创建新的时间依赖 Bundle。
 
@@ -111,7 +112,7 @@ Unity 包在四个运行时预设家族中直接附带 Miku 原创 Shader/HLSL �
 
 > **非商业图片声明：**以上四张角色渲染图仅供非商业学习和文档参考，禁止用于任何
 > 商业用途。相关角色、设计及知识产权归各自权利人所有；Miku 不授予任何游戏资产
-> 使用权。这些图片不属于 Blender/Unity 安装包，也不在现有 v2.2.8 Release 资产中。
+> 使用权。这些图片不属于 Blender/Unity 安装包，也不在现有 v2.2.9 Release 资产中。
 
 ## 6. Unity 游戏卡通材质创建器
 
@@ -225,7 +226,7 @@ Run Selected MiGR Assets**，检查日志中的材质、动画曲线和生成元
 元数据名称迁移。
 
 迁移不会遍历场景对象，也不会修改 Renderer 材质绑定。遇到已退役 Generic Toon 材质
-时会明确拒绝，不会静默替换 Shader。正常 2.2.8 创作无需使用这些命令。
+时会明确拒绝，不会静默替换 Shader。正常 2.2.9 创作无需使用这些命令。
 
 ## 8. 编辑器语言
 
