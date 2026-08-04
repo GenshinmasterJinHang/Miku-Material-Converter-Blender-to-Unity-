@@ -2,6 +2,7 @@ import json
 import hashlib
 import re
 import tarfile
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -16,7 +17,7 @@ class MikuPackageIdentityTests(unittest.TestCase):
     def test_package_is_mit_and_versioned(self):
         package = json.loads((PACKAGE / "package.json").read_text(encoding="utf8"))
         self.assertEqual(package["name"], "com.miku.shaderconverter")
-        self.assertEqual(package["version"], "2.2.9")
+        self.assertEqual(package["version"], "2.2.10")
         self.assertEqual(package["license"], "MIT")
         self.assertEqual(package["unity"], "6000.0")
         self.assertEqual(
@@ -62,6 +63,35 @@ class MikuPackageIdentityTests(unittest.TestCase):
             elif item.is_file() and item.suffix != ".meta":
                 self.assertTrue(Path(str(item) + ".meta").is_file(), relative.as_posix())
 
+    def test_declared_unity_samples_are_present_and_nonempty(self):
+        from tools.build_miku_unity_package import validate_declared_samples
+
+        declared_files = validate_declared_samples()
+        package = json.loads((PACKAGE / "package.json").read_text(encoding="utf8"))
+        if package.get("samples"):
+            self.assertTrue(declared_files)
+
+    def test_sample_validation_rejects_missing_and_empty_directories(self):
+        from tools.build_miku_unity_package import validate_declared_samples
+
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary)
+            (package / "package.json").write_text(
+                json.dumps({"samples": [{"path": "Samples~/Example"}]}),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "does not exist"):
+                validate_declared_samples(package)
+
+            sample = package / "Samples~" / "Example"
+            sample.mkdir(parents=True)
+            with self.assertRaisesRegex(ValueError, "is empty"):
+                validate_declared_samples(package)
+
+            readme = sample / "README.md"
+            readme.write_text("# Example\n", encoding="utf-8")
+            self.assertEqual((readme,), validate_declared_samples(package))
+
     def test_checked_in_identity_manifest_matches_package(self):
         manifest = json.loads(IDENTITY.read_text(encoding="utf8"))
         self.assertEqual("miku-package-asset-identity-1.0", manifest["schema"])
@@ -84,7 +114,7 @@ class MikuPackageIdentityTests(unittest.TestCase):
         from tools.build_miku_unity_package import build
 
         artifact = build()
-        self.assertEqual("com.miku.shaderconverter-2.2.9.tgz", artifact.name)
+        self.assertEqual("com.miku.shaderconverter-2.2.10.tgz", artifact.name)
         first = artifact.read_bytes()
         second = build().read_bytes()
         self.assertEqual(first, second)
@@ -94,6 +124,12 @@ class MikuPackageIdentityTests(unittest.TestCase):
             for item in manifest["assets"]
         }
         with tarfile.open(build(), "r:gz") as archive:
+            archive_names = {member.name for member in archive.getmembers()}
+            from tools.build_miku_unity_package import validate_declared_samples
+
+            for sample_file in validate_declared_samples():
+                expected_name = "package/" + sample_file.relative_to(PACKAGE).as_posix()
+                self.assertIn(expected_name, archive_names)
             actual = {}
             for member in archive.getmembers():
                 if not member.name.endswith(".meta"):

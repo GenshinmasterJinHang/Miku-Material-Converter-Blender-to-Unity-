@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.10 - 2026-08-04
+
+- Removed an empty Unity Package Manager sample declaration whose untracked
+  directory disappeared from clones and release archives, and added release
+  validation that rejects any future missing or empty declared sample.
+
 ## 2.2.9 - 2026-08-03
 
 - Opened the Blender installation and runtime range to 5.0.0 through 5.2.0,
