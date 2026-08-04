@@ -36,200 +36,6 @@ namespace Miku.ShaderConverter.Editor
         public List<string> diagnostics = new List<string>();
     }
 
-    internal readonly struct MikuUnityVersion : IComparable<MikuUnityVersion>
-    {
-        static readonly Regex Pattern = new Regex(
-            @"^(\d+)\.(\d+)\.(\d+)(a|b|rc|f|p)(\d+)$",
-            RegexOptions.CultureInvariant);
-
-        MikuUnityVersion(
-            int major,
-            int minor,
-            int patch,
-            int channel,
-            int revision)
-        {
-            Major = major;
-            Minor = minor;
-            Patch = patch;
-            Channel = channel;
-            Revision = revision;
-        }
-
-        internal int Major { get; }
-        internal int Minor { get; }
-        internal int Patch { get; }
-        internal int Channel { get; }
-        internal int Revision { get; }
-
-        internal static MikuUnityVersion Parse(string value)
-        {
-            var match = Pattern.Match(value ?? "");
-            if (!match.Success)
-                throw new FormatException("MIKU_UNITY_VERSION_INVALID:" + value);
-            var channel = match.Groups[4].Value switch
-            {
-                "a" => 0,
-                "b" => 1,
-                "rc" => 2,
-                "f" => 3,
-                "p" => 4,
-                _ => throw new FormatException("MIKU_UNITY_VERSION_INVALID:" + value),
-            };
-            return new MikuUnityVersion(
-                int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture),
-                int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture),
-                int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture),
-                channel,
-                int.Parse(match.Groups[5].Value, CultureInfo.InvariantCulture));
-        }
-
-        public int CompareTo(MikuUnityVersion other)
-        {
-            var values = new[] { Major, Minor, Patch, Channel, Revision };
-            var otherValues = new[]
-            {
-                other.Major,
-                other.Minor,
-                other.Patch,
-                other.Channel,
-                other.Revision,
-            };
-            for (var index = 0; index < values.Length; index++)
-            {
-                var comparison = values[index].CompareTo(otherValues[index]);
-                if (comparison != 0)
-                    return comparison;
-            }
-            return 0;
-        }
-    }
-
-    internal readonly struct MikuPackageVersion : IComparable<MikuPackageVersion>
-    {
-        static readonly Regex Pattern = new Regex(
-            @"^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$",
-            RegexOptions.CultureInvariant);
-
-        MikuPackageVersion(int major, int minor, int patch, bool prerelease)
-        {
-            Major = major;
-            Minor = minor;
-            Patch = patch;
-            Prerelease = prerelease;
-        }
-
-        internal int Major { get; }
-        internal int Minor { get; }
-        internal int Patch { get; }
-        internal bool Prerelease { get; }
-
-        internal static MikuPackageVersion Parse(string value)
-        {
-            var match = Pattern.Match(value ?? "");
-            if (!match.Success)
-                throw new FormatException("MIKU_PACKAGE_VERSION_INVALID:" + value);
-            return new MikuPackageVersion(
-                int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture),
-                int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture),
-                int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture),
-                match.Groups[4].Success);
-        }
-
-        public int CompareTo(MikuPackageVersion other)
-        {
-            var values = new[] { Major, Minor, Patch };
-            var otherValues = new[] { other.Major, other.Minor, other.Patch };
-            for (var index = 0; index < values.Length; index++)
-            {
-                var comparison = values[index].CompareTo(otherValues[index]);
-                if (comparison != 0)
-                    return comparison;
-            }
-            if (Prerelease == other.Prerelease)
-                return 0;
-            return Prerelease ? -1 : 1;
-        }
-    }
-
-    internal static class MikuRuntimeCompatibility
-    {
-        const string CertifiedUnity = "6000.4.5f1";
-        const string CertifiedPackage = "17.4.0";
-        static readonly MikuUnityVersion MinimumUnity =
-            MikuUnityVersion.Parse("6000.0.0f1");
-        static readonly MikuUnityVersion MaximumUnity =
-            MikuUnityVersion.Parse(CertifiedUnity);
-        static readonly MikuPackageVersion MinimumPackage =
-            MikuPackageVersion.Parse("17.0.0");
-        static readonly MikuPackageVersion MaximumPackage =
-            MikuPackageVersion.Parse(CertifiedPackage);
-        static readonly HashSet<string> LoggedWarnings =
-            new HashSet<string>(StringComparer.Ordinal);
-
-        internal static void ValidateUnityVersion(
-            string actual,
-            IList<string> diagnostics)
-        {
-            MikuUnityVersion parsed;
-            try
-            {
-                parsed = MikuUnityVersion.Parse(actual);
-            }
-            catch (FormatException)
-            {
-                throw new InvalidDataException(
-                    "MIKU_UNITY_VERSION_UNSUPPORTED:" + actual +
-                    ":supported=6000.0.0f1-6000.4.5f1");
-            }
-            if (parsed.CompareTo(MinimumUnity) < 0 ||
-                parsed.CompareTo(MaximumUnity) > 0)
-                throw new InvalidDataException(
-                    "MIKU_UNITY_VERSION_UNSUPPORTED:" + actual +
-                    ":supported=6000.0.0f1-6000.4.5f1");
-            if (!string.Equals(actual, CertifiedUnity, StringComparison.Ordinal))
-                AddWarning(
-                    diagnostics,
-                    "MIKU_UNITY_VERSION_UNVALIDATED:actual=" + actual +
-                    ":certified=" + CertifiedUnity);
-        }
-
-        internal static void ValidatePackageVersion(
-            string actual,
-            string code,
-            string warningCode,
-            IList<string> diagnostics)
-        {
-            MikuPackageVersion parsed;
-            try
-            {
-                parsed = MikuPackageVersion.Parse(actual);
-            }
-            catch (FormatException)
-            {
-                throw new InvalidDataException(
-                    code + ":" + actual + ":supported=17.0.0-17.4.0");
-            }
-            if (parsed.CompareTo(MinimumPackage) < 0 ||
-                parsed.CompareTo(MaximumPackage) > 0)
-                throw new InvalidDataException(
-                    code + ":" + actual + ":supported=17.0.0-17.4.0");
-            if (!string.Equals(actual, CertifiedPackage, StringComparison.Ordinal))
-                AddWarning(
-                    diagnostics,
-                    warningCode + ":actual=" + actual +
-                    ":certified=" + CertifiedPackage);
-        }
-
-        static void AddWarning(IList<string> diagnostics, string diagnostic)
-        {
-            if (!diagnostics.Contains(diagnostic))
-                diagnostics.Add(diagnostic);
-            if (LoggedWarnings.Add(diagnostic))
-                Debug.LogWarning(diagnostic);
-        }
-    }
-
     /// <summary>
     /// Imports a sealed Miku bundle from verified bytes. Generated assets keep
     /// stable GUIDs and a receipt is committed only after Shader Graph,
@@ -242,9 +48,8 @@ namespace Miku.ShaderConverter.Editor
         const string LegacyKindV2 = "migr-bundle-2.0";
         const string LegacyKindV21 = "migr-bundle-2.1";
         const string LegacyKindV22 = "migr-bundle-2.2";
-        const string PackageVersion = "2.2.9";
-        const string ExpectedProfileHash = "ec88a8bee99c86fd3885f7e7a1596a22439632a648004a065e45ea1b4f1179d4";
-        const string Package228ProfileHash = "7700bb62aae8ddcfaa2e519079c2bd8e79e30c7fa30f8e493d084117aab1228d";
+        const string PackageVersion = "2.2.8";
+        const string ExpectedProfileHash = "7700bb62aae8ddcfaa2e519079c2bd8e79e30c7fa30f8e493d084117aab1228d";
         const string Package226ProfileHash = "2430a52781ef9d2e6172ce274800d5639732a144143d3ee4513a4a336d53b7ca";
         const string Package224ProfileHash = "a5f985ee6ea8d494d47c2f9256425ced29f716c203128eaea06abc0d432dc7cd";
         const string Package200ProfileHash = "82f6ac3e109825ec0db7035844fe1f2b3f4c7a8d8dc83752abc11844e8d834c6";
@@ -304,7 +109,6 @@ namespace Miku.ShaderConverter.Editor
             new[]
             {
                 ExpectedProfileHash,
-                Package228ProfileHash,
                 Package226ProfileHash,
                 Package224ProfileHash,
                 Package200ProfileHash,
@@ -369,7 +173,7 @@ namespace Miku.ShaderConverter.Editor
             string journalPath = null;
             try
             {
-                ValidateRenderPipeline(result.diagnostics);
+                ValidateRenderPipeline();
                 var bundlePath = Path.GetFullPath(request.bundlePath);
                 if (!File.Exists(bundlePath))
                     return Fail(result, "MIKU_BUNDLE_MISSING");
@@ -4355,29 +4159,24 @@ namespace Miku.ShaderConverter.Editor
                 decimalNumerator * binaryDenominator);
         }
 
-        static void ValidateRenderPipeline(IList<string> diagnostics)
+        static void ValidateRenderPipeline()
         {
-            MikuRuntimeCompatibility.ValidateUnityVersion(
-                Application.unityVersion,
-                diagnostics);
-            var urpVersion = FindPackageVersion(
+            if (!string.Equals(
+                    Application.unityVersion,
+                    "6000.4.5f1",
+                    StringComparison.Ordinal))
+                throw new InvalidDataException(
+                    "MIKU_UNITY_VERSION_UNSUPPORTED:" +
+                    Application.unityVersion +
+                    ":expected=6000.4.5f1");
+            RequirePackageVersion(
                 "Packages/com.unity.render-pipelines.universal",
+                "17.4.0",
                 "MIKU_URP_VERSION_UNSUPPORTED");
-            MikuRuntimeCompatibility.ValidatePackageVersion(
-                urpVersion,
-                "MIKU_URP_VERSION_UNSUPPORTED",
-                "MIKU_URP_VERSION_UNVALIDATED",
-                diagnostics);
-            var shaderGraphVersion = FindPackageVersion(
+            RequirePackageVersion(
                 "Packages/com.unity.shadergraph",
+                "17.4.0",
                 "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED");
-            MikuRuntimeCompatibility.ValidatePackageVersion(
-                shaderGraphVersion,
-                "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED",
-                "MIKU_SHADERGRAPH_VERSION_UNVALIDATED",
-                diagnostics);
-            MikuShaderGraph17RuntimeBackend.ConfigureForVersion(
-                shaderGraphVersion);
             var pipeline = GraphicsSettings.currentRenderPipeline ??
                            QualitySettings.renderPipeline ??
                            GraphicsSettings.defaultRenderPipeline;
@@ -4430,17 +4229,17 @@ namespace Miku.ShaderConverter.Editor
                     "RequiresProjectSetup");
         }
 
-        static string FindPackageVersion(
+        static void RequirePackageVersion(
             string assetPath,
+            string expected,
             string code)
         {
             var package = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(
                 assetPath);
             var actual = package?.version ?? "missing";
-            if (string.Equals(actual, "missing", StringComparison.Ordinal))
+            if (!string.Equals(actual, expected, StringComparison.Ordinal))
                 throw new InvalidDataException(
-                    code + ":missing:supported=17.0.0-17.4.0");
-            return actual;
+                    code + ":" + actual + ":expected=" + expected);
         }
 
         static void WriteBytesIfChanged(string path, byte[] bytes)

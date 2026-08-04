@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any, Mapping
 
 from .contracts import DocumentValidationError, make_document, validate_document
@@ -10,20 +9,11 @@ from .contracts import DocumentValidationError, make_document, validate_document
 
 BLENDER_VERSION = "5.2.0 LTS"
 BLENDER_COMMIT = "fbe6228777e7d9afefcd61a413844e790ae75db7"
-CERTIFIED_RUNTIME_VERSION = "5.2.0"
-MIN_RUNTIME_VERSION = (5, 0, 0)
-MAX_RUNTIME_VERSION = (5, 2, 0)
 SUPPORTED_BAKE_RESOLUTIONS = (512, 1024, 2048, 4096)
 DEFAULT_BAKE_RESOLUTION = 1024
-BAKE_REQUEST_KINDS = frozenset(
-    {
-        "miku-bake-request-1.0",
-        "miku-bake-request-1.1",
-        "miku-bake-request-1.2",
-    }
-)
+BAKE_REQUEST_KINDS = frozenset({"miku-bake-request-1.0", "miku-bake-request-1.1"})
 BAKE_SETTINGS = {
-    "blenderVersion": CERTIFIED_RUNTIME_VERSION,
+    "blenderVersion": BLENDER_VERSION,
     "blenderCommit": BLENDER_COMMIT,
     "engine": "CYCLES",
     "device": "CPU",
@@ -32,78 +22,6 @@ BAKE_SETTINGS = {
     "margin": 16,
     "randomSeed": 0,
 }
-LEGACY_BAKE_SETTINGS = {
-    **BAKE_SETTINGS,
-    "blenderVersion": BLENDER_VERSION,
-}
-_BUILD_HASH = re.compile(r"^[0-9a-f]{12,64}$")
-
-
-def normalize_bake_blender_version(value: Any) -> str:
-    text = str(value or "")
-    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", text)
-    if match is None:
-        raise DocumentValidationError(
-            "MIKU_BAKE_BLENDER_VERSION_INVALID",
-            "Blender version must be a numeric MAJOR.MINOR.PATCH value",
-            "$.settings.blenderVersion",
-        )
-    version = tuple(int(part) for part in match.groups())
-    if not MIN_RUNTIME_VERSION <= version <= MAX_RUNTIME_VERSION:
-        raise DocumentValidationError(
-            "MIKU_BAKE_BLENDER_VERSION_UNSUPPORTED",
-            f"Supported Blender range is 5.0.0 through 5.2.0, got {text}",
-            "$.settings.blenderVersion",
-        )
-    return text
-
-
-def normalize_bake_blender_commit(value: Any) -> str:
-    commit = str(value or "").strip().lower()
-    if _BUILD_HASH.fullmatch(commit) is None:
-        raise DocumentValidationError(
-            "MIKU_BAKE_BLENDER_COMMIT_INVALID",
-            "Blender build hash must contain 12 to 64 lowercase hexadecimal characters",
-            "$.settings.blenderCommit",
-        )
-    return commit
-
-
-def validate_bake_runtime_binding(
-    request: Mapping[str, Any],
-    actual_version: str,
-    actual_commit: str,
-) -> None:
-    """Ensure a bake request was created for the executing Blender build."""
-
-    kind = str(request.get("documentKind") or "")
-    settings = request.get("settings")
-    if not isinstance(settings, Mapping):
-        raise ValueError("MIKU_BAKE_SETTINGS_INVALID")
-    if kind in {"miku-bake-request-1.0", "miku-bake-request-1.1"}:
-        commit_matches = (
-            len(actual_commit) >= 12 and BLENDER_COMMIT.startswith(actual_commit)
-        )
-        if actual_version != CERTIFIED_RUNTIME_VERSION or not commit_matches:
-            raise RuntimeError(
-                "MIKU_UNCERTIFIED_BLENDER:"
-                f" expected {BLENDER_VERSION} ({BLENDER_COMMIT}),"
-                f" got {actual_version or '<unknown>'} "
-                f"({actual_commit or '<unknown>'})"
-            )
-        return
-    requested_version = str(settings.get("blenderVersion") or "")
-    requested_commit = str(settings.get("blenderCommit") or "")
-    if requested_version != actual_version:
-        raise RuntimeError(
-            "MIKU_BAKE_BLENDER_VERSION_MISMATCH:"
-            f"request={requested_version}:actual={actual_version}"
-        )
-    if requested_commit != actual_commit:
-        raise RuntimeError(
-            "MIKU_BAKE_BLENDER_COMMIT_MISMATCH:"
-            f"request={requested_commit}:actual={actual_commit or '<unknown>'}"
-        )
 
 
 def normalize_bake_resolution(value: Any) -> int:
@@ -160,13 +78,8 @@ def validate_bake_request(request: Mapping[str, Any]) -> dict[str, Any]:
             "Bake request 1.0 requires a 1024 resolution",
             "$.settings.resolution",
         )
-    expected_settings = (
-        LEGACY_BAKE_SETTINGS
-        if kind in {"miku-bake-request-1.0", "miku-bake-request-1.1"}
-        else BAKE_SETTINGS
-    )
-    for key, expected in expected_settings.items():
-        if key in {"resolution", "blenderVersion", "blenderCommit"}:
+    for key, expected in BAKE_SETTINGS.items():
+        if key == "resolution":
             continue
         if settings.get(key) != expected:
             raise DocumentValidationError(
@@ -174,18 +87,6 @@ def validate_bake_request(request: Mapping[str, Any]) -> dict[str, Any]:
                 f"Certified bake setting {key} must be {expected!r}",
                 f"$.settings.{key}",
             )
-    if kind in {"miku-bake-request-1.0", "miku-bake-request-1.1"}:
-        for key in ("blenderVersion", "blenderCommit"):
-            expected = LEGACY_BAKE_SETTINGS[key]
-            if settings.get(key) != expected:
-                raise DocumentValidationError(
-                    "MIKU_BAKE_SETTING_INVALID",
-                    f"Frozen bake setting {key} must be {expected!r}",
-                    f"$.settings.{key}",
-                )
-    else:
-        normalize_bake_blender_version(settings.get("blenderVersion"))
-        normalize_bake_blender_commit(settings.get("blenderCommit"))
     return value
 
 
@@ -199,8 +100,6 @@ def make_bake_request(
     allow_appearance_approximation: bool = False,
     mesh_binding: Mapping[str, Any] | None = None,
     resolution: int = DEFAULT_BAKE_RESOLUTION,
-    blender_version: str = CERTIFIED_RUNTIME_VERSION,
-    blender_commit: str = BLENDER_COMMIT,
 ) -> dict[str, Any]:
     if not persistent_source_id or not persistent_material_id:
         raise DocumentValidationError(
@@ -215,8 +114,6 @@ def make_bake_request(
         )
     settings = dict(BAKE_SETTINGS)
     settings["resolution"] = normalize_bake_resolution(resolution)
-    settings["blenderVersion"] = normalize_bake_blender_version(blender_version)
-    settings["blenderCommit"] = normalize_bake_blender_commit(blender_commit)
     payload: dict[str, Any] = {
         "persistentSourceId": persistent_source_id,
         "persistentMaterialId": persistent_material_id,
@@ -228,7 +125,7 @@ def make_bake_request(
     }
     if mesh_binding:
         payload["meshBinding"] = dict(mesh_binding)
-    return make_document("miku-bake-request-1.2", payload)
+    return make_document("miku-bake-request-1.1", payload)
 
 
 def make_bake_result(

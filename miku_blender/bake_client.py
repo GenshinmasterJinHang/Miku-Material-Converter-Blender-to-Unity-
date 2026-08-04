@@ -6,12 +6,6 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from .versioning import (
-    blender_build_hash,
-    blender_version_string,
-    require_supported_blender,
-)
-
 try:
     from ..miku.bake_protocol import (
         DEFAULT_BAKE_RESOLUTION,
@@ -39,11 +33,6 @@ def execute_bake(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Exchange only versioned JSON artifacts with the separately licensed worker."""
 
-    try:
-        import bpy
-    except ImportError as exc:  # pragma: no cover - Blender-only boundary
-        raise RuntimeError("MIKU_GPL_BAKE_WORKER_REQUIRES_BLENDER") from exc
-    require_supported_blender(getattr(bpy.app, "version", ()))
     jobs = list(plan.get("bakeJobs") or [])
     request = make_bake_request(
         persistent_source_id,
@@ -53,8 +42,6 @@ def execute_bake(
         source_snapshot=graph,
         allow_appearance_approximation=allow_appearance_approximation,
         resolution=bake_resolution,
-        blender_version=blender_version_string(bpy),
-        blender_commit=blender_build_hash(bpy),
     )
     request_path = target / f"{persistent_material_id}.miku-bake-request.json"
     _write_json(request_path, request)

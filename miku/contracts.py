@@ -90,12 +90,11 @@ DOCUMENT_KINDS = {
     "miku-unity-import-receipt-1.0",
     "miku-bake-request-1.0",
     "miku-bake-request-1.1",
-    "miku-bake-request-1.2",
     "miku-bake-result-1.0",
 }
 
 _HEADER_KEYS = ("documentKind", "schemaVersion", "toolVersion", "id", "canonicalHash")
-TOOL_VERSION = "2.2.9"
+TOOL_VERSION = "2.2.7"
 
 
 class DocumentValidationError(ValueError):

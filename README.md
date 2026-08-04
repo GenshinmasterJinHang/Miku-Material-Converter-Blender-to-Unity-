@@ -1,11 +1,11 @@
-# Miku 2.2.9
+# Miku 2.2.8
 
 [![CI](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml/badge.svg)](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/code%20license-MIT-blue.svg)](LICENSE)
-[![Blender](https://img.shields.io/badge/Blender-5.0.0--5.2.0-orange.svg)](docs/compatibility.md)
-[![Unity](https://img.shields.io/badge/Unity-6000.0--6000.4.5f1-black.svg)](docs/compatibility.md)
+[![Blender](https://img.shields.io/badge/Blender-5.2.0-orange.svg)](docs/compatibility.md)
+[![Unity](https://img.shields.io/badge/Unity-6000.4.5f1-black.svg)](docs/compatibility.md)
 
-Miku converts Blender 5.0 through 5.2 EEVEE materials into target-neutral MaterialIR 2.0,
+Miku converts Blender 5.2 EEVEE materials into target-neutral MaterialIR 2.0,
 then imports deterministic, editable Standard PBR Shader Graph assets into
 Unity 6 URP. Blender exposes one Standard PBR route; four bundled Game Toon
 Shader/HLSL preset families are authored from the Unity Editor.
@@ -49,12 +49,12 @@ texture rule, the example gallery, and the Unity Editor tool guide.
 
 ## Install the release
 
-1. Download `miku_shader_converter-2.2.9.zip` and
-   `com.miku.shaderconverter-2.2.9.tgz` from the
-   [v2.2.9 Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.9).
-2. In Blender 5.0 through 5.2.0, open **Edit > Preferences > Extensions**, choose
+1. Download `miku_shader_converter-2.2.8.zip` and
+   `com.miku.shaderconverter-2.2.8.tgz` from the
+   [v2.2.8 Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.8).
+2. In Blender 5.2, open **Edit > Preferences > Extensions**, choose
    **Install from Disk**, select the ZIP, and enable Miku.
-3. In Unity 6000.0.0f1 through 6000.4.5f1, open **Window > Package Manager > + > Add package from
+3. In Unity 6000.4.5f1, open **Window > Package Manager > + > Add package from
    tarball**, then select the TGZ.
 4. Export a material bundle from Blender and copy its complete directory under
    the Unity project's `Assets/` folder.
@@ -84,7 +84,7 @@ installation, ownership, diagnostics, and upgrade guidance are in the
 The validated Windows tuple is Blender 5.2.0, Unity 6000.4.5f1, URP 17.4.0,
 and Shader Graph 17.4.0. Miku is currently **Experimental**. MaterialIR 2.0,
 Bundle 1.0, conversion-plan, bake-result, and public Shader property/reference
-names are unchanged in 2.2.9. See the
+names are unchanged in 2.2.8. See the
 [compatibility matrix](docs/compatibility.md).
 
 The repository's MIT-licensed code remains under the [MIT License](LICENSE);

@@ -1,4 +1,4 @@
-"""Build the Blender 5.0 through 5.2 Miku extension deterministically."""
+"""Build the single Miku Blender 5.2 extension deterministically."""
 
 from __future__ import annotations
 

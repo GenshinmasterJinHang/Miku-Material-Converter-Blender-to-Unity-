@@ -15,7 +15,7 @@ using UnityEngine;
 namespace Miku.ShaderConverter.Editor
 {
     /// <summary>
-    /// Shader Graph 17.x structured Sub Graph backend for MaterialIR 1.x/2.x
+    /// Shader Graph 17.4 structured Sub Graph backend for MaterialIR 1.x/2.x
     /// value expressions and closure-aware surface models. All Shader Graph
     /// internal API access is isolated in the nested version adapter.
     /// </summary>
@@ -25,55 +25,6 @@ namespace Miku.ShaderConverter.Editor
         internal const string TimeOffsetReference = "_MIKU_EffectTimeOffset";
         internal const string TimeOverrideReference = "_MIKU_EffectTimeOverride";
         internal const string UseTimeOverrideReference = "_MIKU_EffectUseTimeOverride";
-        static int configuredAdapterMinor = 4;
-
-        internal static void ConfigureForVersion(string version)
-        {
-            var adapter = CreateAdapter(version);
-            try
-            {
-                adapter.Preflight();
-            }
-            catch (Exception error)
-            {
-                throw new InvalidDataException(
-                    "MIKU_SHADERGRAPH_ADAPTER_INCOMPATIBLE:" +
-                    AdapterNameForVersion(version) + ":" +
-                    error.GetBaseException().Message,
-                    error);
-            }
-            configuredAdapterMinor = adapter.Minor;
-        }
-
-        internal static string AdapterNameForVersion(string version)
-        {
-            return CreateAdapter(version).GetType().Name;
-        }
-
-        static ShaderGraph17Adapter CreateConfiguredAdapter()
-        {
-            return CreateAdapter("17." + configuredAdapterMinor + ".0");
-        }
-
-        static ShaderGraph17Adapter CreateAdapter(string version)
-        {
-            var parsed = MikuPackageVersion.Parse(version);
-            if (parsed.Major != 17)
-                throw new InvalidDataException(
-                    "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED:" + version +
-                    ":supported=17.0.0-17.4.0");
-            return parsed.Minor switch
-            {
-                0 => new ShaderGraph17_0Adapter(),
-                1 => new ShaderGraph17_1Adapter(),
-                2 => new ShaderGraph17_2Adapter(),
-                3 => new ShaderGraph17_3Adapter(),
-                4 => new ShaderGraph17_4Adapter(),
-                _ => throw new InvalidDataException(
-                    "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED:" + version +
-                    ":supported=17.0.0-17.4.0"),
-            };
-        }
 
         sealed class Handle
         {
@@ -85,7 +36,7 @@ namespace Miku.ShaderConverter.Editor
         {
             readonly JObject ir;
             readonly string materialId;
-            readonly ShaderGraph17Adapter adapter = CreateConfiguredAdapter();
+            readonly ShaderGraph17_4Adapter adapter = new ShaderGraph17_4Adapter();
             readonly Dictionary<string, JObject> expressions;
             readonly Dictionary<string, Handle> built =
                 new Dictionary<string, Handle>(StringComparer.Ordinal);
@@ -3857,7 +3808,7 @@ namespace Miku.ShaderConverter.Editor
             return result;
         }
 
-        abstract class ShaderGraph17Adapter
+        sealed class ShaderGraph17_4Adapter
         {
             const BindingFlags AnyInstance =
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
@@ -3865,21 +3816,6 @@ namespace Miku.ShaderConverter.Editor
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
             readonly Dictionary<string, Type> types =
                 new Dictionary<string, Type>(StringComparer.Ordinal);
-
-            public abstract int Minor { get; }
-
-            public void Preflight()
-            {
-                var graph = CreateSubGraph("miku-version-preflight");
-                if (GetOutput(graph) == null)
-                    throw new MissingMemberException(
-                        "UnityEditor.ShaderGraph.GraphData",
-                        "outputNode");
-                var serialized = Serialize(graph);
-                if (string.IsNullOrWhiteSpace(serialized))
-                    throw new InvalidDataException(
-                        "MIKU_SHADERGRAPH_PREFLIGHT_SERIALIZATION_EMPTY");
-            }
 
             public object CreateSubGraph(string materialId)
             {
@@ -4574,31 +4510,6 @@ namespace Miku.ShaderConverter.Editor
                 var result = new string(characters).Trim('_');
                 return string.IsNullOrEmpty(result) ? "Value" : result;
             }
-        }
-
-        sealed class ShaderGraph17_0Adapter : ShaderGraph17Adapter
-        {
-            public override int Minor => 0;
-        }
-
-        sealed class ShaderGraph17_1Adapter : ShaderGraph17Adapter
-        {
-            public override int Minor => 1;
-        }
-
-        sealed class ShaderGraph17_2Adapter : ShaderGraph17Adapter
-        {
-            public override int Minor => 2;
-        }
-
-        sealed class ShaderGraph17_3Adapter : ShaderGraph17Adapter
-        {
-            public override int Minor => 3;
-        }
-
-        sealed class ShaderGraph17_4Adapter : ShaderGraph17Adapter
-        {
-            public override int Minor => 4;
         }
 
         static string StableId(string materialId, string role)

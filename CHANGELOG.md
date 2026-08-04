@@ -1,20 +1,5 @@
 # Changelog
 
-## 2.2.9 - 2026-08-03
-
-- Opened the Blender installation and runtime range to 5.0.0 through 5.2.0,
-  with 5.2.0 remaining the only certified build. Lower in-range versions emit
-  `MIKU_BLENDER_VERSION_UNVALIDATED`; 5.2.1 and later are rejected.
-- Added `miku-bake-request-1.2`, which binds a bake request to the executing
-  Blender numeric version and build hash while retaining frozen request 1.0
-  and 1.1 support on the certified build.
-- Opened the Unity range to 6000.0.0f1 through 6000.4.5f1 and URP/Shader Graph
-  17.0.0 through 17.4.0. Lower in-range versions continue with structured
-  unvalidated diagnostics; versions above the strict upper bounds fail before
-  asset writes.
-- Added explicit Shader Graph 17.0-17.4 adapter selection and an in-memory
-  capability/serialization preflight before import transactions begin.
-
 ## 2.2.8 - 2026-08-03
 
 - Made the Blender-facing current-material panel Standard PBR only. Existing

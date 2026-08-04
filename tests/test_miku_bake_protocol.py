@@ -1,10 +1,8 @@
 import json
-import sys
 import unittest
 import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import jsonschema
@@ -15,10 +13,7 @@ from miku.bake_protocol import (
     SUPPORTED_BAKE_RESOLUTIONS,
     make_bake_request,
     make_bake_result,
-    normalize_bake_blender_commit,
-    normalize_bake_blender_version,
     normalize_bake_resolution,
-    validate_bake_runtime_binding,
     validate_bake_request,
     validate_bake_result,
 )
@@ -43,14 +38,14 @@ class MikuBakeProtocolTests(unittest.TestCase):
     def test_certified_request_is_schema_valid_and_locked(self):
         request = self._request()
         schema = json.loads(
-            (ROOT / "schema" / "miku-bake-request-1.2.schema.json").read_text(
+            (ROOT / "schema" / "miku-bake-request-1.1.schema.json").read_text(
                 encoding="utf-8"
             )
         )
         jsonschema.validate(request, schema)
-        self.assertEqual("miku-bake-request-1.2", request["documentKind"])
+        self.assertEqual("miku-bake-request-1.1", request["documentKind"])
         self.assertEqual(DEFAULT_BAKE_RESOLUTION, request["settings"]["resolution"])
-        self.assertEqual("5.2.0", BAKE_SETTINGS["blenderVersion"])
+        self.assertEqual("5.2.0 LTS", BAKE_SETTINGS["blenderVersion"])
         self.assertEqual(
             "fbe6228777e7d9afefcd61a413844e790ae75db7",
             BAKE_SETTINGS["blenderCommit"],
@@ -60,7 +55,7 @@ class MikuBakeProtocolTests(unittest.TestCase):
 
     def test_supported_resolutions_are_schema_valid_and_deterministic(self):
         schema = json.loads(
-            (ROOT / "schema" / "miku-bake-request-1.2.schema.json").read_text(
+            (ROOT / "schema" / "miku-bake-request-1.1.schema.json").read_text(
                 encoding="utf-8"
             )
         )
@@ -97,21 +92,6 @@ class MikuBakeProtocolTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "MIKU_BAKE_RESOLUTION_INVALID"):
                     normalize_bake_resolution(resolution)
 
-    def test_bake_runtime_version_and_commit_are_range_validated(self):
-        for version in ("5.0.0", "5.0.19", "5.1.7", "5.2.0"):
-            with self.subTest(version=version):
-                self.assertEqual(version, normalize_bake_blender_version(version))
-        for version in ("4.5.8", "5.2.1", "6.0.0", "5.2"):
-            with self.subTest(version=version):
-                with self.assertRaisesRegex(
-                    ValueError,
-                    "MIKU_BAKE_BLENDER_VERSION",
-                ):
-                    normalize_bake_blender_version(version)
-        self.assertEqual("abcdef123456", normalize_bake_blender_commit("ABCDEF123456"))
-        with self.assertRaisesRegex(ValueError, "MIKU_BAKE_BLENDER_COMMIT_INVALID"):
-            normalize_bake_blender_commit("not-a-build-hash")
-
     def test_worker_contract_accepts_frozen_request_1_0(self):
         current = self._request()
         payload = {
@@ -126,45 +106,8 @@ class MikuBakeProtocolTests(unittest.TestCase):
                 "canonicalHash",
             }
         }
-        payload["settings"] = {
-            **payload["settings"],
-            "blenderVersion": "5.2.0 LTS",
-        }
         legacy = make_document("miku-bake-request-1.0", payload)
         self.assertEqual(legacy, validate_bake_request(legacy))
-        validate_bake_runtime_binding(
-            legacy,
-            "5.2.0",
-            "fbe6228777e7d9afefcd61a413844e790ae75db7",
-        )
-        with self.assertRaisesRegex(RuntimeError, "MIKU_UNCERTIFIED_BLENDER"):
-            validate_bake_runtime_binding(
-                legacy,
-                "5.1.0",
-                "fbe6228777e7d9afefcd61a413844e790ae75db7",
-            )
-
-    def test_request_1_2_is_bound_to_exact_runtime_build(self):
-        request = make_bake_request(
-            "source-id",
-            "material-id",
-            [{"jobId": "job-1", "route": "MeshBake"}],
-            source_material_name="Material",
-            source_snapshot={"material": {"name": "Material"}},
-            blender_version="5.1.4",
-            blender_commit="abcdef1234567890",
-        )
-        validate_bake_runtime_binding(request, "5.1.4", "abcdef1234567890")
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "MIKU_BAKE_BLENDER_VERSION_MISMATCH",
-        ):
-            validate_bake_runtime_binding(request, "5.1.5", "abcdef1234567890")
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "MIKU_BAKE_BLENDER_COMMIT_MISMATCH",
-        ):
-            validate_bake_runtime_binding(request, "5.1.4", "abcdef1234567891")
 
     def test_result_is_bound_to_exact_request_hash(self):
         request = self._request()
@@ -222,17 +165,10 @@ class MikuBakeProtocolTests(unittest.TestCase):
             result_path.write_text(json.dumps(result), encoding="utf-8")
 
         with TemporaryDirectory() as temporary:
-            fake_bpy = SimpleNamespace(
-                app=SimpleNamespace(
-                    version=(5, 2, 0),
-                    build_hash=(
-                        b"fbe6228777e7d9afefcd61a413844e790ae75db7"
-                    ),
-                )
-            )
-            with patch.dict(sys.modules, {"bpy": fake_bpy}), patch(
-                    "miku_blender.bake_client._invoke_gpl_worker",
-                    side_effect=write_result):
+            with patch(
+                "miku_blender.bake_client._invoke_gpl_worker",
+                side_effect=write_result,
+            ):
                 request, result = execute_bake(
                     {"material": {"name": "Material"}},
                     {"bakeJobs": [{"jobId": "job-1", "route": "MeshBake"}]},
@@ -268,7 +204,7 @@ class MikuBakeProtocolTests(unittest.TestCase):
             first = build().read_bytes()
             second = build().read_bytes()
         self.assertEqual(first, second)
-        package = ROOT / "dist" / "miku_shader_converter-2.2.9.zip"
+        package = ROOT / "dist" / "miku_shader_converter-2.2.8.zip"
         with zipfile.ZipFile(package) as archive:
             names = set(archive.namelist())
             manifest = archive.read("blender_manifest.toml").decode("utf-8")

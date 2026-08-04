@@ -316,7 +316,7 @@ namespace Miku.ShaderConverter.Editor
                 if (slot.Required && texture == null)
                     throw new InvalidOperationException(
                         "MIKU_REQUIRED_TEXTURE_MISSING:" + slot.Property);
-                if (texture != null && !ShaderHasProperty(shader, slot.Property))
+                if (texture != null && !shader.HasProperty(slot.Property))
                     throw new InvalidOperationException(
                         "MIKU_TEXTURE_PROPERTY_MISSING:" + slot.Property);
             }
@@ -345,20 +345,6 @@ namespace Miku.ShaderConverter.Editor
             AssetDatabase.CreateAsset(material, normalized);
             AssetDatabase.SaveAssets();
             return material;
-        }
-
-        static bool ShaderHasProperty(Shader shader, string propertyName)
-        {
-            var count = ShaderUtil.GetPropertyCount(shader);
-            for (var index = 0; index < count; index++)
-            {
-                if (string.Equals(
-                        ShaderUtil.GetPropertyName(shader, index),
-                        propertyName,
-                        StringComparison.Ordinal))
-                    return true;
-            }
-            return false;
         }
 
         internal static string ValidateAssetPath(string value, string extension)

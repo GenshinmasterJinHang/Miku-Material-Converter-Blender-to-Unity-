@@ -65,7 +65,7 @@ class PublicDocumentationTests(unittest.TestCase):
     def test_bilingual_entry_points_version_and_active_branding(self) -> None:
         readme, chinese, manual, chinese_manual = map(_read, PUBLIC_DOCUMENTS)
         for document in (readme, chinese, manual, chinese_manual):
-            self.assertIn("2.2.9", document)
+            self.assertIn("2.2.8", document)
             self.assertNotIn("0.11.0", document)
             self.assertNotIn("B2U", document)
         self.assertIn("docs/zh-CN/README.md", readme)
@@ -165,9 +165,9 @@ class PublicDocumentationTests(unittest.TestCase):
         self.assertIn("MIT License", _read(ROOT / "LICENSE"))
 
     def test_release_asset_names_and_workflow_menu_are_documented(self) -> None:
-        release = _read(ROOT / "docs/release/miku-2.2.9.md")
-        self.assertIn("miku_shader_converter-2.2.9.zip", release)
-        self.assertIn("com.miku.shaderconverter-2.2.9.tgz", release)
+        release = _read(ROOT / "docs/release/miku-2.2.8.md")
+        self.assertIn("miku_shader_converter-2.2.8.zip", release)
+        self.assertIn("com.miku.shaderconverter-2.2.8.tgz", release)
         self.assertIn("SHA256SUMS.txt", release)
         self.assertIn("Miku > Game Toon > Materials > Create Material", release)
         self.assertNotIn("Create Material Template", release)
