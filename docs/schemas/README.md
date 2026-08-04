@@ -1,7 +1,7 @@
 # Miku schema map
 
-Most active interchange documents use `schemaVersion: "1.0"`. Bake request
-1.1 is the only current exception. Every document forbids the legacy root
+Most active interchange documents use `schemaVersion: "1.0"`. Bake requests
+1.1 and 1.2 are the current exceptions. Every document forbids the legacy root
 `version` field.
 
 | Schema | Purpose |
@@ -14,6 +14,7 @@ Most active interchange documents use `schemaVersion: "1.0"`. Bake request
 | `miku-bundle-1.0` | Hashed manifest and sibling artifact references |
 | `miku-bake-request-1.0` | Frozen 1024-resolution MIT exporter request accepted for compatibility |
 | `miku-bake-request-1.1` | MIT exporter request with certified 512/1024/2048/4096 bake resolution |
+| `miku-bake-request-1.2` | Version-bound request for Blender 5.0.0 through 5.2.0 |
 | `miku-bake-result-1.0` | GPL worker result and hashed resources |
 | `miku-unity-import-receipt-1.0` | Unity generation/commit evidence |
 

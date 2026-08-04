@@ -1,13 +1,13 @@
 {
   "name": "com.miku.shaderconverter",
-  "version": "2.2.8",
+  "version": "2.2.9",
   "license": "MIT",
   "displayName": "Miku Blender Semantic Material Converter",
   "description": "Converts Blender closure semantics into deterministic Unity 6 URP assets: editable Standard PBR Shader Graphs and fixed game Toon materials with recipes.",
-  "unity": "6000.4",
+  "unity": "6000.0",
   "dependencies": {
     "com.unity.cloud.gltfast": "6.19.0",
-    "com.unity.render-pipelines.universal": "17.4.0",
+    "com.unity.render-pipelines.universal": "17.0.0",
     "com.unity.nuget.newtonsoft-json": "3.2.1"
   },
   "samples": [
