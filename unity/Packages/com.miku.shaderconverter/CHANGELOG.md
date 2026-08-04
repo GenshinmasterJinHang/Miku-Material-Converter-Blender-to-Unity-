@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.9] - 2026-08-03
+
+- Allow Unity 6000.0.0f1 through 6000.4.5f1 and URP/Shader Graph 17.0.0
+  through 17.4.0, while retaining 6000.4.5f1/17.4.0 as the sole validated
+  tuple and recording explicit diagnostics for lower in-range versions.
+- Reject editor or render-package versions above the current strict upper
+  bounds before any import transaction or generated-asset write.
+- Select explicit Shader Graph adapters for 17.0 through 17.4 and preflight
+  the installed internal API and MultiJson serialization contract in memory.
+
 ## [2.2.8] - 2026-08-03
 
 - Replace the template menu with `Miku > Game Toon > Materials > Create

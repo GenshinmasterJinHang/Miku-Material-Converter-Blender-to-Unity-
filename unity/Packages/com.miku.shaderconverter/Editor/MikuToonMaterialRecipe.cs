@@ -54,7 +54,7 @@ namespace Miku.ShaderConverter.Editor
     /// </summary>
     public sealed class MikuToonMaterialRecipe : ScriptableObject
     {
-        public const string CurrentShaderFamilyVersion = "2.2.8";
+        public const string CurrentShaderFamilyVersion = "2.2.9";
 
         public Material generatedBaseMaterial;
         public Material userMaterial;

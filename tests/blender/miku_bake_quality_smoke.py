@@ -73,7 +73,7 @@ def assert_bake_quality() -> None:
         request_path = next(bundle_directory.glob("*.miku-bake-request.json"))
         plan = json.loads(plan_path.read_text(encoding="utf-8"))
         request = json.loads(request_path.read_text(encoding="utf-8"))
-        assert request["documentKind"] == "miku-bake-request-1.1", request
+        assert request["documentKind"] == "miku-bake-request-1.2", request
         assert request["settings"]["resolution"] == 512, request["settings"]
         assert plan["bakeJobs"], plan
         assert all(job["resolution"] == 512 for job in plan["bakeJobs"]), plan["bakeJobs"]

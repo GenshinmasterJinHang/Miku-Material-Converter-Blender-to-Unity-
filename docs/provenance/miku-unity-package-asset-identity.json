@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "contentSha256": "7dde157cbfedc643c2c790e4311128d325ae09a1b51f287118541252554c16fa",
+      "contentSha256": "57c6035d6af902a60a693046e6ddb6339ce169f09b34286d146f65f6f11779cb",
       "guid": "373ba2e3f1125c24fa9413f3ee20a183",
       "metaPath": "CHANGELOG.md.meta",
       "path": "CHANGELOG.md",
@@ -49,7 +49,7 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "618edcb53e0353ca1cdaf179a5ef49f2a5ed2546737cf885579c51bab1bd515a",
+      "contentSha256": "c7cd929e39f45516456fba4ba5cc321373a8635be43f4338f723385fa08bc04c",
       "guid": "052af08bb7bd32547a2ef798fe0457d7",
       "metaPath": "Editor/MikuBundleImporter.cs.meta",
       "path": "Editor/MikuBundleImporter.cs",
@@ -105,7 +105,7 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "8255d6b302cd543e57cf0444ca5423649f366c8b13bed7639c63eb762d834eb6",
+      "contentSha256": "64d6cdd1254428a26453e751aaac1385f1cd262e5d75d88da51c526d89dcec5e",
       "guid": "9f6d819bf7364b7e94df3e941a7ae020",
       "metaPath": "Editor/MikuGameToonMaterialTools.cs.meta",
       "path": "Editor/MikuGameToonMaterialTools.cs",
@@ -147,7 +147,7 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "55ae46b385ae4ed8c8c870f3d87c9702bd3f1de3e791f0ba700c0a64c495fbc4",
+      "contentSha256": "7a35962f7fec4eb165c1910933473bc0284c578e0e6fac21b8a303b60030f0e8",
       "guid": "2dc5b04675694e58be04f4acfbf95455",
       "metaPath": "Editor/MikuShaderGraph17RuntimeBackend.cs.meta",
       "path": "Editor/MikuShaderGraph17RuntimeBackend.cs",
@@ -161,7 +161,7 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "70d47e77251aa155074396990c5854214c8bfb9a9deaeea520cd289b1edbbae6",
+      "contentSha256": "e64ebfa7317dd1776bd66d4ac3c0dc96d2cdf04251e2c0af0ccfabd4deef4651",
       "guid": "890649e01fed1423ee24e258f4a12a3f",
       "metaPath": "Editor/MikuToonMaterialRecipe.cs.meta",
       "path": "Editor/MikuToonMaterialRecipe.cs",
@@ -196,14 +196,14 @@
       "role": "Documentation"
     },
     {
-      "contentSha256": "62da928bbe26302b40380a2d53b59c061c007e4fe0c26511d3f27f36013a3746",
+      "contentSha256": "4baabef1621b38540064d168c8f41da8219c7a696ec577e39682bd93b31aa484",
       "guid": "9624d6292afa4432b49ad6a32334cbf1",
       "metaPath": "package.json.meta",
       "path": "package.json",
       "role": "Json"
     },
     {
-      "contentSha256": "44e9f413a161b2f940a93ef480ec39a74c03a1af8496a710d3573a45a251b821",
+      "contentSha256": "c169426554cc31e33ec2030c26069440b5b352be8b6827b7cc89458cba1cbe48",
       "guid": "7fcfbb738c6246c48a756fe61b42d0fe",
       "metaPath": "README.md.meta",
       "path": "README.md",
@@ -745,7 +745,7 @@
       "role": "AssemblyDefinition"
     },
     {
-      "contentSha256": "7fffc69f3f1b72f551ff6e20a97c9e4d452097b79b10a01eca37d08bf9b86073",
+      "contentSha256": "da731e5aaf66c123a3231149abaf33c020bacb41fd4874119c198330e389fee6",
       "guid": "e39817a7271b4a3db2107fc9f49d8813",
       "metaPath": "Tests/Editor/MikuBundleImporterTests.cs.meta",
       "path": "Tests/Editor/MikuBundleImporterTests.cs",
@@ -759,21 +759,21 @@
       "role": "CSharp"
     },
     {
-      "contentSha256": "0f050239d64fe7b35cae68019cbfcff5c3b8d353b38517dad228b6867b214959",
+      "contentSha256": "731d0f314d1207da3f7055ad0ae1d4f28942a775fd007aaa6e512edcd0597999",
       "guid": "4ed631a174f14964a388e422f022102b",
       "metaPath": "Tests/Editor/MikuGameToon225Tests.cs.meta",
       "path": "Tests/Editor/MikuGameToon225Tests.cs",
       "role": "CSharp"
     },
     {
-      "contentSha256": "da8ed24fd7d2201654399b1a328cb47bd3949a6a2dfe5193fc144ea21cadc4ab",
+      "contentSha256": "15b3efe27a74a56300e7f919a89eea22acacd2db2cd80fe0afec3261f897e399",
       "guid": "8b3c8c91d5b14a02aebc9f47b8f51c20",
       "metaPath": "Tests/Editor/MikuGameToonTests.cs.meta",
       "path": "Tests/Editor/MikuGameToonTests.cs",
       "role": "CSharp"
     }
   ],
-  "canonicalHash": "0de980d41cc4cc062b96e4f1541896e8b4af07541a9ba18680d2b248d1fab240",
+  "canonicalHash": "064bed40e8310e3948844d2941a3b4814454ecee97e40130b72eed52493430ca",
   "package": "com.miku.shaderconverter",
   "schema": "miku-package-asset-identity-1.0"
 }
