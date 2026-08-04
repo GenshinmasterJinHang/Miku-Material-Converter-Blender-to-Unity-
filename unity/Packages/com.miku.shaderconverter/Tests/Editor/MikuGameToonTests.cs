@@ -92,14 +92,14 @@ namespace Miku.ShaderConverter.Tests.Editor
                     MikuGameMaterialPart.Eye,
                 }));
             Assert.That(
-                MikuFixedWorkflowTextureBindings.AllowedParts("wuwa_toon"),
-                Has.Count.EqualTo(5));
+                MikuFixedWorkflowTextureBindings.AllowedParts("wuwa_toon").Count(),
+                Is.EqualTo(5));
             Assert.That(
-                MikuFixedWorkflowTextureBindings.AllowedParts("hsr_toon"),
-                Has.Count.EqualTo(4));
+                MikuFixedWorkflowTextureBindings.AllowedParts("hsr_toon").Count(),
+                Is.EqualTo(4));
             Assert.That(
-                MikuFixedWorkflowTextureBindings.AllowedParts("endfield_toon"),
-                Has.Count.EqualTo(9));
+                MikuFixedWorkflowTextureBindings.AllowedParts("endfield_toon").Count(),
+                Is.EqualTo(9));
         }
 
         [Test]
@@ -216,7 +216,7 @@ namespace Miku.ShaderConverter.Tests.Editor
         {
             Assert.That(
                 MikuToonMaterialRecipe.CurrentShaderFamilyVersion,
-                Is.EqualTo("2.2.8"));
+                Is.EqualTo("2.2.9"));
             AssertMaterialProperties(
                 "MIKU/Endfield/Overlay",
                 "_AlphaSource",

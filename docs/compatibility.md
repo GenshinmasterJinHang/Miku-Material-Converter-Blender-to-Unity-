@@ -2,6 +2,8 @@
 
 | Blender | Unity Editor | URP | Shader Graph | Miku | OS | Status |
 | --- | --- | --- | --- | --- | --- | --- |
+| 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.9 | Windows D3D11/D3D12 | Experimental, validated |
+| 5.0.0–5.2.0 | 6000.0.0f1–6000.4.5f1 | 17.0.0–17.4.0 | 17.0.0–17.4.0 | 2.2.9 | Any | Allowed / Unvalidated except the tuple above |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.8 | Windows D3D11/D3D12 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.7 | Windows D3D11/D3D12 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.6 | Windows D3D11 | Experimental |
@@ -13,7 +15,8 @@
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.1.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.0.0 | Windows D3D11 | Experimental |
-| Any other tuple | Any | Any | Any | 2.2.8 | Any | Unsupported |
+| Outside the 2.2.9 closed ranges | Any | Any | Any | 2.2.9 | Any | Unsupported |
+| Any other tuple | Any | Any | Any | 2.2.8 and earlier | Any | Unsupported |
 
 ## Public workflow matrix
 
@@ -90,6 +93,12 @@ Blender extension 2.2.8 writes `miku-bake-request-1.1` with a certified 512,
 `miku-bake-request-1.0` requests at 1024. Older workers reject request 1.1 and
 must not be paired with the 2.2.8 exporter. Bake result 1.0 and all Unity-facing
 schemas remain unchanged.
+
+Blender extension 2.2.9 writes `miku-bake-request-1.2`. It records the actual
+Blender numeric version and build hash and accepts only 5.0.0 through 5.2.0.
+The bundled worker retains frozen request 1.0/1.1 support on the certified
+5.2.0 build. Lower in-range versions emit `MIKU_BLENDER_VERSION_UNVALIDATED`;
+they are allowed but are not represented as validated in this matrix.
 
 Miku 2.2.8 Blender exports reject effective `Input.Time.*` dependencies before
 creating output or bake-request files. Disconnected time nodes are allowed.

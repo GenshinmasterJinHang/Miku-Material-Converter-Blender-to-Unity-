@@ -26,24 +26,32 @@ except ImportError:
     from source_mesh_glb import export_source_mesh_glb
 try:
     from ..miku.bake_protocol import (
-        BLENDER_COMMIT,
-        BLENDER_VERSION,
         make_bake_result,
+        validate_bake_runtime_binding,
         validate_bake_request,
     )
     from ..miku.bundle import make_file_reference
     from ..miku.contracts import canonical_hash
+    from ..miku_blender.versioning import (
+        blender_build_hash,
+        blender_version_string,
+        require_supported_blender,
+    )
 except ImportError:
     # Repository test layout. The release ZIP always uses the private
     # extension-local protocol package above.
     from miku.bake_protocol import (
-        BLENDER_COMMIT,
-        BLENDER_VERSION,
         make_bake_result,
+        validate_bake_runtime_binding,
         validate_bake_request,
     )
     from miku.bundle import make_file_reference
     from miku.contracts import canonical_hash
+    from miku_blender.versioning import (
+        blender_build_hash,
+        blender_version_string,
+        require_supported_blender,
+    )
 
 _REGISTERED_CLASSES: list[type] = []
 
@@ -53,7 +61,6 @@ def execute_request(request_path: str, output_root: str) -> str:
 
     import bpy
 
-    _assert_certified_blender(bpy)
     target = Path(output_root).resolve()
     request_file = Path(request_path).resolve()
     if request_file.parent != target:
@@ -61,6 +68,7 @@ def execute_request(request_path: str, output_root: str) -> str:
     request = validate_bake_request(
         json.loads(request_file.read_text(encoding="utf-8"))
     )
+    compatibility = _assert_request_blender(bpy, request)
     material_name = str(request.get("sourceMaterialName") or "")
     material = getattr(bpy.data, "materials", {}).get(material_name)
     if material is None:
@@ -424,6 +432,15 @@ def execute_request(request_path: str, output_root: str) -> str:
             ),
         }
     ]
+    if compatibility.diagnostic:
+        completion_diagnostics.append(
+            {
+                "severity": "warning",
+                "code": "MIKU_BLENDER_VERSION_UNVALIDATED",
+                "translationQuality": "RequiresProjectSetup",
+                "message": compatibility.diagnostic,
+            }
+        )
     if approximation_used:
         completion_diagnostics.append(
             {
@@ -447,19 +464,12 @@ def execute_request(request_path: str, output_root: str) -> str:
     return str(result_path)
 
 
-def _assert_certified_blender(bpy: Any) -> None:
-    version = str(getattr(bpy.app, "version_string", "") or "")
-    build_hash = getattr(bpy.app, "build_hash", b"")
-    if isinstance(build_hash, bytes):
-        build_hash = build_hash.decode("ascii", errors="replace")
-    build_hash = str(build_hash)
-    commit_matches = len(build_hash) >= 12 and BLENDER_COMMIT.startswith(build_hash)
-    if version != BLENDER_VERSION or not commit_matches:
-        raise RuntimeError(
-            "MIKU_UNCERTIFIED_BLENDER:"
-            f" expected {BLENDER_VERSION} ({BLENDER_COMMIT}),"
-            f" got {version or '<unknown>'} ({build_hash or '<unknown>'})"
-        )
+def _assert_request_blender(bpy: Any, request: dict[str, Any]):
+    compatibility = require_supported_blender(getattr(bpy.app, "version", ()))
+    actual_version = blender_version_string(bpy)
+    actual_commit = blender_build_hash(bpy)
+    validate_bake_runtime_binding(request, actual_version, actual_commit)
+    return compatibility
 
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:
