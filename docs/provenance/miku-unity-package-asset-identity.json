@@ -1,7 +1,7 @@
 {
   "assets": [
     {
-      "contentSha256": "57c6035d6af902a60a693046e6ddb6339ce169f09b34286d146f65f6f11779cb",
+      "contentSha256": "2702b9ff973bacdc8648e900af9b2a5a272e4d3c0de5fed5b69aa1c3b39be83e",
       "guid": "373ba2e3f1125c24fa9413f3ee20a183",
       "metaPath": "CHANGELOG.md.meta",
       "path": "CHANGELOG.md",
@@ -203,7 +203,7 @@
       "role": "Json"
     },
     {
-      "contentSha256": "c169426554cc31e33ec2030c26069440b5b352be8b6827b7cc89458cba1cbe48",
+      "contentSha256": "a24dd39905e052a871d92e2794441956a231f7e3e1a422a6083eb5d271971ca3",
       "guid": "7fcfbb738c6246c48a756fe61b42d0fe",
       "metaPath": "README.md.meta",
       "path": "README.md",
@@ -773,7 +773,7 @@
       "role": "CSharp"
     }
   ],
-  "canonicalHash": "fabcd6cad0f148110c26987488cd6168127ef4edb68da1197989be7c56db42fc",
+  "canonicalHash": "d84db25aa88b0886c8edc64f3d078bf61b154c47204e9733fa1315ec00a23541",
   "package": "com.miku.shaderconverter",
   "schema": "miku-package-asset-identity-1.0"
 }
