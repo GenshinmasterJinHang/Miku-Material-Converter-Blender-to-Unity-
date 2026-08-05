@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.2.11] - 2026-08-05
+
+- Relaxed editor and render-package validation to a major-version policy:
+  any Unity 6000.x (Unity 6) and any URP/Shader Graph 17.x is accepted.
+  Wrong-major versions fail before any import transaction or asset write;
+  in-major versions that are not exactly certified emit
+  `MIKU_UNITY_VERSION_UNVALIDATED` / `MIKU_URP_VERSION_UNVALIDATED` /
+  `MIKU_SHADERGRAPH_VERSION_UNVALIDATED` warnings.
+- Moved the certified (warning-free) reference to Unity 6000.5.4f1 and
+  URP/Shader Graph 17.5.4, and raised the package manifest minimum to
+  `unity: 6000.5` with a URP dependency floor of 17.5.4.
+- Added explicit Shader Graph 17.5/17.6 adapters; any higher 17.x minor
+  clamps to the highest-known adapter with the generated-asset identity
+  namespace left stable.
+
+## [2.2.10] - 2026-08-04
+
+- Removed an empty Unity Package Manager sample declaration and added
+  release validation that rejects any declared sample whose directory is
+  missing, empty, or references an unsafe path.
+
 ## [2.2.9] - 2026-08-03
 
 - Allow Unity 6000.0.0f1 through 6000.4.5f1 and URP/Shader Graph 17.0.0
