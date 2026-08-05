@@ -268,7 +268,7 @@ class MikuBakeProtocolTests(unittest.TestCase):
             first = build().read_bytes()
             second = build().read_bytes()
         self.assertEqual(first, second)
-        package = ROOT / "dist" / "miku_shader_converter-2.2.9.zip"
+        package = ROOT / "dist" / "miku_shader_converter-2.2.11.zip"
         with zipfile.ZipFile(package) as archive:
             names = set(archive.namelist())
             manifest = archive.read("blender_manifest.toml").decode("utf-8")
