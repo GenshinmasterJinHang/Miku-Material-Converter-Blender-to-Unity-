@@ -2,8 +2,9 @@
 
 ## Current implementation
 
-The Unity package targets Unity 6000.4.5f1 and depends on URP 17.4.0. The
-verification project resolves Shader Graph 17.4.0 transitively. Standard PBR
+The Unity package accepts any Unity 6 (6000.x) with a certified reference of
+6000.5.4f1 and depends on URP 17.5.4 (Shader Graph 17.5.4 resolves
+transitively). Standard PBR
 remains an editable `.shadergraph` wrapper plus a Miku-owned
 `.generated.shadersubgraph`. Dedicated game presets keep their static
 ShaderLab/HLSL paths.
