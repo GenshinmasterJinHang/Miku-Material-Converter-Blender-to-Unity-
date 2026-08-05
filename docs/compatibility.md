@@ -2,8 +2,8 @@
 
 | Blender | Unity Editor | URP | Shader Graph | Miku | OS | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.9 | Windows D3D11/D3D12 | Experimental, validated |
-| 5.0.0–5.2.0 | 6000.0.0f1–6000.4.5f1 | 17.0.0–17.4.0 | 17.0.0–17.4.0 | 2.2.9 | Any | Allowed / Unvalidated except the tuple above |
+| 5.2.0 | 6000.5.4f1 | 17.5.4 | 17.5.4 | 2.2.11 | Windows D3D11/D3D12 | Experimental; certified reference |
+| Any 5.x | Any 6000.x (Unity 6) | Any 17.x | Any 17.x | 2.2.11 | Any | Allowed; `MIKU_..._UNVALIDATED` unless exactly certified |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.8 | Windows D3D11/D3D12 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.7 | Windows D3D11/D3D12 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.6 | Windows D3D11 | Experimental |
@@ -15,7 +15,7 @@
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.1.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.0.0 | Windows D3D11 | Experimental |
-| Outside the 2.2.9 closed ranges | Any | Any | Any | 2.2.9 | Any | Unsupported |
+| Wrong major (Blender ≠ 5, Unity ≠ 6000, URP/SG ≠ 17) | Any | Any | Any | 2.2.11 | Any | Unsupported (hard fail before asset writes) |
 | Any other tuple | Any | Any | Any | 2.2.8 and earlier | Any | Unsupported |
 
 ## Public workflow matrix
@@ -99,6 +99,16 @@ Blender numeric version and build hash and accepts only 5.0.0 through 5.2.0.
 The bundled worker retains frozen request 1.0/1.1 support on the certified
 5.2.0 build. Lower in-range versions emit `MIKU_BLENDER_VERSION_UNVALIDATED`;
 they are allowed but are not represented as validated in this matrix.
+
+Miku 2.2.11 relaxes version validation to a major-version policy. Any Blender
+5.x, any Unity 6000.x (Unity 6), and any URP/Shader Graph 17.x is accepted;
+wrong-major versions fail before any asset write, and in-major versions that
+are not exactly certified emit `MIKU_..._UNVALIDATED` warnings. The certified
+(warning-free) reference is Blender 5.2.0, Unity 6000.5.4f1, and URP/Shader
+Graph 17.5.4. Only Blender 5.2.0 and the previously validated
+6000.4.5f1/17.4.0 editor tuple are locally validated; 6000.5.4f1/17.5.4 is the
+declared target and remains to be validated on an actual Unity 6.5.4 install.
+Versions accepted under a warning are not represented as validated here.
 
 Miku 2.2.8 Blender exports reject effective `Input.Time.*` dependencies before
 creating output or bake-request files. Disconnected time nodes are allowed.

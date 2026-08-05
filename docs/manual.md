@@ -1,6 +1,6 @@
-# Miku 2.2.9 Manual
+# Miku 2.2.11 Manual
 
-Miku is a production-oriented Blender 5.0 through 5.2 to Unity 6 material converter. The
+Miku is a production-oriented Blender 5.x to Unity 6 material converter. The
 public Blender front end exports Standard PBR semantics into target-neutral
 MaterialIR 2.0. Unity imports editable Shader Graph assets and also ships four
 first-party Game Toon Shader/HLSL preset families for explicit Unity-side
@@ -17,24 +17,24 @@ project overview.
 
 | Component | Version | Status |
 | --- | --- | --- |
-| Blender | 5.2.0 | Windows validated |
-| Unity Editor | 6000.4.5f1 | Windows validated |
-| Universal Render Pipeline | 17.4.0 | Required |
-| Shader Graph | 17.4.0 | Version-specific backend |
-| Miku | 2.2.9 | Experimental |
+| Blender | 5.2.0 | Certified reference |
+| Unity Editor | 6000.5.4f1 | Certified reference |
+| Universal Render Pipeline | 17.5.4 | Required |
+| Shader Graph | 17.5.4 | Version-specific backend |
+| Miku | 2.2.11 | Experimental |
 
-Blender 5.0.0 through 5.2.0, Unity 6000.0.0f1 through 6000.4.5f1, and
-URP/Shader Graph 17.0.0 through 17.4.0 are allowed. Combinations other than
-the exact validated row above emit unvalidated-version diagnostics. Versions
-outside those closed ranges fail before asset writes.
+Any Blender 5.x, Unity 6000.x (Unity 6), and URP/Shader Graph 17.x is
+accepted. Combinations other than the exact certified row above emit
+unvalidated-version diagnostics. Wrong-major versions fail before asset
+writes; in-major non-certified versions continue with a warning.
 
 ## 2. Install from a Release
 
 Download these files from the
-[v2.2.9 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.9):
+[v2.2.11 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.11):
 
-- `miku_shader_converter-2.2.9.zip` — Blender 5.0 through 5.2 extension.
-- `com.miku.shaderconverter-2.2.9.tgz` — Unity package.
+- `miku_shader_converter-2.2.11.zip` — Blender 5.x extension.
+- `com.miku.shaderconverter-2.2.11.tgz` — Unity package.
 - `SHA256SUMS.txt` — release integrity manifest.
 
 In Blender, choose **Edit > Preferences > Extensions > Install from Disk** and
@@ -103,7 +103,7 @@ Ownership is explicit:
   regeneration.
 
 MaterialIR 2.0, Bundle 1.0, conversion-plan, bake-result, and public Shader
-property/reference names remain stable in 2.2.9. Historical bundles, including
+property/reference names remain stable in 2.2.11. Historical bundles, including
 older runtime-time contracts, remain readable even though the current Blender
 front end creates no new time-dependent bundle.
 
@@ -137,7 +137,7 @@ textures, logos, extracted Shader source, or other game assets.
 > Commercial use is prohibited. All related characters, designs, and
 > intellectual property belong to their respective rights holders; Miku grants
 > no rights to game assets. These images are not part of the Blender or Unity
-> installable packages or the existing v2.2.9 Release assets.
+> installable packages or the existing v2.2.11 Release assets.
 
 ## 6. Unity Game Toon material creator
 
@@ -275,7 +275,7 @@ to apply the property and metadata-name migration.
 
 The migration does not traverse scene objects or change Renderer assignments.
 It rejects retired Generic Toon materials instead of silently substituting a
-different shader. Normal 2.2.9 authoring does not require these commands.
+different shader. Normal 2.2.11 authoring does not require these commands.
 
 ## 8. Editor languages
 

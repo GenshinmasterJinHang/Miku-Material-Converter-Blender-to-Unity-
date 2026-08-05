@@ -1,8 +1,8 @@
-# Blender 5.0 至 5.2 扩展安装
+# Blender 5.x 扩展安装
 
-安装 `miku_shader_converter-2.2.9.zip`。支持 Blender 5.0.0 至 5.2.0；5.0/5.1
-会显示未经完整验证警告，5.2.1 及更高版本不会放行。不要手动复制到 Blender
-Scripts 目录。
+安装 `miku_shader_converter-2.2.11.zip`。支持任意 Blender 5.x；5.2.0 之外的
+版本会显示未经完整验证警告，大版本不符（如 4.x/6.x）不会放行。不要手动复制到
+Blender Scripts 目录。
 所有本地验证必须使用：
 
 `C:\SteamLibrary\steamapps\common\Blender\blender.exe`

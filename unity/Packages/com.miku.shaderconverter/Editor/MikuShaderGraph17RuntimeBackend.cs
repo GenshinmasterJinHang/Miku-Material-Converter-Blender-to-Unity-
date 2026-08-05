@@ -25,7 +25,7 @@ namespace Miku.ShaderConverter.Editor
         internal const string TimeOffsetReference = "_MIKU_EffectTimeOffset";
         internal const string TimeOverrideReference = "_MIKU_EffectTimeOverride";
         internal const string UseTimeOverrideReference = "_MIKU_EffectUseTimeOverride";
-        static int configuredAdapterMinor = 4;
+        static int configuredAdapterMinor = 6;
 
         internal static void ConfigureForVersion(string version)
         {
@@ -61,7 +61,7 @@ namespace Miku.ShaderConverter.Editor
             if (parsed.Major != 17)
                 throw new InvalidDataException(
                     "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED:" + version +
-                    ":supported=17.0.0-17.4.0");
+                    ":supported=17.x");
             return parsed.Minor switch
             {
                 0 => new ShaderGraph17_0Adapter(),
@@ -69,9 +69,9 @@ namespace Miku.ShaderConverter.Editor
                 2 => new ShaderGraph17_2Adapter(),
                 3 => new ShaderGraph17_3Adapter(),
                 4 => new ShaderGraph17_4Adapter(),
-                _ => throw new InvalidDataException(
-                    "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED:" + version +
-                    ":supported=17.0.0-17.4.0"),
+                5 => new ShaderGraph17_5Adapter(),
+                6 => new ShaderGraph17_6Adapter(),
+                _ => new ShaderGraph17_6Adapter(),
             };
         }
 
@@ -4599,6 +4599,16 @@ namespace Miku.ShaderConverter.Editor
         sealed class ShaderGraph17_4Adapter : ShaderGraph17Adapter
         {
             public override int Minor => 4;
+        }
+
+        sealed class ShaderGraph17_5Adapter : ShaderGraph17Adapter
+        {
+            public override int Minor => 5;
+        }
+
+        sealed class ShaderGraph17_6Adapter : ShaderGraph17Adapter
+        {
+            public override int Minor => 6;
         }
 
         static string StableId(string materialId, string role)

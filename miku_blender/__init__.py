@@ -103,7 +103,7 @@ except (ImportError, ValueError):
 bl_info = {
     "name": "Miku Semantic Material Converter",
     "author": "Miku contributors",
-    "version": (2, 2, 9),
+    "version": (2, 2, 11),
     "blender": (5, 0, 0),
     "location": "Shader Editor > Sidebar > Miku",
     "description": "Export Blender materials as target-neutral semantic regions and deterministic Unity bundles.",

@@ -13,8 +13,9 @@ class MikuBlenderVersionTests(unittest.TestCase):
             ((5, 0, 99), True, False),
             ((5, 1, 7), True, False),
             ((5, 2, 0), True, True),
+            ((5, 2, 1), True, False),
+            ((5, 3, 0), True, False),
             ((4, 5, 8), False, False),
-            ((5, 2, 1), False, False),
             ((6, 0, 0), False, False),
         )
         for version, supported, certified in cases:
@@ -30,9 +31,15 @@ class MikuBlenderVersionTests(unittest.TestCase):
             "actual=5.1.2:certified=5.2.0",
             compatibility.diagnostic,
         )
+        above_ceiling = require_supported_blender((5, 3, 0))
+        self.assertEqual(
+            "MIKU_BLENDER_VERSION_UNVALIDATED:"
+            "actual=5.3.0:certified=5.2.0",
+            above_ceiling.diagnostic,
+        )
 
-    def test_out_of_range_versions_fail_with_closed_range(self):
-        for version in ((4, 99, 99), (5, 2, 1)):
+    def test_wrong_major_versions_fail(self):
+        for version in ((4, 99, 99), (6, 0, 0)):
             with self.subTest(version=version):
                 with self.assertRaisesRegex(
                     RuntimeError,

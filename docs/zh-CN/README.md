@@ -1,6 +1,6 @@
-# Miku 2.2.9
+# Miku 2.2.11
 
-Miku 将 Blender 5.0 至 5.2 EEVEE 材质转换为目标无关的 MaterialIR 2.0，再将确定性、
+Miku 将 Blender 5.x EEVEE 材质转换为目标无关的 MaterialIR 2.0，再将确定性、
 可继续编辑的 Standard PBR Shader Graph 资产导入 Unity 6 URP。Blender 只显示一条
 Standard PBR 路线；Unity 编辑器内提供四套随包附带的 Game Toon Shader/HLSL 预设。
 
@@ -38,12 +38,12 @@ Unity 包直接附带四套由 Miku 独立编写的实验性 Shader/HLSL 代码�
 
 ## 安装发布版本
 
-1. 从 [v2.2.9 Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.9)
-   下载 `miku_shader_converter-2.2.9.zip` 和
-   `com.miku.shaderconverter-2.2.9.tgz`。
-2. 在 Blender 5.0 至 5.2.0 打开 **编辑 > 偏好设置 > 扩展**，选择 **从磁盘安装**，选中 ZIP
+1. 从 [v2.2.11 Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.11)
+   下载 `miku_shader_converter-2.2.11.zip` 和
+   `com.miku.shaderconverter-2.2.11.tgz`。
+2. 在 Blender 5.x 打开 **编辑 > 偏好设置 > 扩展**，选择 **从磁盘安装**，选中 ZIP
    并启用 Miku。
-3. 在 Unity 6000.0.0f1 至 6000.4.5f1 打开 **Window > Package Manager > + > Add package from
+3. 在 Unity 6（6000.x）打开 **Window > Package Manager > + > Add package from
    tarball**，选择 TGZ。
 4. 从 Blender 导出材质 Bundle，并把完整 Bundle 目录复制到 Unity 项目的
    `Assets/` 下。
@@ -66,8 +66,10 @@ Unity 包直接附带四套由 Miku 独立编写的实验性 Shader/HLSL 代码�
 
 ## 兼容性与许可范围
 
-已验证的 Windows 组合为 Blender 5.2.0、Unity 6000.4.5f1、URP 17.4.0 和
-Shader Graph 17.4.0。Miku 当前为 **Experimental（实验性）**。2.2.9 不修改
+认证参考组合为 Blender 5.2.0、Unity 6000.5.4f1、URP 17.5.4 和
+Shader Graph 17.5.4。任意 Blender 5.x、Unity 6（6000.x）、URP/Shader Graph
+17.x 均可接受；非认证版本会显示验证警告。Miku 当前为 **Experimental（实验性）**。
+2.2.11 不修改
 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开 Shader
 property/reference 名称。详见[兼容性矩阵](../compatibility.md)。
 

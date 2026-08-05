@@ -41,8 +41,11 @@ namespace Miku.ShaderConverter.Editor.Tests
 
         [TestCase("6000.0.0f1", true)]
         [TestCase("6000.2.9f1", true)]
-        [TestCase("6000.4.5f1", false)]
-        public void UnityCompatibilityRangeAllowsLowerVersionsWithWarnings(
+        [TestCase("6000.4.5f1", true)]
+        [TestCase("6000.5.0f1", true)]
+        [TestCase("6000.5.4f1", false)]
+        [TestCase("6000.6.0f1", true)]
+        public void UnityMajorVersionAcceptedWithWarningsWhenNotCertified(
             string version,
             bool expectsWarning)
         {
@@ -56,10 +59,10 @@ namespace Miku.ShaderConverter.Editor.Tests
         }
 
         [TestCase("5999.9.9f1")]
-        [TestCase("6000.0.0b1")]
-        [TestCase("6000.4.5f2")]
-        [TestCase("6000.5.0f1")]
-        public void UnityCompatibilityRangeRejectsOutsideClosedBounds(
+        [TestCase("6001.0.0f1")]
+        [TestCase("7000.0.0f1")]
+        [TestCase("not-a-version")]
+        public void UnityWrongMajorRejected(
             string version)
         {
             var error = Assert.Throws<InvalidDataException>(() =>
@@ -73,8 +76,11 @@ namespace Miku.ShaderConverter.Editor.Tests
 
         [TestCase("17.0.0", true)]
         [TestCase("17.2.4", true)]
-        [TestCase("17.4.0", false)]
-        public void RenderPackageRangeAllowsLowerVersionsWithWarnings(
+        [TestCase("17.4.0", true)]
+        [TestCase("17.5.4", false)]
+        [TestCase("17.6.0", true)]
+        [TestCase("17.0.0-preview.1", true)]
+        public void PackageMajorVersionAcceptedWithWarningsWhenNotCertified(
             string version,
             bool expectsWarning)
         {
@@ -88,11 +94,11 @@ namespace Miku.ShaderConverter.Editor.Tests
         }
 
         [TestCase("16.9.9")]
-        [TestCase("17.0.0-preview.1")]
-        [TestCase("17.4.1")]
+        [TestCase("16.5.0")]
         [TestCase("18.0.0")]
+        [TestCase("19.0.0")]
         [TestCase("missing")]
-        public void RenderPackageRangeRejectsOutsideClosedBounds(string version)
+        public void PackageWrongMajorRejected(string version)
         {
             var error = Assert.Throws<InvalidDataException>(() =>
                 MikuRuntimeCompatibility.ValidatePackageVersion(
@@ -123,6 +129,10 @@ namespace Miku.ShaderConverter.Editor.Tests
         [TestCase("17.2.0", "ShaderGraph17_2Adapter")]
         [TestCase("17.3.1", "ShaderGraph17_3Adapter")]
         [TestCase("17.4.0", "ShaderGraph17_4Adapter")]
+        [TestCase("17.5.0", "ShaderGraph17_5Adapter")]
+        [TestCase("17.6.0", "ShaderGraph17_6Adapter")]
+        [TestCase("17.7.0", "ShaderGraph17_6Adapter")]
+        [TestCase("17.99.0", "ShaderGraph17_6Adapter")]
         public void ShaderGraphMinorSelectsExplicitAdapter(
             string version,
             string expected)

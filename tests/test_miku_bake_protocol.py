@@ -97,11 +97,11 @@ class MikuBakeProtocolTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "MIKU_BAKE_RESOLUTION_INVALID"):
                     normalize_bake_resolution(resolution)
 
-    def test_bake_runtime_version_and_commit_are_range_validated(self):
-        for version in ("5.0.0", "5.0.19", "5.1.7", "5.2.0"):
+    def test_bake_runtime_version_is_major_validated(self):
+        for version in ("5.0.0", "5.0.19", "5.1.7", "5.2.0", "5.2.1"):
             with self.subTest(version=version):
                 self.assertEqual(version, normalize_bake_blender_version(version))
-        for version in ("4.5.8", "5.2.1", "6.0.0", "5.2"):
+        for version in ("4.5.8", "6.0.0", "5.2"):
             with self.subTest(version=version):
                 with self.assertRaisesRegex(
                     ValueError,
@@ -268,7 +268,7 @@ class MikuBakeProtocolTests(unittest.TestCase):
             first = build().read_bytes()
             second = build().read_bytes()
         self.assertEqual(first, second)
-        package = ROOT / "dist" / "miku_shader_converter-2.2.9.zip"
+        package = ROOT / "dist" / "miku_shader_converter-2.2.11.zip"
         with zipfile.ZipFile(package) as archive:
             names = set(archive.namelist())
             manifest = archive.read("blender_manifest.toml").decode("utf-8")

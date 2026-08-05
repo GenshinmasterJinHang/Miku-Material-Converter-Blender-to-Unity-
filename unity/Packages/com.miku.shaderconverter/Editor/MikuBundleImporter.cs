@@ -154,16 +154,10 @@ namespace Miku.ShaderConverter.Editor
 
     internal static class MikuRuntimeCompatibility
     {
-        const string CertifiedUnity = "6000.4.5f1";
-        const string CertifiedPackage = "17.4.0";
-        static readonly MikuUnityVersion MinimumUnity =
-            MikuUnityVersion.Parse("6000.0.0f1");
-        static readonly MikuUnityVersion MaximumUnity =
-            MikuUnityVersion.Parse(CertifiedUnity);
-        static readonly MikuPackageVersion MinimumPackage =
-            MikuPackageVersion.Parse("17.0.0");
-        static readonly MikuPackageVersion MaximumPackage =
-            MikuPackageVersion.Parse(CertifiedPackage);
+        const string CertifiedUnity = "6000.5.4f1";
+        const string CertifiedPackage = "17.5.4";
+        const int UnityMajorVersion = 6000;
+        const int PackageMajorVersion = 17;
         static readonly HashSet<string> LoggedWarnings =
             new HashSet<string>(StringComparer.Ordinal);
 
@@ -180,13 +174,12 @@ namespace Miku.ShaderConverter.Editor
             {
                 throw new InvalidDataException(
                     "MIKU_UNITY_VERSION_UNSUPPORTED:" + actual +
-                    ":supported=6000.0.0f1-6000.4.5f1");
+                    ":supported=6000.x");
             }
-            if (parsed.CompareTo(MinimumUnity) < 0 ||
-                parsed.CompareTo(MaximumUnity) > 0)
+            if (parsed.Major != UnityMajorVersion)
                 throw new InvalidDataException(
                     "MIKU_UNITY_VERSION_UNSUPPORTED:" + actual +
-                    ":supported=6000.0.0f1-6000.4.5f1");
+                    ":supported=6000.x");
             if (!string.Equals(actual, CertifiedUnity, StringComparison.Ordinal))
                 AddWarning(
                     diagnostics,
@@ -208,12 +201,11 @@ namespace Miku.ShaderConverter.Editor
             catch (FormatException)
             {
                 throw new InvalidDataException(
-                    code + ":" + actual + ":supported=17.0.0-17.4.0");
+                    code + ":" + actual + ":supported=17.x");
             }
-            if (parsed.CompareTo(MinimumPackage) < 0 ||
-                parsed.CompareTo(MaximumPackage) > 0)
+            if (parsed.Major != PackageMajorVersion)
                 throw new InvalidDataException(
-                    code + ":" + actual + ":supported=17.0.0-17.4.0");
+                    code + ":" + actual + ":supported=17.x");
             if (!string.Equals(actual, CertifiedPackage, StringComparison.Ordinal))
                 AddWarning(
                     diagnostics,
@@ -242,8 +234,9 @@ namespace Miku.ShaderConverter.Editor
         const string LegacyKindV2 = "migr-bundle-2.0";
         const string LegacyKindV21 = "migr-bundle-2.1";
         const string LegacyKindV22 = "migr-bundle-2.2";
-        const string PackageVersion = "2.2.9";
-        const string ExpectedProfileHash = "ec88a8bee99c86fd3885f7e7a1596a22439632a648004a065e45ea1b4f1179d4";
+        const string PackageVersion = "2.2.11";
+        const string ExpectedProfileHash = "e9e70a6e2e38205a4ecf7facedba8e55a8f1d8815316470affc7e5ad2c2bce50";
+        const string Package2210ProfileHash = "ec88a8bee99c86fd3885f7e7a1596a22439632a648004a065e45ea1b4f1179d4";
         const string Package228ProfileHash = "7700bb62aae8ddcfaa2e519079c2bd8e79e30c7fa30f8e493d084117aab1228d";
         const string Package226ProfileHash = "2430a52781ef9d2e6172ce274800d5639732a144143d3ee4513a4a336d53b7ca";
         const string Package224ProfileHash = "a5f985ee6ea8d494d47c2f9256425ced29f716c203128eaea06abc0d432dc7cd";
@@ -304,6 +297,7 @@ namespace Miku.ShaderConverter.Editor
             new[]
             {
                 ExpectedProfileHash,
+                Package2210ProfileHash,
                 Package228ProfileHash,
                 Package226ProfileHash,
                 Package224ProfileHash,
@@ -4439,7 +4433,7 @@ namespace Miku.ShaderConverter.Editor
             var actual = package?.version ?? "missing";
             if (string.Equals(actual, "missing", StringComparison.Ordinal))
                 throw new InvalidDataException(
-                    code + ":missing:supported=17.0.0-17.4.0");
+                    code + ":missing:supported=17.x");
             return actual;
         }
 

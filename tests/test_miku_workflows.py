@@ -88,7 +88,7 @@ class MikuWorkflowTests(unittest.TestCase):
         first_bytes = first.read_bytes()
         second = build()
         self.assertEqual(first_bytes, second.read_bytes())
-        self.assertEqual("miku_shader_converter-2.2.9.zip", first.name)
+        self.assertEqual("miku_shader_converter-2.2.11.zip", first.name)
         with zipfile.ZipFile(first) as archive:
             names = set(archive.namelist())
             self.assertIn("bake_worker/automatic_bake.py", names)
@@ -100,7 +100,7 @@ class MikuWorkflowTests(unittest.TestCase):
             manifest = archive.read("blender_manifest.toml").decode("utf-8")
             self.assertIn("SPDX:GPL-3.0-or-later", manifest)
             self.assertIn('blender_version_min = "5.0.0"', manifest)
-            self.assertIn('blender_version_max = "5.2.1"', manifest)
+            self.assertIn('blender_version_max = "5.99.0"', manifest)
 
 
 if __name__ == "__main__":

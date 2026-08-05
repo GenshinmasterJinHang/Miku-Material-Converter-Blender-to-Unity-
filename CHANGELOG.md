@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2.11 - 2026-08-05
+
+- Relaxed version validation to a major-version policy: any Blender 5.x,
+  any Unity 6000.x (Unity 6), and any URP/Shader Graph 17.x is accepted.
+  Wrong-major versions fail before any asset write; in-major versions that
+  are not exactly certified emit `MIKU_..._UNVALIDATED` warnings.
+- Moved the certified (warning-free) reference to Blender 5.2.0, Unity
+  6000.5.4f1, and URP/Shader Graph 17.5.4, and raised the Unity package
+  manifest minimum to `unity: 6000.5` / URP 17.5.4.
+- Added Shader Graph 17.5/17.6 adapters; unknown 17.x minors clamp to the
+  highest-known adapter while generated-asset identity IDs stay stable.
+- Coordinated release: both the Blender extension and the Unity package are
+  now at 2.2.11.
+
 ## 2.2.10 - 2026-08-04
 
 - Removed an empty Unity Package Manager sample declaration whose untracked

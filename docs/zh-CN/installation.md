@@ -1,13 +1,13 @@
-# Miku 2.2.9 安装与导出
+# Miku 2.2.11 安装与导出
 
-Blender 扩展和 Unity 包版本均为 `2.2.9`。允许的严格版本区间是：
+Blender 扩展和 Unity 包版本均为 `2.2.11`。允许的版本为（仅校验大版本一致）：
 
-- Blender 5.0.0 至 5.2.0；
-- Unity 6000.0.0f1 至 6000.4.5f1；
-- URP 与 Shader Graph 17.0.0 至 17.4.0。
+- Blender 5.x；
+- Unity 6（6000.x）；
+- URP 与 Shader Graph 17.x。
 
-已验证环境仍是 Blender 5.2.0、Unity 6000.4.5f1、URP 17.4.0 和 Shader Graph
-17.4.0。其他区间内版本会显示未经完整验证诊断并继续运行；高于或低于区间的版本
+认证参考环境为 Blender 5.2.0、Unity 6000.5.4f1、URP 17.5.4 和 Shader Graph
+17.5.4。其他同大版本版本会显示未经完整验证诊断并继续运行；大版本不符的版本
 会被拒绝。本仓库的 Blender headless 验证固定使用：
 
 `C:\SteamLibrary\steamapps\common\Blender\blender.exe`
