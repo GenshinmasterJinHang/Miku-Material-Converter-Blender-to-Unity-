@@ -154,16 +154,10 @@ namespace Miku.ShaderConverter.Editor
 
     internal static class MikuRuntimeCompatibility
     {
-        const string CertifiedUnity = "6000.4.5f1";
-        const string CertifiedPackage = "17.4.0";
-        static readonly MikuUnityVersion MinimumUnity =
-            MikuUnityVersion.Parse("6000.0.0f1");
-        static readonly MikuUnityVersion MaximumUnity =
-            MikuUnityVersion.Parse(CertifiedUnity);
-        static readonly MikuPackageVersion MinimumPackage =
-            MikuPackageVersion.Parse("17.0.0");
-        static readonly MikuPackageVersion MaximumPackage =
-            MikuPackageVersion.Parse(CertifiedPackage);
+        const string CertifiedUnity = "6000.5.4f1";
+        const string CertifiedPackage = "17.5.4";
+        const int UnityMajorVersion = 6000;
+        const int PackageMajorVersion = 17;
         static readonly HashSet<string> LoggedWarnings =
             new HashSet<string>(StringComparer.Ordinal);
 
@@ -180,13 +174,12 @@ namespace Miku.ShaderConverter.Editor
             {
                 throw new InvalidDataException(
                     "MIKU_UNITY_VERSION_UNSUPPORTED:" + actual +
-                    ":supported=6000.0.0f1-6000.4.5f1");
+                    ":supported=6000.x");
             }
-            if (parsed.CompareTo(MinimumUnity) < 0 ||
-                parsed.CompareTo(MaximumUnity) > 0)
+            if (parsed.Major != UnityMajorVersion)
                 throw new InvalidDataException(
                     "MIKU_UNITY_VERSION_UNSUPPORTED:" + actual +
-                    ":supported=6000.0.0f1-6000.4.5f1");
+                    ":supported=6000.x");
             if (!string.Equals(actual, CertifiedUnity, StringComparison.Ordinal))
                 AddWarning(
                     diagnostics,
@@ -208,12 +201,11 @@ namespace Miku.ShaderConverter.Editor
             catch (FormatException)
             {
                 throw new InvalidDataException(
-                    code + ":" + actual + ":supported=17.0.0-17.4.0");
+                    code + ":" + actual + ":supported=17.x");
             }
-            if (parsed.CompareTo(MinimumPackage) < 0 ||
-                parsed.CompareTo(MaximumPackage) > 0)
+            if (parsed.Major != PackageMajorVersion)
                 throw new InvalidDataException(
-                    code + ":" + actual + ":supported=17.0.0-17.4.0");
+                    code + ":" + actual + ":supported=17.x");
             if (!string.Equals(actual, CertifiedPackage, StringComparison.Ordinal))
                 AddWarning(
                     diagnostics,
@@ -4439,7 +4431,7 @@ namespace Miku.ShaderConverter.Editor
             var actual = package?.version ?? "missing";
             if (string.Equals(actual, "missing", StringComparison.Ordinal))
                 throw new InvalidDataException(
-                    code + ":missing:supported=17.0.0-17.4.0");
+                    code + ":missing:supported=17.x");
             return actual;
         }
 
