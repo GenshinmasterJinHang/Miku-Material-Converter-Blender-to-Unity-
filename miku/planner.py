@@ -27,9 +27,9 @@ SOURCE_MESH_RESOLVABLE_DIAGNOSTIC_CODES = frozenset(
 
 @dataclass(frozen=True)
 class TargetProfile:
-    unity: str = "6000.4.5f1"
-    urp: str = "17.4.0"
-    shader_graph: str = "17.4.0"
+    unity: str = "6000.5.4f1"
+    urp: str = "17.5.4"
+    shader_graph: str = "17.5.4"
     color_space: str = "Linear"
     graphics_api: str = "D3D11"
     custom_lit: bool = True
