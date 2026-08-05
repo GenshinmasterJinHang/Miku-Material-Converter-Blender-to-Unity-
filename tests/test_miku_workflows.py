@@ -100,7 +100,7 @@ class MikuWorkflowTests(unittest.TestCase):
             manifest = archive.read("blender_manifest.toml").decode("utf-8")
             self.assertIn("SPDX:GPL-3.0-or-later", manifest)
             self.assertIn('blender_version_min = "5.0.0"', manifest)
-            self.assertIn('blender_version_max = "5.2.1"', manifest)
+            self.assertIn('blender_version_max = "5.99.0"', manifest)
 
 
 if __name__ == "__main__":

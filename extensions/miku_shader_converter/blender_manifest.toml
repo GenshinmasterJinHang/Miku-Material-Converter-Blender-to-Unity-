@@ -6,5 +6,5 @@ tagline = "Export semantic materials and run version-bound bake requests"
 maintainer = "Miku Project Authors"
 type = "add-on"
 blender_version_min = "5.0.0"
-blender_version_max = "5.2.1"
+blender_version_max = "5.99.0"
 license = ["SPDX:GPL-3.0-or-later"]

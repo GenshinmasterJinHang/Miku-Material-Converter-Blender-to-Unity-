@@ -97,11 +97,11 @@ class MikuBakeProtocolTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "MIKU_BAKE_RESOLUTION_INVALID"):
                     normalize_bake_resolution(resolution)
 
-    def test_bake_runtime_version_and_commit_are_range_validated(self):
-        for version in ("5.0.0", "5.0.19", "5.1.7", "5.2.0"):
+    def test_bake_runtime_version_is_major_validated(self):
+        for version in ("5.0.0", "5.0.19", "5.1.7", "5.2.0", "5.2.1"):
             with self.subTest(version=version):
                 self.assertEqual(version, normalize_bake_blender_version(version))
-        for version in ("4.5.8", "5.2.1", "6.0.0", "5.2"):
+        for version in ("4.5.8", "6.0.0", "5.2"):
             with self.subTest(version=version):
                 with self.assertRaisesRegex(
                     ValueError,
