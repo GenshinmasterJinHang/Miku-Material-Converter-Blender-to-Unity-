@@ -7,7 +7,7 @@ from typing import Any, Iterable
 
 
 MIN_BLENDER_VERSION = (5, 0, 0)
-MAX_BLENDER_VERSION = (5, 2, 0)
+BLENDER_MAJOR_VERSION = 5
 CERTIFIED_BLENDER_VERSION = (5, 2, 0)
 CERTIFIED_BLENDER_VERSION_STRING = "5.2.0 LTS"
 CERTIFIED_BLENDER_COMMIT = "fbe6228777e7d9afefcd61a413844e790ae75db7"
@@ -25,7 +25,7 @@ class BlenderCompatibility:
         if not self.supported:
             return (
                 "MIKU_BLENDER_VERSION_UNSUPPORTED:"
-                f"actual={actual}:supported=5.0.0-5.2.0"
+                f"actual={actual}:supported=5.x"
             )
         if not self.certified:
             return (
@@ -41,19 +41,19 @@ def normalize_blender_version(value: Iterable[Any]) -> tuple[int, int, int]:
     except (TypeError, ValueError) as exc:
         raise RuntimeError(
             "MIKU_BLENDER_VERSION_UNSUPPORTED:"
-            "actual=<unknown>:supported=5.0.0-5.2.0"
+            "actual=<unknown>:supported=5.x"
         ) from exc
     if len(parts) < 3 or any(part < 0 for part in parts[:3]):
         raise RuntimeError(
             "MIKU_BLENDER_VERSION_UNSUPPORTED:"
-            "actual=<unknown>:supported=5.0.0-5.2.0"
+            "actual=<unknown>:supported=5.x"
         )
     return parts[:3]
 
 
 def classify_blender_version(value: Iterable[Any]) -> BlenderCompatibility:
     version = normalize_blender_version(value)
-    supported = MIN_BLENDER_VERSION <= version <= MAX_BLENDER_VERSION
+    supported = version[0] == BLENDER_MAJOR_VERSION
     return BlenderCompatibility(
         version=version,
         supported=supported,
