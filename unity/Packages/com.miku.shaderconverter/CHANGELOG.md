@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.2.12] - 2026-08-08
+
+- Restored the manifest floors to Unity 6000.0 and URP 17.0.0 so one TGZ is
+  installable across Unity 6000.0-6000.5 projects.
+- Require exact Unity 6000.N / URP 17.N / Shader Graph 17.N technical-line
+  pairing for N=0..5 and exact equality between URP and Shader Graph versions.
+- Reject prereleases, 6000.6+, 17.6+, and unknown Shader Graph minors before
+  asset writes; removed adapter clamping.
+- Expanded preflight to all generated graph capabilities and fixed identities
+  plus actual imports of the five wrapper templates.
+- Moved the warning-free target to Unity 6000.5.7f1 / URP and Shader Graph
+  17.5.4 without changing stable generated IDs, public shader properties, or
+  wrapper ownership.
+- Fixed Source Mesh PBR material binding so original Height resources that are
+  absent from the generated runtime-property contract are diagnosed and
+  skipped, while reachable `_MIKU_HeightMap` properties retain hard failure.
+
 ## [2.2.11] - 2026-08-05
 
 - Relaxed editor and render-package validation to a major-version policy:

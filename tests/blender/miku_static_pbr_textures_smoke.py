@@ -1,4 +1,4 @@
-"""Blender 5.2 smoke fixture for native external PBR image translation."""
+"""Blender 5.0-5.2 smoke fixture for external PBR image translation."""
 
 from __future__ import annotations
 
@@ -15,14 +15,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import miku_blender
+from miku_blender.versioning import require_blender_capabilities
 from miku.semantic import build_material_ir
 
-
-if tuple(bpy.app.version) != (5, 2, 0):
-    raise RuntimeError(
-        "MIKU_BLENDER_VERSION_MISMATCH:"
-        f"expected=(5, 2, 0):got={bpy.app.version}"
-    )
+require_blender_capabilities(bpy)
 
 miku_blender.register()
 

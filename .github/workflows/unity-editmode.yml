@@ -12,13 +12,49 @@ concurrency:
 
 jobs:
   unity-editmode:
-    runs-on: [self-hosted, Windows, X64, unity-6000.4.5f1]
-    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - unity: 6000.0.81f1
+            package: 17.0.4
+          - unity: 6000.1.17f1
+            package: 17.1.0
+          - unity: 6000.2.15f1
+            package: 17.2.0
+          - unity: 6000.3.21f1
+            package: 17.3.0
+          - unity: 6000.4.12f1
+            package: 17.4.0
+          - unity: 6000.5.7f1
+            package: 17.5.4
+          - unity: 6000.4.5f1
+            package: 17.4.0
+    runs-on: [self-hosted, Windows, X64, unity-matrix]
+    timeout-minutes: 60
     steps:
       - name: Check out source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - name: Run exact-version EditMode tests
+      - name: Set up Python package builder
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+      - name: Build deterministic candidate TGZ
+        run: python tools/build_miku_unity_package.py
+      - name: Run exact-version EditMode tests from TGZ
         shell: powershell
         run: >-
           ./tools/ci/run_unity_editmode.ps1
-          -UnityPath 'C:\Program Files\Unity\Hub\Editor\6000.4.5f1\Editor\Unity.exe'
+          -UnityPath 'C:\Program Files\Unity\Hub\Editor\${{ matrix.unity }}\Editor\Unity.exe'
+          -UnityVersion '${{ matrix.unity }}'
+          -UrpVersion '${{ matrix.package }}'
+          -ShaderGraphVersion '${{ matrix.package }}'
+          -PackagePath 'dist\com.miku.shaderconverter-2.2.12.tgz'
+          -EvidencePath 'artifacts\unity-${{ matrix.unity }}.json'
+      - name: Upload exact-version evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: unity-${{ matrix.unity }}-evidence
+          path: artifacts/unity-${{ matrix.unity }}.*
+          if-no-files-found: error
+          retention-days: 14

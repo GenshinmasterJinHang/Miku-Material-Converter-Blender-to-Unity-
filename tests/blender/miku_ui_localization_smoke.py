@@ -1,4 +1,4 @@
-"""Blender 5.2 smoke coverage for Miku UI localization and bake quality."""
+"""Blender 5.0-5.2 smoke coverage for UI localization and bake quality."""
 
 from __future__ import annotations
 
@@ -14,10 +14,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import miku_blender  # noqa: E402
+from miku_blender.versioning import require_blender_capabilities  # noqa: E402
 
 
 def assert_ui_localization() -> None:
-    assert tuple(bpy.app.version) == (5, 2, 0), tuple(bpy.app.version)
+    require_blender_capabilities(bpy)
     view = bpy.context.preferences.view
     original_language = view.language
     original_interface = view.use_translate_interface

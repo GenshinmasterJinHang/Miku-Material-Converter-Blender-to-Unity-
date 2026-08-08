@@ -17,12 +17,12 @@ class MikuPackageIdentityTests(unittest.TestCase):
     def test_package_is_mit_and_versioned(self):
         package = json.loads((PACKAGE / "package.json").read_text(encoding="utf8"))
         self.assertEqual(package["name"], "com.miku.shaderconverter")
-        self.assertEqual(package["version"], "2.2.11")
+        self.assertEqual(package["version"], "2.2.12")
         self.assertEqual(package["license"], "MIT")
-        self.assertEqual(package["unity"], "6000.5")
+        self.assertEqual(package["unity"], "6000.0")
         self.assertEqual(
             package["dependencies"]["com.unity.render-pipelines.universal"],
-            "17.5.4",
+            "17.0.0",
         )
 
     def test_public_miku_importer_and_binding_exist(self):
@@ -114,7 +114,7 @@ class MikuPackageIdentityTests(unittest.TestCase):
         from tools.build_miku_unity_package import build
 
         artifact = build()
-        self.assertEqual("com.miku.shaderconverter-2.2.11.tgz", artifact.name)
+        self.assertEqual("com.miku.shaderconverter-2.2.12.tgz", artifact.name)
         first = artifact.read_bytes()
         second = build().read_bytes()
         self.assertEqual(first, second)
@@ -197,6 +197,11 @@ class MikuPackageIdentityTests(unittest.TestCase):
         self.assertEqual(
             hashlib.sha256(runtime.read_bytes()).hexdigest(),
             hashes["runtimeStructuredBackend"],
+        )
+        workflow_registry = PACKAGE / "Editor" / "MikuWorkflowBackends.cs"
+        self.assertEqual(
+            hashlib.sha256(workflow_registry.read_bytes()).hexdigest(),
+            hashes["workflowBackendRegistry"],
         )
         self.assertEqual(
             hashlib.sha256(registry.read_bytes()).hexdigest(),

@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using Newtonsoft.Json.Linq;
+using UnityEditor;
 using UnityEngine;
 
 namespace Miku.ShaderConverter.Editor
@@ -30,6 +32,17 @@ namespace Miku.ShaderConverter.Editor
             "Packages/com.miku.shaderconverter/Templates/MikuDitheredTemplate.shadergraph";
         internal const string DielectricWrapperTemplate =
             "Packages/com.miku.shaderconverter/Templates/MikuDielectricTemplate.shadergraph";
+        static readonly IReadOnlyDictionary<string, string> TemplateHashes =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [StandardWrapperTemplate] = "c7c9b5ed0c068208d251d9b8d058a7175d5c1c2930bc6062f05a8e43463dfee6",
+                [ClearCoatWrapperTemplate] = "22f41abb88fd47efcfb57fce41abab77301a7f1db216bbf9c3d640e8ec8c24d6",
+                [AlphaBlendWrapperTemplate] = "8b959dfeb5d1f684b897c074647078789fc6fcd3113ee178374d9aaf86e5f845",
+                [DitheredWrapperTemplate] = "c51786632f1b712e8e25060357940b5daa127942346d9f093c251df282cb7d2a",
+                [DielectricWrapperTemplate] = "8694e3bb49c2ce279aff157ce722ec15c4e7793b970e64cb8100cd2c409d67df",
+            };
+        static readonly HashSet<string> PreflightedTemplateVersions =
+            new HashSet<string>(StringComparer.Ordinal);
         static readonly IReadOnlyDictionary<string, IMikuWorkflowBackend> Backends =
             new Dictionary<string, IMikuWorkflowBackend>(StringComparer.Ordinal)
             {
@@ -57,6 +70,59 @@ namespace Miku.ShaderConverter.Editor
             new HashSet<string>(
                 new[] { "Body", "Hair", "Face", "Eye", "Effect" },
                 StringComparer.Ordinal);
+
+        internal static void PreflightTemplates(string shaderGraphVersion)
+        {
+            if (PreflightedTemplateVersions.Contains(shaderGraphVersion))
+                return;
+            var version = MikuPackageVersion.Parse(shaderGraphVersion);
+            if (version.Major != 17 ||
+                version.Minor < 0 ||
+                version.Minor > 5 ||
+                version.Prerelease)
+                throw new InvalidDataException(
+                    "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED:" +
+                    shaderGraphVersion + ":supported=17.0-17.5 stable");
+            foreach (var item in TemplateHashes)
+            {
+                var package = UnityEditor.PackageManager.PackageInfo
+                    .FindForAssetPath(item.Key);
+                if (package == null || string.IsNullOrWhiteSpace(package.resolvedPath))
+                    throw new InvalidDataException(
+                        "MIKU_SHADERGRAPH_TEMPLATE_PACKAGE_MISSING:" +
+                        item.Key);
+                const string packagePrefix =
+                    "Packages/com.miku.shaderconverter/";
+                if (!item.Key.StartsWith(
+                        packagePrefix,
+                        StringComparison.Ordinal))
+                    throw new InvalidDataException(
+                        "MIKU_SHADERGRAPH_TEMPLATE_PATH_INVALID:" +
+                        item.Key);
+                var absolute = Path.Combine(
+                    package.resolvedPath,
+                    item.Key.Substring(packagePrefix.Length)
+                        .Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(absolute))
+                    throw new FileNotFoundException(
+                        "MIKU_SHADERGRAPH_TEMPLATE_MISSING:" + item.Key,
+                        absolute);
+                using var sha256 = SHA256.Create();
+                var actual = string.Concat(
+                    sha256.ComputeHash(File.ReadAllBytes(absolute))
+                        .Select(value => value.ToString("x2")));
+                if (!string.Equals(actual, item.Value, StringComparison.Ordinal))
+                    throw new InvalidDataException(
+                        "MIKU_SHADERGRAPH_TEMPLATE_IDENTITY_MISMATCH:" +
+                        item.Key + ":expected=" + item.Value +
+                        ":actual=" + actual);
+                if (AssetDatabase.LoadAssetAtPath<Shader>(item.Key) == null)
+                    throw new InvalidDataException(
+                        "MIKU_SHADERGRAPH_TEMPLATE_IMPORT_FAILED:" +
+                        shaderGraphVersion + ":" + item.Key);
+            }
+            PreflightedTemplateVersions.Add(shaderGraphVersion);
+        }
 
         public static IMikuWorkflowBackend Resolve(JObject materialIr)
         {

@@ -1,9 +1,11 @@
 # Unity 包安装
 
-认证参考组合为 Unity `6000.5.4f1`、URP `17.5.4`、Shader Graph `17.5.4`。
-允许任意 Unity `6000.x`（Unity 6）和 URP/Shader Graph `17.x`；非认证版本会
-显示未经完整验证诊断。通过 Package Manager 安装
-`com.miku.shaderconverter-2.2.11.tgz`，或从
+认证参考组合为 Unity `6000.5.7f1`、URP `17.5.4`、Shader Graph `17.5.4`。
+正式技术线为 Unity 6000.0–6000.5，分别对应 URP/Shader Graph 17.0–17.5；
+URP 与 Shader Graph 的精确版本必须相同。区间内未记录的稳定补丁会显示警告并
+执行完整能力预检。6000.6+、17.6+ 和预发布版本会在写入资产前拒绝。通过
+Package Manager 安装单一
+`com.miku.shaderconverter-2.2.12.tgz`，或从
 `unity/Packages/com.miku.shaderconverter/package.json` 添加本地包。
 
 将完整 `.mikubundle` 目录放入 `Assets/`。Standard PBR 生成 Shader Graph；

@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.2.12 - 2026-08-08
+
+- Restored the Unity package install floors to Unity 6000.0 and URP 17.0.0 so
+  one TGZ can be installed across the bounded Unity 6000.0-6000.5 matrix.
+- Replaced ADR 0014's unsafe major-only policy with exact Unity 6000.N /
+  URP 17.N / Shader Graph 17.N pairing for N=0..5. URP and Shader Graph must
+  have identical package versions; prereleases and future technical lines fail
+  before asset writes.
+- Added explicit Shader Graph 17.0-17.5 adapters and expanded preflight across
+  properties, nodes, ports, connections, Custom Functions, serialization,
+  generated surface outputs, and all five wrapper template identities/imports.
+  Unknown 17.x minors no longer clamp to another adapter.
+- Bounded Blender to 5.0-5.2 with explicit technical-line capability profiles,
+  structured missing-API diagnostics, and parameterized 5.0.1/5.1.2/5.2.0
+  Windows smoke orchestration.
+- Moved the warning-free target to Blender 5.2.0, Unity 6000.5.7f1, and
+  URP/Shader Graph 17.5.4. MaterialIR, Bundle, Bake Result, public shader
+  properties, stable generated IDs, and wrapper ownership remain unchanged.
+- Fixed Source Mesh PBR imports that retained an original Height resource after
+  the final baked channel graph had superseded it. Material binding and
+  validation now share the generated Shader Graph runtime-property contract,
+  while reachable Height still fails if `_MIKU_HeightMap` is missing.
+
 ## 2.2.11 - 2026-08-05
 
 - Relaxed version validation to a major-version policy: any Blender 5.x,

@@ -26,7 +26,11 @@ except ImportError:  # Ordinary Python unit tests do not provide Blender.
 
 from .capabilities import classify_eevee_graph
 from .translations import TRANSLATIONS
-from .versioning import classify_blender_version, require_supported_blender
+from .versioning import (
+    classify_blender_version,
+    encode_targa_png,
+    require_blender_capabilities,
+)
 
 try:
     from ..miku.bundle import (
@@ -2663,19 +2667,17 @@ def _fixed_targa_png_bytes(image: Any, node_id: str) -> bytes:
         raise RuntimeError(f"MIKU_IMAGE_TRANSCODE_UNAVAILABLE:{node_id}")
     try:
         import imbuf
-        from io import BytesIO
     except ImportError as error:
         raise RuntimeError(
             f"MIKU_IMAGE_TRANSCODE_UNAVAILABLE:{node_id}"
         ) from error
-    buffer = None
     try:
-        buffer = imbuf.load_from_buffer(_static_image_bytes(image, node_id))
-        buffer.file_type = "PNG"
-        buffer.compress = 15
-        destination = BytesIO()
-        imbuf.write_to_buffer(buffer, destination)
-        data = destination.getvalue()
+        data = encode_targa_png(
+            bpy,
+            imbuf,
+            _static_image_bytes(image, node_id),
+            bpy.app.version,
+        )
         if not data:
             raise RuntimeError(
                 f"MIKU_IMAGE_TRANSCODE_OUTPUT_MISSING:{node_id}"
@@ -2685,9 +2687,6 @@ def _fixed_targa_png_bytes(image: Any, node_id: str) -> bytes:
         raise RuntimeError(
             f"MIKU_IMAGE_TRANSCODE_FAILED:{node_id}:TARGA:PNG:{error}"
         ) from error
-    finally:
-        if buffer is not None:
-            buffer.free()
 
 
 def _fixed_node_role_candidate(
@@ -5446,7 +5445,7 @@ def _blender_compatibility():
 def _require_supported_blender_runtime():
     if bpy is None:
         return None
-    return require_supported_blender(getattr(bpy.app, "version", ()))
+    return require_blender_capabilities(bpy)
 
 
 def _blender_version_diagnostic() -> str | None:

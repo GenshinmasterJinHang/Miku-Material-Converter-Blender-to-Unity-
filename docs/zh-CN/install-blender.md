@@ -1,14 +1,14 @@
-# Blender 5.x 扩展安装
+# Blender 5.0–5.2 扩展安装
 
-安装 `miku_shader_converter-2.2.11.zip`。支持任意 Blender 5.x；5.2.0 之外的
-版本会显示未经完整验证警告，大版本不符（如 4.x/6.x）不会放行。不要手动复制到
-Blender Scripts 目录。
+安装 `miku_shader_converter-2.2.12.zip`。支持 Blender 5.0–5.2；区间内未记录的
+补丁会显示未经完整验证警告并执行能力预检。Blender 5.3+、4.x 和 6.x 不会放行。
+不要手动复制到 Blender Scripts 目录。
 所有本地验证必须使用：
 
 `C:\SteamLibrary\steamapps\common\Blender\blender.exe`
 
-扩展导出 `standard_pbr`、`genshin_toon`、`wuwa_toon`、`hsr_toon`，新文件使用
-MaterialIR 2.0。旧 `generic_toon` 值会返回
+公开扩展只导出 `standard_pbr`，新文件使用 MaterialIR 2.0。旧版底层脚本接口
+仍可显式读取历史工作流；旧 `generic_toon` 值会返回
 `MIKU_WORKFLOW_RETIRED:generic_toon`，不会自动迁移。
 
 插件界面会跟随 Blender 的界面语言自动使用英文或简体中文。在着色器编辑器的

@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import miku_blender  # noqa: E402
+from miku_blender.versioning import require_blender_capabilities  # noqa: E402
 from miku.planner import ConversionPlanner  # noqa: E402
 from miku.semantic import build_material_ir  # noqa: E402
 
@@ -39,8 +40,7 @@ def load_worker():
 
 
 def main() -> None:
-    if tuple(bpy.app.version) != (5, 2, 0):
-        raise RuntimeError("MIKU_BLENDER_VERSION_MISMATCH")
+    require_blender_capabilities(bpy)
     miku_blender.register()
     material = bpy.data.materials.new("Miku Raw Height Bake")
     material.use_nodes = True

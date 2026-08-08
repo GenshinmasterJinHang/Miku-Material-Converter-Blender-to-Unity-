@@ -14,11 +14,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import miku_blender
+from miku_blender.versioning import require_blender_capabilities
 
-if tuple(bpy.app.version) != (5, 2, 0):
-    raise RuntimeError(
-        f"MIKU_BLENDER_VERSION_MISMATCH:expected=(5, 2, 0):got={bpy.app.version}"
-    )
+require_blender_capabilities(bpy)
 
 
 def main() -> None:

@@ -2,8 +2,8 @@
 
 ## Status
 
-Accepted (2026-08-05). Supersedes the strict closed-range policy introduced
-with the 2.2.9 version-range compatibility work.
+Superseded by ADR 0015 (2026-08-08). This major-only policy applied to Miku
+2.2.11 and is retained as historical context.
 
 ## Context
 

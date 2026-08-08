@@ -61,6 +61,7 @@ namespace Miku.ShaderConverter.Editor
         internal int Patch { get; }
         internal int Channel { get; }
         internal int Revision { get; }
+        internal bool IsStable => Channel >= 3;
 
         internal static MikuUnityVersion Parse(string value)
         {
@@ -154,10 +155,12 @@ namespace Miku.ShaderConverter.Editor
 
     internal static class MikuRuntimeCompatibility
     {
-        const string CertifiedUnity = "6000.5.4f1";
+        const string CertifiedUnity = "6000.5.7f1";
         const string CertifiedPackage = "17.5.4";
         const int UnityMajorVersion = 6000;
         const int PackageMajorVersion = 17;
+        const int MinimumTechnicalMinor = 0;
+        const int MaximumTechnicalMinor = 5;
         static readonly HashSet<string> LoggedWarnings =
             new HashSet<string>(StringComparer.Ordinal);
 
@@ -174,12 +177,15 @@ namespace Miku.ShaderConverter.Editor
             {
                 throw new InvalidDataException(
                     "MIKU_UNITY_VERSION_UNSUPPORTED:" + actual +
-                    ":supported=6000.x");
+                    ":supported=6000.0-6000.5 stable");
             }
-            if (parsed.Major != UnityMajorVersion)
+            if (parsed.Major != UnityMajorVersion ||
+                parsed.Minor < MinimumTechnicalMinor ||
+                parsed.Minor > MaximumTechnicalMinor ||
+                !parsed.IsStable)
                 throw new InvalidDataException(
                     "MIKU_UNITY_VERSION_UNSUPPORTED:" + actual +
-                    ":supported=6000.x");
+                    ":supported=6000.0-6000.5 stable");
             if (!string.Equals(actual, CertifiedUnity, StringComparison.Ordinal))
                 AddWarning(
                     diagnostics,
@@ -201,16 +207,57 @@ namespace Miku.ShaderConverter.Editor
             catch (FormatException)
             {
                 throw new InvalidDataException(
-                    code + ":" + actual + ":supported=17.x");
+                    code + ":" + actual +
+                    ":supported=17.0-17.5 stable");
             }
-            if (parsed.Major != PackageMajorVersion)
+            if (parsed.Major != PackageMajorVersion ||
+                parsed.Minor < MinimumTechnicalMinor ||
+                parsed.Minor > MaximumTechnicalMinor ||
+                parsed.Prerelease)
                 throw new InvalidDataException(
-                    code + ":" + actual + ":supported=17.x");
+                    code + ":" + actual + ":supported=17.0-17.5 stable");
             if (!string.Equals(actual, CertifiedPackage, StringComparison.Ordinal))
                 AddWarning(
                     diagnostics,
                     warningCode + ":actual=" + actual +
                     ":certified=" + CertifiedPackage);
+        }
+
+        internal static void ValidateUnityPackageTuple(
+            string unityVersion,
+            string urpVersion,
+            string shaderGraphVersion,
+            IList<string> diagnostics)
+        {
+            ValidateUnityVersion(unityVersion, diagnostics);
+            ValidatePackageVersion(
+                urpVersion,
+                "MIKU_URP_VERSION_UNSUPPORTED",
+                "MIKU_URP_VERSION_UNVALIDATED",
+                diagnostics);
+            ValidatePackageVersion(
+                shaderGraphVersion,
+                "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED",
+                "MIKU_SHADERGRAPH_VERSION_UNVALIDATED",
+                diagnostics);
+
+            var editor = MikuUnityVersion.Parse(unityVersion);
+            var urp = MikuPackageVersion.Parse(urpVersion);
+            var shaderGraph = MikuPackageVersion.Parse(shaderGraphVersion);
+            if (editor.Minor != urp.Minor ||
+                editor.Minor != shaderGraph.Minor ||
+                !string.Equals(
+                    urpVersion,
+                    shaderGraphVersion,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidDataException(
+                    "MIKU_UNITY_PACKAGE_VERSION_MISMATCH:" +
+                    "unity=" + unityVersion +
+                    ":urp=" + urpVersion +
+                    ":shadergraph=" + shaderGraphVersion +
+                    ":expected=6000.N/17.N/exact-package-match");
+            }
         }
 
         static void AddWarning(IList<string> diagnostics, string diagnostic)
@@ -234,8 +281,9 @@ namespace Miku.ShaderConverter.Editor
         const string LegacyKindV2 = "migr-bundle-2.0";
         const string LegacyKindV21 = "migr-bundle-2.1";
         const string LegacyKindV22 = "migr-bundle-2.2";
-        const string PackageVersion = "2.2.11";
-        const string ExpectedProfileHash = "e9e70a6e2e38205a4ecf7facedba8e55a8f1d8815316470affc7e5ad2c2bce50";
+        const string PackageVersion = "2.2.12";
+        const string ExpectedProfileHash = "c112d0a2add487722a08b732b9be2339ecf54be0b53bcfcdbf462cc8ade7c460";
+        const string Package2211ProfileHash = "e9e70a6e2e38205a4ecf7facedba8e55a8f1d8815316470affc7e5ad2c2bce50";
         const string Package2210ProfileHash = "ec88a8bee99c86fd3885f7e7a1596a22439632a648004a065e45ea1b4f1179d4";
         const string Package228ProfileHash = "7700bb62aae8ddcfaa2e519079c2bd8e79e30c7fa30f8e493d084117aab1228d";
         const string Package226ProfileHash = "2430a52781ef9d2e6172ce274800d5639732a144143d3ee4513a4a336d53b7ca";
@@ -297,6 +345,7 @@ namespace Miku.ShaderConverter.Editor
             new[]
             {
                 ExpectedProfileHash,
+                Package2211ProfileHash,
                 Package2210ProfileHash,
                 Package228ProfileHash,
                 Package226ProfileHash,
@@ -632,6 +681,7 @@ namespace Miku.ShaderConverter.Editor
                             : null);
                 }
                 Material sourceMeshMaterial = null;
+                IReadOnlyCollection<string> runtimePropertyReferences = null;
                 if (createUserMaterialVariant)
                 {
                     ValidateStableGuidOwnership(
@@ -705,6 +755,10 @@ namespace Miku.ShaderConverter.Editor
                                 : MikuShaderGraph17RuntimeBackend.Generate(
                                     ir,
                                     persistentMaterialId);
+                        runtimePropertyReferences = new HashSet<string>(
+                            MikuShaderGraph17RuntimeBackend
+                                .RuntimePropertyReferences(generatedSubGraph),
+                            StringComparer.Ordinal);
                         MikuAtomicAssetWriter.WriteIfChanged(
                             ToAbsoluteProjectPath(subGraphPath),
                             generatedSubGraph);
@@ -924,6 +978,7 @@ namespace Miku.ShaderConverter.Editor
                         materialTextures,
                         workflowBackend.Kind,
                         workflowBackend.UsesEditableGraph,
+                        runtimePropertyReferences,
                         result.diagnostics);
                     if (fixedWorkflow)
                         MikuFixedWorkflowTextureBindings.Bind(
@@ -941,7 +996,8 @@ namespace Miku.ShaderConverter.Editor
                         shader,
                         materialTextures,
                         workflowBackend.Kind,
-                        ir);
+                        ir,
+                        runtimePropertyReferences);
                     var userMaterial = GetOrCreateUserMaterialVariant(
                         materialVariantPath,
                         materialVariantGuid,
@@ -2269,6 +2325,7 @@ namespace Miku.ShaderConverter.Editor
             IDictionary<string, Texture2D> textures,
             string workflowKind,
             bool usesEditableGraph,
+            IReadOnlyCollection<string> runtimePropertyReferences,
             IList<string> diagnostics)
         {
             var standardPbr = usesEditableGraph &&
@@ -2301,7 +2358,10 @@ namespace Miku.ShaderConverter.Editor
                         material.SetTexture(property, item.Value);
                     continue;
                 }
-                if (!RequiresMaterialTextureBinding(ir, item.Key))
+                if (!RequiresMaterialTextureBinding(
+                        ir,
+                        item.Key,
+                        runtimePropertyReferences))
                 {
                     if (IsNonAuthoritativeCompatibilityResource(ir, item.Key))
                     {
@@ -2311,7 +2371,17 @@ namespace Miku.ShaderConverter.Editor
                             item.Key);
                         continue;
                     }
-                    if (IsApproximatedSourceMeshPbrChannel(ir, item.Key))
+                    if (IsSupersededSourceMeshPbrResource(
+                            ir,
+                            item.Key,
+                            runtimePropertyReferences))
+                    {
+                        AddDiagnosticOnce(
+                            diagnostics,
+                            "MIKU_SOURCE_MESH_PBR_RESOURCE_SUPERSEDED:" +
+                            item.Key);
+                    }
+                    else if (IsApproximatedSourceMeshPbrChannel(ir, item.Key))
                     {
                         AddDiagnosticOnce(
                             diagnostics,
@@ -2945,7 +3015,8 @@ namespace Miku.ShaderConverter.Editor
 
         internal static bool RequiresMaterialTextureBinding(
             JObject ir,
-            string bindingKey)
+            string bindingKey,
+            IReadOnlyCollection<string> runtimePropertyReferences = null)
         {
             if (IsNonAuthoritativeCompatibilityResource(ir, bindingKey))
                 return false;
@@ -2955,8 +3026,29 @@ namespace Miku.ShaderConverter.Editor
             {
                 return false;
             }
-            return !MikuSurfaceModelBackends.UsesSourceMeshPbrProjection(ir) ||
-                   SourceMeshPbrTextureSemantics.Contains(bindingKey ?? "");
+            if (!MikuSurfaceModelBackends.UsesSourceMeshPbrProjection(ir))
+                return true;
+            if (runtimePropertyReferences != null)
+            {
+                return runtimePropertyReferences.Contains(
+                    EditableRuntimeTextureProperty(bindingKey),
+                    StringComparer.Ordinal);
+            }
+            return SourceMeshPbrTextureSemantics.Contains(bindingKey ?? "");
+        }
+
+        static string EditableRuntimeTextureProperty(string bindingKey)
+        {
+            if ((bindingKey ?? "").StartsWith(
+                    "_MIKU_Baked_",
+                    StringComparison.Ordinal) ||
+                (bindingKey ?? "").StartsWith(
+                    "_MIKU_Packed_",
+                    StringComparison.Ordinal))
+            {
+                return bindingKey;
+            }
+            return EditableTextureProperty(bindingKey ?? "");
         }
 
         static bool IsNonAuthoritativeCompatibilityResource(
@@ -2997,6 +3089,19 @@ namespace Miku.ShaderConverter.Editor
                        "_MIKU_Packed_",
                        StringComparison.Ordinal) &&
                    !SourceMeshPbrTextureSemantics.Contains(bindingKey);
+        }
+
+        static bool IsSupersededSourceMeshPbrResource(
+            JObject ir,
+            string bindingKey,
+            IReadOnlyCollection<string> runtimePropertyReferences)
+        {
+            return MikuSurfaceModelBackends.UsesSourceMeshPbrProjection(ir) &&
+                   runtimePropertyReferences != null &&
+                   SourceMeshPbrTextureSemantics.Contains(bindingKey ?? "") &&
+                   !runtimePropertyReferences.Contains(
+                       EditableRuntimeTextureProperty(bindingKey),
+                       StringComparer.Ordinal);
         }
 
         static bool TryBindStaticTexture(
@@ -3054,7 +3159,8 @@ namespace Miku.ShaderConverter.Editor
             Shader shader,
             IDictionary<string, Texture2D> textures,
             string workflowKind,
-            JObject ir)
+            JObject ir,
+            IReadOnlyCollection<string> runtimePropertyReferences)
         {
             var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
             if (material == null || material.shader == null || material.shader != shader)
@@ -3082,7 +3188,10 @@ namespace Miku.ShaderConverter.Editor
                         "MIKU_MATERIAL_TEXTURE_BINDING_MISSING:" +
                         item.Value.name);
                 }
-                if (!RequiresMaterialTextureBinding(ir, item.Key))
+                if (!RequiresMaterialTextureBinding(
+                        ir,
+                        item.Key,
+                        runtimePropertyReferences))
                     continue;
                 if (!material.GetTexturePropertyNames().Any(
                         name => material.GetTexture(name) == item.Value))
@@ -4351,27 +4460,20 @@ namespace Miku.ShaderConverter.Editor
 
         static void ValidateRenderPipeline(IList<string> diagnostics)
         {
-            MikuRuntimeCompatibility.ValidateUnityVersion(
-                Application.unityVersion,
-                diagnostics);
             var urpVersion = FindPackageVersion(
                 "Packages/com.unity.render-pipelines.universal",
                 "MIKU_URP_VERSION_UNSUPPORTED");
-            MikuRuntimeCompatibility.ValidatePackageVersion(
-                urpVersion,
-                "MIKU_URP_VERSION_UNSUPPORTED",
-                "MIKU_URP_VERSION_UNVALIDATED",
-                diagnostics);
             var shaderGraphVersion = FindPackageVersion(
                 "Packages/com.unity.shadergraph",
                 "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED");
-            MikuRuntimeCompatibility.ValidatePackageVersion(
+            MikuRuntimeCompatibility.ValidateUnityPackageTuple(
+                Application.unityVersion,
+                urpVersion,
                 shaderGraphVersion,
-                "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED",
-                "MIKU_SHADERGRAPH_VERSION_UNVALIDATED",
                 diagnostics);
             MikuShaderGraph17RuntimeBackend.ConfigureForVersion(
                 shaderGraphVersion);
+            MikuWorkflowBackends.PreflightTemplates(shaderGraphVersion);
             var pipeline = GraphicsSettings.currentRenderPipeline ??
                            QualitySettings.renderPipeline ??
                            GraphicsSettings.defaultRenderPipeline;
@@ -4433,7 +4535,7 @@ namespace Miku.ShaderConverter.Editor
             var actual = package?.version ?? "missing";
             if (string.Equals(actual, "missing", StringComparison.Ordinal))
                 throw new InvalidDataException(
-                    code + ":missing:supported=17.x");
+                    code + ":missing:supported=17.0-17.5 stable");
             return actual;
         }
 

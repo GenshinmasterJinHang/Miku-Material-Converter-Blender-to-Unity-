@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import miku_blender  # noqa: E402
+from miku_blender.versioning import require_blender_capabilities  # noqa: E402
 
 
 def _load_canonical_bake_worker():
@@ -53,7 +54,7 @@ def _create_material_scene():
 
 
 def assert_bake_quality() -> None:
-    assert tuple(bpy.app.version) == (5, 2, 0), tuple(bpy.app.version)
+    require_blender_capabilities(bpy)
     material = _create_material_scene()
     worker = _load_canonical_bake_worker()
     output_root = Path(tempfile.mkdtemp(prefix="miku-bake-quality-"))

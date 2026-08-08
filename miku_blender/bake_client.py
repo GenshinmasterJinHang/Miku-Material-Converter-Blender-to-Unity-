@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from .versioning import (
     blender_build_hash,
     blender_version_string,
-    require_supported_blender,
+    require_blender_capabilities,
 )
 
 try:
@@ -43,7 +43,7 @@ def execute_bake(
         import bpy
     except ImportError as exc:  # pragma: no cover - Blender-only boundary
         raise RuntimeError("MIKU_GPL_BAKE_WORKER_REQUIRES_BLENDER") from exc
-    require_supported_blender(getattr(bpy.app, "version", ()))
+    require_blender_capabilities(bpy)
     jobs = list(plan.get("bakeJobs") or [])
     request = make_bake_request(
         persistent_source_id,

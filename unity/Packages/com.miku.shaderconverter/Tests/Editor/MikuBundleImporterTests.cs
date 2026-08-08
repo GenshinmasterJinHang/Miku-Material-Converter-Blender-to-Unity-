@@ -29,6 +29,8 @@ namespace Miku.ShaderConverter.Editor.Tests
         const string Package202ProfileHash = "4e30b6e4da6d9d1c7a3e2805355ac5354fa751b14e2458c162099cbc2d10b397";
         const string Package200And201ProfileHash = "549551f13909f1c56da9effb58a635eb3e813e9be4c17325211c53abc1ea997c";
         const string Package120ProfileHash = "72d2487e908af41734e6c6212232f5080b47cab7e09af536c552160b71de628d";
+        const string Package2212ProfileHash = "c112d0a2add487722a08b732b9be2339ecf54be0b53bcfcdbf462cc8ade7c460";
+        const string Package2211ProfileHash = "e9e70a6e2e38205a4ecf7facedba8e55a8f1d8815316470affc7e5ad2c2bce50";
         const string PreviousProfileHash = "b5198d826633a92f5c712cd7337d7f722edd238d3ae1ab42778dd6b780e491b3";
         const string Package110ProfileHash = "e5af9bcb4e02c54e556d8aed0653182d767b841cf3705b46be653dbf8c914b4a";
         const string Exporter110ProfileHash = "a42e43993e27ec18f409b1d574ab2ecc088c93de0a03b2c0ca66f3fbd25b1890";
@@ -43,9 +45,9 @@ namespace Miku.ShaderConverter.Editor.Tests
         [TestCase("6000.2.9f1", true)]
         [TestCase("6000.4.5f1", true)]
         [TestCase("6000.5.0f1", true)]
-        [TestCase("6000.5.4f1", false)]
-        [TestCase("6000.6.0f1", true)]
-        public void UnityMajorVersionAcceptedWithWarningsWhenNotCertified(
+        [TestCase("6000.5.7f1", false)]
+        [TestCase("6000.5.8f1", true)]
+        public void UnitySupportedTechnicalVersionWarnsUnlessCertified(
             string version,
             bool expectsWarning)
         {
@@ -59,6 +61,10 @@ namespace Miku.ShaderConverter.Editor.Tests
         }
 
         [TestCase("5999.9.9f1")]
+        [TestCase("6000.5.7a1")]
+        [TestCase("6000.5.7b1")]
+        [TestCase("6000.5.7rc1")]
+        [TestCase("6000.6.0f1")]
         [TestCase("6001.0.0f1")]
         [TestCase("7000.0.0f1")]
         [TestCase("not-a-version")]
@@ -78,9 +84,8 @@ namespace Miku.ShaderConverter.Editor.Tests
         [TestCase("17.2.4", true)]
         [TestCase("17.4.0", true)]
         [TestCase("17.5.4", false)]
-        [TestCase("17.6.0", true)]
-        [TestCase("17.0.0-preview.1", true)]
-        public void PackageMajorVersionAcceptedWithWarningsWhenNotCertified(
+        [TestCase("17.5.5", true)]
+        public void PackageSupportedTechnicalVersionWarnsUnlessCertified(
             string version,
             bool expectsWarning)
         {
@@ -95,6 +100,8 @@ namespace Miku.ShaderConverter.Editor.Tests
 
         [TestCase("16.9.9")]
         [TestCase("16.5.0")]
+        [TestCase("17.0.0-preview.1")]
+        [TestCase("17.6.0")]
         [TestCase("18.0.0")]
         [TestCase("19.0.0")]
         [TestCase("missing")]
@@ -130,9 +137,6 @@ namespace Miku.ShaderConverter.Editor.Tests
         [TestCase("17.3.1", "ShaderGraph17_3Adapter")]
         [TestCase("17.4.0", "ShaderGraph17_4Adapter")]
         [TestCase("17.5.0", "ShaderGraph17_5Adapter")]
-        [TestCase("17.6.0", "ShaderGraph17_6Adapter")]
-        [TestCase("17.7.0", "ShaderGraph17_6Adapter")]
-        [TestCase("17.99.0", "ShaderGraph17_6Adapter")]
         public void ShaderGraphMinorSelectsExplicitAdapter(
             string version,
             string expected)
@@ -140,6 +144,78 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(
                 MikuShaderGraph17RuntimeBackend.AdapterNameForVersion(version),
                 Is.EqualTo(expected));
+        }
+
+        [TestCase("17.5.0-preview.1")]
+        [TestCase("17.6.0")]
+        [TestCase("17.7.0")]
+        [TestCase("17.99.0")]
+        public void ShaderGraphUnknownOrPrereleaseMinorIsRejected(
+            string version)
+        {
+            var error = Assert.Throws<InvalidDataException>(() =>
+                MikuShaderGraph17RuntimeBackend.AdapterNameForVersion(version));
+            Assert.That(
+                error?.Message,
+                Does.StartWith("MIKU_SHADERGRAPH_VERSION_UNSUPPORTED:"));
+        }
+
+        [TestCase("6000.0.81f1", "17.0.0")]
+        [TestCase("6000.1.17f1", "17.1.0")]
+        [TestCase("6000.2.15f1", "17.2.0")]
+        [TestCase("6000.3.21f1", "17.3.0")]
+        [TestCase("6000.4.12f1", "17.4.0")]
+        [TestCase("6000.5.7f1", "17.5.4")]
+        public void UnityPackageTupleRequiresMatchingTechnicalVersions(
+            string editorVersion,
+            string packageVersion)
+        {
+            Assert.DoesNotThrow(() =>
+                MikuRuntimeCompatibility.ValidateUnityPackageTuple(
+                    editorVersion,
+                    packageVersion,
+                    packageVersion,
+                    new List<string>()));
+        }
+
+        [TestCase("6000.4.12f1", "17.5.4", "17.5.4")]
+        [TestCase("6000.5.7f1", "17.4.0", "17.4.0")]
+        [TestCase("6000.4.12f1", "17.4.0", "17.4.1")]
+        public void UnityPackageTupleRejectsEditorOrPackageMismatch(
+            string editorVersion,
+            string urpVersion,
+            string shaderGraphVersion)
+        {
+            var error = Assert.Throws<InvalidDataException>(() =>
+                MikuRuntimeCompatibility.ValidateUnityPackageTuple(
+                    editorVersion,
+                    urpVersion,
+                    shaderGraphVersion,
+                    new List<string>()));
+            Assert.That(
+                error?.Message,
+                Does.StartWith("MIKU_UNITY_PACKAGE_VERSION_MISMATCH:"));
+        }
+
+        [Test]
+        public void InstalledShaderGraphAdapterPassesFullCapabilityPreflight()
+        {
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(
+                "Packages/com.unity.shadergraph");
+            Assert.That(package, Is.Not.Null);
+            Assert.DoesNotThrow(() =>
+                MikuShaderGraph17RuntimeBackend.ConfigureForVersion(
+                    package.version));
+        }
+
+        [Test]
+        public void InstalledWorkflowTemplatesPassImportAndIdentityPreflight()
+        {
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(
+                "Packages/com.unity.shadergraph");
+            Assert.That(package, Is.Not.Null);
+            Assert.DoesNotThrow(() =>
+                MikuWorkflowBackends.PreflightTemplates(package.version));
         }
 
         [Test]
@@ -806,6 +882,76 @@ namespace Miku.ShaderConverter.Editor.Tests
                 MikuSurfaceModelBackends.Resolve(ir).GenerateSubGraph(
                     ir,
                     "source-mesh-projection"));
+        }
+
+        [Test]
+        public void SourceMeshPbrBindingUsesGeneratedRuntimePropertyContract()
+        {
+            var ir = SurfaceModelIr2("OpaquePBR");
+            ir["surfaceModelPlan"]["approximations"] = new JArray
+            {
+                new JObject
+                {
+                    ["kind"] = "SourceMeshFidelityPbrProjection",
+                    ["algorithmVersion"] = "miku-source-mesh-pbr-1",
+                },
+            };
+            var generated = MikuSurfaceModelBackends.Resolve(ir)
+                .GenerateSubGraph(ir, "source-mesh-runtime-contract");
+            var runtimeProperties =
+                MikuShaderGraph17RuntimeBackend.RuntimePropertyReferences(
+                    generated);
+
+            Assert.That(runtimeProperties, Does.Not.Contain("_MIKU_HeightMap"));
+            Assert.That(
+                MikuBundleImporter.RequiresMaterialTextureBinding(
+                    ir,
+                    "Height",
+                    runtimeProperties),
+                Is.False);
+        }
+
+        [Test]
+        public void ReachableSourceMeshHeightStillFailsWhenShaderPropertyMissing()
+        {
+            var ir = SurfaceModelIr2("OpaquePBR");
+            ir["surfaceModelPlan"]["approximations"] = new JArray
+            {
+                new JObject
+                {
+                    ["kind"] = "SourceMeshFidelityPbrProjection",
+                    ["algorithmVersion"] = "miku-source-mesh-pbr-1",
+                },
+            };
+            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            Assert.That(shader, Is.Not.Null);
+            var material = new Material(shader);
+            var texture = new Texture2D(2, 2);
+            try
+            {
+                var raised = Assert.Throws<TargetInvocationException>(() =>
+                    InvokeVoid(
+                        "BindMaterial",
+                        material,
+                        ir,
+                        new Dictionary<string, Texture2D>
+                        {
+                            ["Height"] = texture,
+                        },
+                        "standard_pbr",
+                        true,
+                        new[] { "_MIKU_HeightMap" },
+                        new List<string>()));
+                Assert.That(
+                    raised?.InnerException?.Message,
+                    Is.EqualTo(
+                        "MIKU_SHADER_PROPERTY_MISSING:_MIKU_HeightMap"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+                UnityEngine.Object.DestroyImmediate(material);
+            }
         }
 
         [Test]
@@ -1495,6 +1641,62 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(
                 File.ReadAllText(ToAbsolute(subGraphPath), Encoding.UTF8),
                 Does.Contain("SampleTexture2DNode"));
+        }
+
+        [Test]
+        public void SourceMeshPbrImportSkipsSupersededHeightResource()
+        {
+            var ir = SurfaceModelIr2("OpaquePBR");
+            ir["surfaceModelPlan"]["approximations"] = new JArray
+            {
+                new JObject
+                {
+                    ["kind"] = "SourceMeshFidelityPbrProjection",
+                    ["algorithmVersion"] = "miku-source-mesh-pbr-1",
+                },
+            };
+
+            var result = MikuBundleImporter.Import(
+                new MikuImportRequest
+                {
+                    bundlePath = WriteValidBundle(
+                        includeResource: true,
+                        sourceName: "SourceMeshSupersededHeight",
+                        targetProfileHash: Package2212ProfileHash,
+                        explicitMaterialIrV2: ir,
+                        resourceSemantic: "Height",
+                        resourceUsage: "Scalar",
+                        resourceMediaType: "image/jpeg",
+                        resourceExtension: ".jpg",
+                        resourceColorSpace: "Linear",
+                        resourceChannel: "R",
+                        bundleKind: "miku-bundle-1.0",
+                        toolVersion: "2.2.12"),
+                    outputRoot = OutputRoot,
+                    fullRegeneration = true,
+                    createMaterialVariant = true,
+                });
+
+            Assert.That(
+                result.success,
+                Is.True,
+                string.Join(" | ", result.diagnostics));
+            Assert.That(
+                result.diagnostics,
+                Does.Contain(
+                    "MIKU_SOURCE_MESH_PBR_RESOURCE_SUPERSEDED:Height"));
+            var texturePath = result.assetPaths.Single(path =>
+                path.EndsWith(
+                    "/Textures/Height.jpg",
+                    StringComparison.Ordinal));
+            Assert.That(
+                AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath),
+                Is.Not.Null);
+            var materialPath = result.assetPaths.Single(path =>
+                path.EndsWith(".generated.mat", StringComparison.Ordinal));
+            var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+            Assert.That(material, Is.Not.Null);
+            Assert.That(material.HasProperty("_MIKU_HeightMap"), Is.False);
         }
 
         [Test]
@@ -2219,6 +2421,28 @@ namespace Miku.ShaderConverter.Editor.Tests
                 imported.diagnostics,
                 Does.Contain(
                     "MIKU_TARGET_PROFILE_LEGACY_PRESENTATION_COMPATIBILITY"));
+        }
+
+        [TestCase(Package2212ProfileHash)]
+        [TestCase(Package2211ProfileHash)]
+        public void CurrentAnd2211ProfilesRemainAccepted(string profileHash)
+        {
+            var suffix = profileHash.Substring(0, 8);
+            var imported = MikuBundleImporter.Import(new MikuImportRequest
+            {
+                bundlePath = WriteValidBundle(
+                    sourceId: "current-profile-source-" + suffix,
+                    materialId: "current-profile-material-" + suffix,
+                    sourceName: "CurrentProfile" + suffix,
+                    targetProfileHash: profileHash),
+                outputRoot = OutputRoot,
+                fullRegeneration = true,
+                createMaterialVariant = false,
+            });
+            Assert.That(
+                imported.success,
+                Is.True,
+                string.Join(" | ", imported.diagnostics));
         }
 
         [Test]
@@ -4225,6 +4449,17 @@ namespace Miku.ShaderConverter.Editor.Tests
         public void MaterialHeightChannelUsesVertexLodZeroAndIrDefaults()
         {
             var ir = SurfaceIr("StandardLit", "Opaque");
+            ir["surfaceModelPlan"] = new JObject
+            {
+                ["approximations"] = new JArray
+                {
+                    new JObject
+                    {
+                        ["kind"] = "SourceMeshFidelityPbrProjection",
+                        ["algorithmVersion"] = "miku-source-mesh-pbr-1",
+                    },
+                },
+            };
             ir["resources"] = new JArray
             {
                 new JObject
@@ -4312,6 +4547,15 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(generated, Does.Contain("_MIKU_HeightScale"));
             Assert.That(generated, Does.Contain("0.25"));
             Assert.That(generated, Does.Contain("-0.125"));
+            var runtimeProperties =
+                MikuShaderGraph17RuntimeBackend.RuntimePropertyReferences(
+                    generated);
+            Assert.That(
+                MikuBundleImporter.RequiresMaterialTextureBinding(
+                    ir,
+                    "Height",
+                    runtimeProperties),
+                Is.True);
         }
 
         [Test]

@@ -97,11 +97,11 @@ class MikuBakeProtocolTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "MIKU_BAKE_RESOLUTION_INVALID"):
                     normalize_bake_resolution(resolution)
 
-    def test_bake_runtime_version_is_major_validated(self):
+    def test_bake_runtime_version_is_bounded_to_released_blender_5_minors(self):
         for version in ("5.0.0", "5.0.19", "5.1.7", "5.2.0", "5.2.1"):
             with self.subTest(version=version):
                 self.assertEqual(version, normalize_bake_blender_version(version))
-        for version in ("4.5.8", "6.0.0", "5.2"):
+        for version in ("4.5.8", "5.3.0", "6.0.0", "5.2"):
             with self.subTest(version=version):
                 with self.assertRaisesRegex(
                     ValueError,
@@ -232,7 +232,8 @@ class MikuBakeProtocolTests(unittest.TestCase):
             )
             with patch.dict(sys.modules, {"bpy": fake_bpy}), patch(
                     "miku_blender.bake_client._invoke_gpl_worker",
-                    side_effect=write_result):
+                    side_effect=write_result), patch(
+                    "miku_blender.bake_client.require_blender_capabilities"):
                 request, result = execute_bake(
                     {"material": {"name": "Material"}},
                     {"bakeJobs": [{"jobId": "job-1", "route": "MeshBake"}]},
@@ -268,7 +269,7 @@ class MikuBakeProtocolTests(unittest.TestCase):
             first = build().read_bytes()
             second = build().read_bytes()
         self.assertEqual(first, second)
-        package = ROOT / "dist" / "miku_shader_converter-2.2.11.zip"
+        package = ROOT / "dist" / "miku_shader_converter-2.2.12.zip"
         with zipfile.ZipFile(package) as archive:
             names = set(archive.namelist())
             manifest = archive.read("blender_manifest.toml").decode("utf-8")

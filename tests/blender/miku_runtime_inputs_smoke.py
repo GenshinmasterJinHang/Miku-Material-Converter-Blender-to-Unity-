@@ -1,4 +1,4 @@
-"""Blender 5.2 programmatic fixture for Miku 1.1 runtime expressions."""
+"""Blender 5.0-5.2 fixture for Miku runtime expressions."""
 
 from __future__ import annotations
 
@@ -15,14 +15,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import miku_blender
+from miku_blender.versioning import require_blender_capabilities
 from miku.planner import ConversionPlanner
 from miku.semantic import build_material_ir
 
 
-if tuple(bpy.app.version) != (5, 2, 0):
-    raise RuntimeError(
-        f"MIKU_BLENDER_VERSION_MISMATCH:expected=(5, 2, 0):got={bpy.app.version}"
-    )
+require_blender_capabilities(bpy)
 
 
 def new_material(name: str):
