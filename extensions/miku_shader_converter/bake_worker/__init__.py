@@ -35,7 +35,7 @@ try:
     from ..miku_blender.versioning import (
         blender_build_hash,
         blender_version_string,
-        require_supported_blender,
+        require_blender_capabilities,
     )
 except ImportError:
     # Repository test layout. The release ZIP always uses the private
@@ -50,7 +50,7 @@ except ImportError:
     from miku_blender.versioning import (
         blender_build_hash,
         blender_version_string,
-        require_supported_blender,
+        require_blender_capabilities,
     )
 
 _REGISTERED_CLASSES: list[type] = []
@@ -465,7 +465,7 @@ def execute_request(request_path: str, output_root: str) -> str:
 
 
 def _assert_request_blender(bpy: Any, request: dict[str, Any]):
-    compatibility = require_supported_blender(getattr(bpy.app, "version", ()))
+    compatibility = require_blender_capabilities(bpy)
     actual_version = blender_version_string(bpy)
     actual_commit = blender_build_hash(bpy)
     validate_bake_runtime_binding(request, actual_version, actual_commit)

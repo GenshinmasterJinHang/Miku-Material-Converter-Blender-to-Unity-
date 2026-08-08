@@ -1,10 +1,10 @@
 schema_version = "1.0.0"
 id = "miku_shader_converter"
-version = "2.2.11"
+version = "2.2.12"
 name = "Miku Shader Converter"
 tagline = "Export semantic materials and run version-bound bake requests"
 maintainer = "Miku Project Authors"
 type = "add-on"
 blender_version_min = "5.0.0"
-blender_version_max = "5.99.0"
+blender_version_max = "5.3.0"
 license = ["SPDX:GPL-3.0-or-later"]

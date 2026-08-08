@@ -1,4 +1,4 @@
-# Miku 2.2.11
+# Miku 2.2.12
 
 [![CI](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml/badge.svg)](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/code%20license-MIT-blue.svg)](LICENSE)
@@ -49,13 +49,13 @@ texture rule, the example gallery, and the Unity Editor tool guide.
 
 ## Install the release
 
-1. Download `miku_shader_converter-2.2.11.zip` and
-   `com.miku.shaderconverter-2.2.11.tgz` from the
-   [v2.2.11 Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.11).
-2. In Blender 5.x, open **Edit > Preferences > Extensions**, choose
+1. Download `miku_shader_converter-2.2.12.zip` and
+   `com.miku.shaderconverter-2.2.12.tgz` from the 2.2.12 release assets when
+   they are published.
+2. In Blender 5.0-5.2, open **Edit > Preferences > Extensions**, choose
    **Install from Disk**, select the ZIP, and enable Miku.
-3. In Unity 6 (6000.x), open **Window > Package Manager > + > Add package from
-   tarball**, then select the TGZ.
+3. In Unity 6000.0-6000.5, open **Window > Package Manager > + > Add package
+   from tarball**, then select the single TGZ.
 4. Export a material bundle from Blender and copy its complete directory under
    the Unity project's `Assets/` folder.
 
@@ -81,12 +81,15 @@ installation, ownership, diagnostics, and upgrade guidance are in the
 
 ## Compatibility and licensing
 
-The certified reference tuple is Blender 5.2.0, Unity 6000.5.4f1, URP 17.5.4,
-and Shader Graph 17.5.4. Any Blender 5.x, Unity 6 (6000.x), and URP/Shader
-Graph 17.x is accepted; versions that are not exactly certified emit a
-validation warning. Miku is currently **Experimental**. MaterialIR 2.0,
+The certified reference tuple is Blender 5.2.0, Unity 6000.5.7f1, URP 17.5.4,
+and Shader Graph 17.5.4. Blender 5.0-5.2 and matching Unity/URP/Shader Graph
+technical lines 6000.0/17.0 through 6000.5/17.5 are admitted. Stable patches
+outside the recorded validation set run a full capability preflight and emit
+an unvalidated warning. Blender 5.3+, Unity 6000.6+, package 17.6+, and
+prerelease builds are rejected before generated assets are written. Miku is
+currently **Experimental**. MaterialIR 2.0,
 Bundle 1.0, conversion-plan, bake-result, and public Shader property/reference
-names are unchanged in 2.2.11. See the
+names are unchanged in 2.2.12. See the
 [compatibility matrix](docs/compatibility.md).
 
 The repository's MIT-licensed code remains under the [MIT License](LICENSE);

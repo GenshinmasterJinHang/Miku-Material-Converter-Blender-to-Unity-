@@ -216,7 +216,7 @@ namespace Miku.ShaderConverter.Tests.Editor
         {
             Assert.That(
                 MikuToonMaterialRecipe.CurrentShaderFamilyVersion,
-                Is.EqualTo("2.2.11"));
+                Is.EqualTo("2.2.12"));
             AssertMaterialProperties(
                 "MIKU/Endfield/Overlay",
                 "_AlphaSource",

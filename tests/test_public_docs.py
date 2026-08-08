@@ -65,7 +65,7 @@ class PublicDocumentationTests(unittest.TestCase):
     def test_bilingual_entry_points_version_and_active_branding(self) -> None:
         readme, chinese, manual, chinese_manual = map(_read, PUBLIC_DOCUMENTS)
         for document in (readme, chinese, manual, chinese_manual):
-            self.assertIn("2.2.11", document)
+            self.assertIn("2.2.12", document)
             self.assertNotIn("0.11.0", document)
             self.assertNotIn("B2U", document)
         self.assertIn("docs/zh-CN/README.md", readme)

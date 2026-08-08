@@ -13,8 +13,9 @@ python -m pip install -r requirements-dev.txt
 python tools/ci/run_checks.py --profile pr
 ```
 
-Unity tests target 6000.5.4f1 with URP/Shader Graph 17.5.4. Blender tests must
-record the exact Blender binary/version used. See
+Unity tests cover the 6000.0-6000.5 / 17.0-17.5 Windows matrix and retain the
+6000.4.5f1 / 17.4.0 regression channel. Blender tests cover 5.0.1, 5.1.2, and
+5.2.0 and must record the exact binary/version used. See
 [`docs/development/local-development.md`](docs/development/local-development.md).
 
 ## Change process

@@ -1,38 +1,50 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$UnityPath
+    [string]$UnityPath,
+    [Parameter(Mandatory = $true)]
+    [string]$UnityVersion,
+    [Parameter(Mandatory = $true)]
+    [string]$UrpVersion,
+    [Parameter(Mandatory = $true)]
+    [string]$ShaderGraphVersion,
+    [Parameter(Mandatory = $true)]
+    [string]$PackagePath,
+    [string]$EvidencePath = ""
 )
 
 $ErrorActionPreference = "Stop"
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $unityExecutable = (Resolve-Path -LiteralPath $UnityPath).Path
+$packageArchive = (Resolve-Path -LiteralPath $PackagePath).Path
+if ([System.IO.Path]::GetExtension($packageArchive) -ne ".tgz") {
+    throw "MIKU_UNITY_PACKAGE_ARCHIVE_REQUIRED:$packageArchive"
+}
 $scratchRoot = Join-Path $env:SystemDrive "miku-unity-editmode-tmp"
 $runRoot = Join-Path $scratchRoot ("unity-editmode-" + [guid]::NewGuid().ToString("N"))
 $projectRoot = Join-Path $runRoot "unityproject"
-$packageRoot = Join-Path $runRoot "unity\Packages\com.miku.shaderconverter"
+$scratchPackage = Join-Path $projectRoot "com.miku.shaderconverter.tgz"
 $resultFullPath = Join-Path $runRoot "TestResults-EditMode.xml"
 $logPath = Join-Path $runRoot "TestResults-EditMode.log"
 $preserveRunArtifacts = $false
 
 try {
     New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
-    New-Item -ItemType Directory -Path (Split-Path $packageRoot) -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $projectRoot "Assets") -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $projectRoot "Packages") -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $projectRoot "ProjectSettings") -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $repoRoot "unity\Packages\com.miku.shaderconverter") -Destination (Split-Path $packageRoot) -Recurse
+    Copy-Item -LiteralPath $packageArchive -Destination $scratchPackage
     $manifestPath = Join-Path $projectRoot "Packages\manifest.json"
-    $manifestText = @'
+    $manifestText = @"
 {
   "dependencies": {
-    "com.miku.shaderconverter": "file:../../unity/Packages/com.miku.shaderconverter",
-    "com.unity.render-pipelines.universal": "17.4.0",
+    "com.miku.shaderconverter": "file:../com.miku.shaderconverter.tgz",
+    "com.unity.render-pipelines.universal": "$UrpVersion",
+    "com.unity.shadergraph": "$ShaderGraphVersion",
     "com.unity.test-framework": "1.6.0",
     "com.unity.modules.jsonserialize": "1.0.0"
   },
   "testables": ["com.miku.shaderconverter"]
 }
-'@
+"@
     [System.IO.File]::WriteAllText(
         $manifestPath,
         $manifestText,
@@ -41,7 +53,7 @@ try {
     $projectVersionPath = Join-Path $projectRoot "ProjectSettings\ProjectVersion.txt"
     [System.IO.File]::WriteAllText(
         $projectVersionPath,
-        "m_EditorVersion: 6000.4.5f1`r`nm_EditorVersionWithRevision: 6000.4.5f1 (cc83ebd631f8)`r`n",
+        "m_EditorVersion: $UnityVersion`r`n",
         [System.Text.UTF8Encoding]::new($false)
     )
     $lockPath = Join-Path $projectRoot "Packages\packages-lock.json"
@@ -86,6 +98,21 @@ try {
         $preserveRunArtifacts = $true
         throw "Unity EditMode tests reported $failedCount failed tests. See $logPath"
     }
+    if (-not (Test-Path -LiteralPath $lockPath)) {
+        $preserveRunArtifacts = $true
+        throw "Unity did not produce Packages/packages-lock.json. See $logPath"
+    }
+    $packageLock = Get-Content -LiteralPath $lockPath -Raw | ConvertFrom-Json
+    $resolvedUrp = $packageLock.dependencies.'com.unity.render-pipelines.universal'.version
+    $resolvedShaderGraph = $packageLock.dependencies.'com.unity.shadergraph'.version
+    if ($resolvedUrp -ne $UrpVersion -or $resolvedShaderGraph -ne $ShaderGraphVersion) {
+        $preserveRunArtifacts = $true
+        throw (
+            "MIKU_UNITY_PACKAGE_VERSION_MISMATCH:" +
+            "unity=${UnityVersion}:urp=${resolvedUrp}:shadergraph=${resolvedShaderGraph}:" +
+            "expectedUrp=${UrpVersion}:expectedShaderGraph=${ShaderGraphVersion}"
+        )
+    }
     $logText = Get-Content -LiteralPath $logPath -Raw
     if ($logText -match "Aborting batchmode due to failure|Couldn't set project path") {
         $preserveRunArtifacts = $true
@@ -93,7 +120,38 @@ try {
     }
     $passedCount = [int]$testResults.'test-run'.passed
     $skippedCount = [int]$testResults.'test-run'.skipped
-    Write-Output "Unity EditMode tests passed: total=$testCount passed=$passedCount failed=$failedCount skipped=$skippedCount"
+    if ($EvidencePath) {
+        $evidenceFullPath = [System.IO.Path]::GetFullPath($EvidencePath)
+        $evidenceDirectory = Split-Path -Parent $evidenceFullPath
+        New-Item -ItemType Directory -Path $evidenceDirectory -Force | Out-Null
+        $evidence = [ordered]@{
+            unity = $UnityVersion
+            urp = $resolvedUrp
+            shaderGraph = $resolvedShaderGraph
+            packageSha256 = (Get-FileHash -LiteralPath $packageArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+            total = $testCount
+            passed = $passedCount
+            failed = $failedCount
+            skipped = $skippedCount
+            completedUtc = [DateTime]::UtcNow.ToString("o")
+        }
+        [System.IO.File]::WriteAllText(
+            $evidenceFullPath,
+            (($evidence | ConvertTo-Json) + "`n"),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        Copy-Item -LiteralPath $resultFullPath -Destination (
+            [System.IO.Path]::ChangeExtension($evidenceFullPath, ".xml")
+        )
+        Copy-Item -LiteralPath $logPath -Destination (
+            [System.IO.Path]::ChangeExtension($evidenceFullPath, ".log")
+        )
+    }
+    Write-Output (
+        "Unity EditMode tests passed: unity=$UnityVersion urp=$resolvedUrp " +
+        "shaderGraph=$resolvedShaderGraph total=$testCount passed=$passedCount " +
+        "failed=$failedCount skipped=$skippedCount"
+    )
 }
 finally {
     if (-not $preserveRunArtifacts -and (Test-Path -LiteralPath $runRoot)) {

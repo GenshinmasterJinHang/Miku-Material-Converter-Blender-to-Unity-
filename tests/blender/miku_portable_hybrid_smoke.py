@@ -1,4 +1,4 @@
-"""Validate mesh-independent Portable Hybrid baking in Blender 5.2."""
+"""Validate mesh-independent Portable Hybrid baking in Blender 5.0-5.2."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
 import miku_blender  # noqa: E402
+from miku_blender.versioning import require_blender_capabilities  # noqa: E402
 
 
 def _load_worker():
@@ -149,8 +150,7 @@ def _assert_worker_rejects_mesh_drift(worker, material, root: pathlib.Path):
 
 
 def main() -> None:
-    if tuple(bpy.app.version) != (5, 2, 0):
-        raise RuntimeError("MIKU_BLENDER_VERSION_MISMATCH")
+    require_blender_capabilities(bpy)
     worker = _load_worker()
     worker.register()
     material = _material()

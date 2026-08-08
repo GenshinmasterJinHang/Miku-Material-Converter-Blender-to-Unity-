@@ -25,14 +25,20 @@ namespace Miku.ShaderConverter.Editor
         internal const string TimeOffsetReference = "_MIKU_EffectTimeOffset";
         internal const string TimeOverrideReference = "_MIKU_EffectTimeOverride";
         internal const string UseTimeOverrideReference = "_MIKU_EffectUseTimeOverride";
-        static int configuredAdapterMinor = 6;
+        static int configuredAdapterMinor = 5;
+        static readonly HashSet<string> PreflightedVersions =
+            new HashSet<string>(StringComparer.Ordinal);
 
         internal static void ConfigureForVersion(string version)
         {
             var adapter = CreateAdapter(version);
             try
             {
-                adapter.Preflight();
+                if (!PreflightedVersions.Contains(version))
+                {
+                    adapter.Preflight();
+                    PreflightedVersions.Add(version);
+                }
             }
             catch (Exception error)
             {
@@ -58,10 +64,13 @@ namespace Miku.ShaderConverter.Editor
         static ShaderGraph17Adapter CreateAdapter(string version)
         {
             var parsed = MikuPackageVersion.Parse(version);
-            if (parsed.Major != 17)
+            if (parsed.Major != 17 ||
+                parsed.Minor < 0 ||
+                parsed.Minor > 5 ||
+                parsed.Prerelease)
                 throw new InvalidDataException(
                     "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED:" + version +
-                    ":supported=17.x");
+                    ":supported=17.0-17.5 stable");
             return parsed.Minor switch
             {
                 0 => new ShaderGraph17_0Adapter(),
@@ -70,8 +79,9 @@ namespace Miku.ShaderConverter.Editor
                 3 => new ShaderGraph17_3Adapter(),
                 4 => new ShaderGraph17_4Adapter(),
                 5 => new ShaderGraph17_5Adapter(),
-                6 => new ShaderGraph17_6Adapter(),
-                _ => new ShaderGraph17_6Adapter(),
+                _ => throw new InvalidDataException(
+                    "MIKU_SHADERGRAPH_VERSION_UNSUPPORTED:" + version +
+                    ":supported=17.0-17.5 stable"),
             };
         }
 
@@ -3870,11 +3880,201 @@ namespace Miku.ShaderConverter.Editor
 
             public void Preflight()
             {
-                var graph = CreateSubGraph("miku-version-preflight");
+                const string materialId = "miku-version-preflight";
+                var graph = CreateSubGraph(materialId);
                 if (GetOutput(graph) == null)
                     throw new MissingMemberException(
                         "UnityEditor.ShaderGraph.GraphData",
                         "outputNode");
+                var output = GetOutput(graph);
+
+                var scalarProperty = CreateFloatProperty(
+                    graph,
+                    materialId,
+                    "preflight-scalar",
+                    "Preflight Scalar",
+                    "_MIKU_PreflightScalar",
+                    0.5f);
+                var scalarNode = CreatePropertyNode(
+                    graph,
+                    materialId,
+                    "preflight-scalar",
+                    scalarProperty,
+                    new Vector2(-600f, -200f));
+                var scalarOutput = AddOutput(
+                    output,
+                    "Preflight Scalar",
+                    "Vector1");
+                Connect(graph, scalarNode, 0, output, scalarOutput);
+
+                var textureProperty = CreateTextureProperty(
+                    graph,
+                    materialId,
+                    "preflight-texture",
+                    "Preflight Texture",
+                    "_MIKU_PreflightTexture",
+                    false);
+                CreatePropertyNode(
+                    graph,
+                    materialId,
+                    "preflight-texture",
+                    textureProperty,
+                    new Vector2(-600f, 0f));
+
+                var vector3 = CreateNode(
+                    graph,
+                    materialId,
+                    "preflight-vector3",
+                    "Vector3Node",
+                    new Vector2(-600f, 200f));
+                SetSlotValue(vector3, 1, new JValue(0.1f));
+                SetSlotValue(vector3, 2, new JValue(0.2f));
+                SetSlotValue(vector3, 3, new JValue(0.3f));
+                var vector3Output = AddOutput(
+                    output,
+                    "Preflight Vector3",
+                    "Vector3");
+                Connect(graph, vector3, 0, output, vector3Output);
+
+                var vector4 = CreateNode(
+                    graph,
+                    materialId,
+                    "preflight-vector4",
+                    "Vector4Node",
+                    new Vector2(-600f, 400f));
+                var vector4Output = AddOutput(
+                    output,
+                    "Preflight Vector4",
+                    "Vector4");
+                Connect(graph, vector4, 0, output, vector4Output);
+
+                var vectorSurfaceOutputs = new[]
+                {
+                    "Base Color",
+                    "Normal",
+                    "Emission",
+                    "Vertex Position",
+                };
+                foreach (var name in vectorSurfaceOutputs)
+                {
+                    var slot = AddOutput(output, name, "Vector3");
+                    Connect(graph, vector3, 0, output, slot);
+                }
+                var scalarSurfaceOutputs = new[]
+                {
+                    "Metallic",
+                    "Smoothness",
+                    "Alpha",
+                    "Alpha Clip Threshold",
+                    "Clear Coat",
+                    "Clear Coat Smoothness",
+                    "Transmission",
+                    "Index Of Refraction",
+                };
+                foreach (var name in scalarSurfaceOutputs)
+                {
+                    var slot = AddOutput(output, name, "Vector1");
+                    Connect(graph, scalarNode, 0, output, slot);
+                }
+
+                var nodeTypes = new[]
+                {
+                    "AbsoluteNode",
+                    "AddNode",
+                    "AndNode",
+                    "BranchNode",
+                    "ClampNode",
+                    "CombineNode",
+                    "ComparisonNode",
+                    "CosineNode",
+                    "DitherNode",
+                    "DivideNode",
+                    "DotProductNode",
+                    "FractionNode",
+                    "IsFrontFaceNode",
+                    "LengthNode",
+                    "LerpNode",
+                    "LogNode",
+                    "MaximumNode",
+                    "MinimumNode",
+                    "ModuloNode",
+                    "MultiplyNode",
+                    "NormalBlendNode",
+                    "NormalFromHeightNode",
+                    "NormalizeNode",
+                    "NormalStrengthNode",
+                    "NormalVectorNode",
+                    "OneMinusNode",
+                    "PositionNode",
+                    "PowerNode",
+                    "ReflectionProbeNode",
+                    "SampleTexture2DLODNode",
+                    "SampleTexture2DNode",
+                    "SaturateNode",
+                    "SceneColorNode",
+                    "ScreenPositionNode",
+                    "SineNode",
+                    "SplitNode",
+                    "SquareRootNode",
+                    "StepNode",
+                    "SubtractNode",
+                    "TimeNode",
+                    "UVNode",
+                    "Vector1Node",
+                    "Vector2Node",
+                    "ViewDirectionNode",
+                };
+                for (var index = 0; index < nodeTypes.Length; index++)
+                {
+                    CreateNode(
+                        graph,
+                        materialId,
+                        "preflight-node:" + nodeTypes[index],
+                        nodeTypes[index],
+                        new Vector2(
+                            -200f + (index % 8) * 240f,
+                            -800f + (index / 8) * 160f));
+                }
+
+                var colorspace = CreateNode(
+                    graph,
+                    materialId,
+                    "preflight-colorspace",
+                    "ColorspaceConversionNode",
+                    new Vector2(1800f, -800f));
+                SetColorspaceConversion(colorspace, "RGB", "HSV");
+                var transform = CreateNode(
+                    graph,
+                    materialId,
+                    "preflight-transform",
+                    "TransformNode",
+                    new Vector2(1800f, -600f));
+                SetCoordinateSpaceConversion(
+                    transform,
+                    "Object",
+                    "World");
+
+                CreateMappingPointNode(
+                    graph,
+                    materialId,
+                    "preflight-mapping",
+                    new Vector2(1800f, -400f));
+                CreateLightPathNode(
+                    graph,
+                    materialId,
+                    "preflight-light-path",
+                    new Vector2(1800f, -200f));
+                CreateNoiseFactor3DNode(
+                    graph,
+                    materialId,
+                    "preflight-noise",
+                    new Vector2(1800f, 0f));
+                CreateMultiLobeNode(
+                    graph,
+                    materialId,
+                    "preflight-lobe",
+                    new Vector2(1800f, 200f));
+
                 var serialized = Serialize(graph);
                 if (string.IsNullOrWhiteSpace(serialized))
                     throw new InvalidDataException(
@@ -4604,11 +4804,6 @@ namespace Miku.ShaderConverter.Editor
         sealed class ShaderGraph17_5Adapter : ShaderGraph17Adapter
         {
             public override int Minor => 5;
-        }
-
-        sealed class ShaderGraph17_6Adapter : ShaderGraph17Adapter
-        {
-            public override int Minor => 6;
         }
 
         static string StableId(string materialId, string role)

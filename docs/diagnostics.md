@@ -6,6 +6,14 @@ and may be expanded as code is normalized.
 
 | Code | Severity | Meaning / action |
 | --- | --- | --- |
+| `MIKU_BLENDER_VERSION_UNSUPPORTED` | Error | Blender is outside `>=5.0.0,<5.3.0`; install Blender 5.0, 5.1, or 5.2. |
+| `MIKU_BLENDER_VERSION_UNVALIDATED` | Warning | The Blender patch is inside the supported interval but is not a recorded validation runtime; capability preflight still runs. |
+| `MIKU_BLENDER_CAPABILITY_MISSING` | Error | A nominally supported Blender runtime lacks a required `bpy` type, property API, or translation API; conversion stops instead of substituting defaults. |
+| `MIKU_UNITY_VERSION_UNSUPPORTED` / `MIKU_URP_VERSION_UNSUPPORTED` / `MIKU_SHADERGRAPH_VERSION_UNSUPPORTED` | Error | Unity must be stable 6000.0-6000.5 and both packages must be stable 17.0-17.5. Prereleases and future technical lines are rejected before asset writes. |
+| `MIKU_UNITY_PACKAGE_VERSION_MISMATCH` | Error | Unity 6000.N is not paired with URP/Shader Graph 17.N, or the exact URP and Shader Graph package versions differ. Correct the project package lock before importing. |
+| `MIKU_SHADERGRAPH_ADAPTER_INCOMPATIBLE` | Error | The selected 17.0-17.5 adapter failed its full property/node/port/connection/Custom Function/output/serialization capability preflight. |
+| `MIKU_SHADERGRAPH_TEMPLATE_IDENTITY_MISMATCH` / `MIKU_SHADERGRAPH_TEMPLATE_IMPORT_FAILED` | Error | A package wrapper differs from its fixed identity or cannot be imported by the selected Shader Graph version; reinstall a verified TGZ. |
+| `MIKU_SOURCE_MESH_PBR_RESOURCE_SUPERSEDED:<semantic>` | Info | A source texture remains in the Bundle for provenance, but the final Source Mesh PBR channel graph no longer references its Shader property. Miku imports the texture without binding it; reachable properties still fail with `MIKU_SHADER_PROPERTY_MISSING`. |
 | `MIKU_SKIN_MASK_TEXTURE_MISSING:<shader>:<property>` | Warning | A Body material was opted into the recommended skin profile without its required authored LightMap/IDMap. Miku leaves Body SSS disabled; bind the named texture and reapply the profile. |
 | `unsupported_version` | Error | Miku/schema version is unknown; use a supported exporter/importer pairing |
 | `unsupported_node` | Error or Warning | Required node stops the material; safely pruned node may warn |

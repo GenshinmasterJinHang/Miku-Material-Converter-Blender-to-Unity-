@@ -1,4 +1,4 @@
-"""Blender 5.2 smoke coverage for tolerant fixed-workflow texture export."""
+"""Blender 5.0-5.2 smoke coverage for fixed-workflow texture export."""
 
 from __future__ import annotations
 
@@ -15,13 +15,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import miku_blender
+from miku_blender.versioning import require_blender_capabilities
 
-
-if tuple(bpy.app.version) != (5, 2, 0):
-    raise RuntimeError(
-        "MIKU_BLENDER_VERSION_MISMATCH:"
-        f"expected=(5, 2, 0):got={bpy.app.version}"
-    )
+require_blender_capabilities(bpy)
 
 miku_blender.register()
 

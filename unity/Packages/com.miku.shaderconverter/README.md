@@ -1,9 +1,10 @@
-# Miku Shader Converter 2.2.11
+# Miku Shader Converter 2.2.12
 
 This package imports deterministic `.mikubundle` artifacts produced by the
-Miku Blender 2.2.11 exporter for any Unity 6000.x (Unity 6) and URP / Shader
-Graph 17.x. Versions other than the certified 6000.5.4f1 / 17.5.4 tuple
-continue with explicit unvalidated diagnostics.
+Miku Blender 2.2.12 exporter for Unity 6000.0-6000.5 and the matching URP /
+Shader Graph 17.0-17.5 technical lines. URP and Shader Graph must have the same
+exact version. Unrecorded stable patches run capability preflight with explicit
+unvalidated diagnostics; prereleases and future technical lines are rejected.
 
 Blender's visible exporter creates `standard_pbr` only. The package also keeps
 explicit legacy `workflow.kind` readers for `genshin_toon`, `wuwa_toon`,
@@ -20,7 +21,7 @@ assets, shader properties, diagnostics, JSON, and static menu paths remain
 stable in English.
 
 The importer continues to accept historical MiGR and time-dependent Bundles,
-including the runtime Time Shader Graph contract. The 2.2.11 Blender exporter
+including the runtime Time Shader Graph contract. The 2.2.12 Blender exporter
 does not create new Bundles with effective time dependencies.
 
 MaterialIR 2.0 is the current export format. MaterialIR 1.0 remains a frozen
@@ -28,7 +29,7 @@ compatibility input for the four supported workflows. A Generic Toon bundle or
 legacy Generic Toon shader is rejected before any asset transaction begins with
 `MIKU_WORKFLOW_RETIRED:generic_toon`.
 
-Installing 2.2.11 does not remove materials, recipes, or wrapper assets under a
+Installing 2.2.12 does not remove materials, recipes, or wrapper assets under a
 user project's `Assets/`. Existing Generic Toon materials can therefore show
 Missing Shader and require the manual migration described in
 `docs/migrations/retire-generic-toon-2.0.md`.

@@ -1,4 +1,4 @@
-# Miku 2.2.11 使用手册
+# Miku 2.2.12 使用手册
 
 Miku 是面向生产使用的 Blender 5.x 到 Unity 6 材质转换器。公开 Blender 前端将
 Standard PBR 语义导出为目标无关的 MaterialIR 2.0；Unity 导入可编辑 Shader Graph
@@ -13,23 +13,24 @@ Standard PBR 语义导出为目标无关的 MaterialIR 2.0；Unity 导入可编�
 
 | 组件 | 版本 | 状态 |
 | --- | --- | --- |
-| Blender | 5.2.0 | 认证参考 |
-| Unity Editor | 6000.5.4f1 | 认证参考 |
+| Blender | 5.0–5.2（认证：5.2.0） | Windows 支持 |
+| Unity Editor | 6000.0–6000.5（认证：6000.5.7f1） | 技术线适配器 |
 | Universal Render Pipeline | 17.5.4 | 必需 |
 | Shader Graph | 17.5.4 | 版本专用后端 |
-| Miku | 2.2.11 | Experimental（实验性） |
+| Miku | 2.2.12 | Experimental（实验性） |
 
-任意 Blender 5.x、Unity 6000.x（Unity 6）以及 URP / Shader Graph 17.x 均可
-安装和运行。除表中精确组合外，其余同大版本版本会显示“未经完整验证”诊断；
-大版本不符时会在写入资产前失败。
+Blender 仅支持 5.0–5.2。Unity 6000.N 必须配套 URP 17.N 与 Shader Graph
+17.N（N 为 0–5），并且两个包的精确版本必须相同。区间内未记录的稳定补丁会
+先执行能力预检并显示“未经完整验证”诊断。Alpha、Beta、RC、Blender 5.3+、
+Unity 6000.6+ 和包 17.6+ 会在写入资产前失败。本次正式支持平台仅为 Windows。
 
 ## 2. 从 Release 安装
 
-从 [v2.2.11 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.11)
+从 [v2.2.12 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.12)
 下载：
 
-- `miku_shader_converter-2.2.11.zip`：Blender 5.x 扩展。
-- `com.miku.shaderconverter-2.2.11.tgz`：Unity 包。
+- `miku_shader_converter-2.2.12.zip`：Blender 5.0–5.2 扩展。
+- `com.miku.shaderconverter-2.2.12.tgz`：Unity 6000.0–6000.5 单一包。
 - `SHA256SUMS.txt`：发布完整性清单。
 
 在 Blender 中选择 **编辑 > 偏好设置 > 扩展 > 从磁盘安装**并选中 ZIP。在 Unity 中
@@ -83,7 +84,7 @@ Blender 界面不再提供 Game Toon 工作流选择、贴图角色猜测或旧�
 - 包装 `*.shadergraph` 在首次创建后由用户拥有。
 - 只有明确选择完全重新生成时，才允许替换用户修改过的包装图。
 
-2.2.11 不改变 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开
+2.2.12 不改变 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开
 Shader property/reference 名称。Unity 仍可读取历史 Bundle，包括旧的运行时契约；
 当前 Blender 前端不会创建新的时间依赖 Bundle。
 
@@ -112,7 +113,7 @@ Unity 包在四个运行时预设家族中直接附带 Miku 原创 Shader/HLSL �
 
 > **非商业图片声明：**以上四张角色渲染图仅供非商业学习和文档参考，禁止用于任何
 > 商业用途。相关角色、设计及知识产权归各自权利人所有；Miku 不授予任何游戏资产
-> 使用权。这些图片不属于 Blender/Unity 安装包，也不在现有 v2.2.11 Release 资产中。
+> 使用权。这些图片不属于 Blender/Unity 安装包，也不在 2.2.12 发布候选资产中。
 
 ## 6. Unity 游戏卡通材质创建器
 
@@ -226,7 +227,7 @@ Run Selected MiGR Assets**，检查日志中的材质、动画曲线和生成元
 元数据名称迁移。
 
 迁移不会遍历场景对象，也不会修改 Renderer 材质绑定。遇到已退役 Generic Toon 材质
-时会明确拒绝，不会静默替换 Shader。正常 2.2.11 创作无需使用这些命令。
+时会明确拒绝，不会静默替换 Shader。正常 2.2.12 创作无需使用这些命令。
 
 ## 8. 编辑器语言
 

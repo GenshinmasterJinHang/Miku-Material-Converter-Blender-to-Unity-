@@ -2,9 +2,10 @@
 
 ## Current implementation
 
-The Unity package accepts any Unity 6 (6000.x) with a certified reference of
-6000.5.4f1 and depends on URP 17.5.4 (Shader Graph 17.5.4 resolves
-transitively). Standard PBR
+The Unity package accepts the bounded Unity 6000.0-6000.5 technical lines with
+a certified reference of 6000.5.7f1 / URP 17.5.4 / Shader Graph 17.5.4. Its
+manifest uses the install floors Unity 6000.0 and URP 17.0.0; each project
+directly locks the exact matching 17.N URP and Shader Graph packages. Standard PBR
 remains an editable `.shadergraph` wrapper plus a Miku-owned
 `.generated.shadersubgraph`. Dedicated game presets keep their static
 ShaderLab/HLSL paths.
@@ -15,8 +16,9 @@ Generic Toon is retired; old inputs fail before a backend or asset transaction
 is selected.
 
 MaterialIR documents with runtime expressions select
-`MikuShaderGraph17RuntimeBackend`, whose Shader Graph 17.4 reflection adapter is
-isolated in the Miku Editor assembly. It creates native, editable nodes only:
+`MikuShaderGraph17RuntimeBackend`, whose explicit Shader Graph 17.0 through
+17.5 reflection adapters are isolated in the Miku Editor assembly. Unknown
+minors are rejected instead of clamped. It creates native, editable nodes only:
 
 - View Direction uses the World-space View Direction node.
 - Camera Data expands Position(View), Split, negate/Combine/Normalize, Abs, and
@@ -84,11 +86,12 @@ template-fixture versions. Selection either returns a compatible adapter or a
 structured `Unsupported` diagnostic. It must not select a nearby version by
 guessing.
 
-`ShaderGraph17_4UrpBackend` is based on minimal assets created by Unity
-6000.4.5f1 with Shader Graph 17.4.0. Normalized fixtures record provenance and
-reviewable semantic expectations. Internal class names, object IDs, slot IDs,
-targets, and serialization fields are isolated in the adapter/serializer; core
-semantic lowering knows none of them.
+`ShaderGraph17_0Adapter` through `ShaderGraph17_5Adapter` isolate all internal
+class, slot, target, and serialization access. Before any asset transaction,
+the selected adapter creates and serializes a capability graph covering the
+properties, nodes, ports, connections, Custom Functions, and surface outputs
+used by Miku. It also verifies the fixed hashes and actual Unity import of all
+five wrapper templates. Core semantic lowering knows none of these internals.
 
 The implemented assembly is a versioned wrapper template plus a generated subgraph.
 The backend validates the imported asset and template compatibility in EditMode.

@@ -2,11 +2,6 @@ name: Blender headless
 
 on:
   workflow_dispatch:
-    inputs:
-      blender_path:
-        description: Absolute path to the exact Blender executable on the self-hosted runner
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -17,8 +12,18 @@ concurrency:
 
 jobs:
   blender:
-    runs-on: [self-hosted, blender]
-    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: 5.0.1
+            path: 'C:\miku-blender-matrix\blender-5.0.1-windows-x64\blender.exe'
+          - version: 5.1.2
+            path: 'C:\miku-blender-matrix\blender-5.1.2-windows-x64\blender.exe'
+          - version: 5.2.0
+            path: 'C:\SteamLibrary\steamapps\common\Blender\blender.exe'
+    runs-on: [self-hosted, Windows, X64, blender5-matrix]
+    timeout-minutes: 60
     steps:
       - name: Check out source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -26,5 +31,27 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.11"
-      - name: Run Blender smoke suite
-        run: python tools/ci/run_blender_headless.py --blender "${{ inputs.blender_path }}"
+      - name: Install development checks
+        run: python -m pip install --requirement requirements-dev.txt
+      - name: Build deterministic release ZIP
+        run: python tools/build_miku_blender_extensions.py
+      - name: Run public Blender smoke suite
+        run: >-
+          python tools/ci/run_blender_headless.py
+          --blender "${{ matrix.path }}"
+          --expected-version "${{ matrix.version }}"
+          --evidence "artifacts\blender-${{ matrix.version }}-headless.json"
+      - name: Install final ZIP and run release smoke
+        run: >-
+          python tools/ci/run_blender_release_smoke.py
+          --blender "${{ matrix.path }}"
+          --expected-version "${{ matrix.version }}"
+          --extension-zip "dist\miku_shader_converter-2.2.12.zip"
+          --evidence "artifacts\blender-${{ matrix.version }}.json"
+      - name: Upload exact-version evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: blender-${{ matrix.version }}-evidence
+          path: artifacts/blender-${{ matrix.version }}.*
+          if-no-files-found: error
+          retention-days: 14

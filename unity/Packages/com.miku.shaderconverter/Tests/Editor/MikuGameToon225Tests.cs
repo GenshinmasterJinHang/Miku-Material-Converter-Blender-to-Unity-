@@ -34,7 +34,7 @@ namespace Miku.ShaderConverter.Editor.Tests
         {
             Assert.That(
                 MikuToonMaterialRecipe.CurrentShaderFamilyVersion,
-                Is.EqualTo("2.2.11"));
+                Is.EqualTo("2.2.12"));
         }
 
         [Test]

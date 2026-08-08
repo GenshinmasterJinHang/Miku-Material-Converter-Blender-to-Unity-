@@ -2,8 +2,13 @@
 
 | Blender | Unity Editor | URP | Shader Graph | Miku | OS | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| 5.2.0 | 6000.5.4f1 | 17.5.4 | 17.5.4 | 2.2.11 | Windows D3D11/D3D12 | Experimental; certified reference |
-| Any 5.x | Any 6000.x (Unity 6) | Any 17.x | Any 17.x | 2.2.11 | Any | Allowed; `MIKU_..._UNVALIDATED` unless exactly certified |
+| 5.0.1 | 6000.0.81f1 | 17.0.4 | 17.0.4 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
+| 5.1.2 | 6000.1.17f1 | 17.1.0 | 17.1.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
+| 5.2.0 | 6000.2.15f1 | 17.2.0 | 17.2.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
+| 5.2.0 | 6000.3.21f1 | 17.3.0 | 17.3.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
+| 5.2.0 | 6000.4.12f1 | 17.4.0 | 17.4.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
+| 5.2.0 | 6000.5.7f1 | 17.5.4 | 17.5.4 | 2.2.12 | Windows | Certified profile; official-document adapter, exact Unity lane not executed |
+| 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.12 | Windows D3D11 | Supported; final TGZ, 215 EditMode tests, 213 passed, 0 failed, 2 skipped |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.8 | Windows D3D11/D3D12 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.7 | Windows D3D11/D3D12 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.6 | Windows D3D11 | Experimental |
@@ -15,8 +20,45 @@
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.1.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.0.0 | Windows D3D11 | Experimental |
-| Wrong major (Blender ≠ 5, Unity ≠ 6000, URP/SG ≠ 17) | Any | Any | Any | 2.2.11 | Any | Unsupported (hard fail before asset writes) |
+| Blender <5.0 or >=5.3; Unity outside 6000.0-6000.5; URP/SG outside 17.0-17.5; prerelease | Any | Any | Any | 2.2.12 | Any | Unsupported (hard fail before asset writes) |
+| Mismatched Unity/URP/Shader Graph technical lines or unequal URP/SG package versions | Any | Any | Any | 2.2.12 | Any | Unsupported via `MIKU_UNITY_PACKAGE_VERSION_MISMATCH` before asset writes |
 | Any other tuple | Any | Any | Any | 2.2.8 and earlier | Any | Unsupported |
+
+## Miku 2.2.12 technical-line adapters
+
+| Unity Editor | URP / Shader Graph | Adapter |
+| --- | --- | --- |
+| 6000.0.x | 17.0.x | `ShaderGraph17_0Adapter` |
+| 6000.1.x | 17.1.x | `ShaderGraph17_1Adapter` |
+| 6000.2.x | 17.2.x | `ShaderGraph17_2Adapter` |
+| 6000.3.x | 17.3.x | `ShaderGraph17_3Adapter` |
+| 6000.4.x | 17.4.x | `ShaderGraph17_4Adapter` |
+| 6000.5.x | 17.5.x | `ShaderGraph17_5Adapter` |
+
+| Blender runtime | Adapter | Windows validation |
+| --- | --- | --- |
+| 5.0.1 | `Blender50Adapter` | Supported; final ZIP installed, 8 public headless smoke scripts passed |
+| 5.1.2 | `Blender51Adapter` | Supported; final ZIP installed, 8 public headless smoke scripts passed |
+| 5.2.0 | `Blender52Adapter` | Supported; final ZIP installed, 8 public headless smoke scripts passed |
+
+The UPM manifest declares only the install floors `unity: 6000.0` and URP
+`17.0.0`, because UPM package dependencies do not support version ranges.
+Each project must directly lock its matching URP and Shader Graph pair.
+
+The Unity adapter mapping follows Unity's official Shader Graph documentation
+version selector (`17.0 -> 6000.0` through `17.5 -> 6000.5`). Unity's package
+manifest documentation defines `unity` as a minimum Editor version and states
+that dependency values are exact SemVer values rather than range syntax:
+
+- [Unity 6000.0 package manifest](https://docs.unity3d.com/cn/6000.0/Manual/upm-manifestPkg.html)
+- [Shader Graph 17.0 documentation](https://docs.unity3d.com/Packages/com.unity.shadergraph@17.0/manual/index.html)
+- [Shader Graph 17.5 documentation](https://docs.unity3d.com/Packages/com.unity.shadergraph@17.5/manual/index.html)
+- [Blender extension manifest rules](https://docs.blender.org/manual/en/latest/advanced/extensions/getting_started.html)
+
+Per the requested documentation-based acceptance boundary, exact Unity editor
+installs are not required for the six new technical-line adapters. Those rows
+remain Experimental until an external matrix executes them. The existing local
+6000.4.5f1 regression is the only Unity row marked Supported.
 
 ## Public workflow matrix
 
@@ -95,20 +137,22 @@ must not be paired with the 2.2.8 exporter. Bake result 1.0 and all Unity-facing
 schemas remain unchanged.
 
 Blender extension 2.2.9 writes `miku-bake-request-1.2`. It records the actual
-Blender numeric version and build hash and accepts only 5.0.0 through 5.2.0.
+Blender numeric version and build hash and accepts `>=5.0.0,<5.3.0`.
 The bundled worker retains frozen request 1.0/1.1 support on the certified
-5.2.0 build. Lower in-range versions emit `MIKU_BLENDER_VERSION_UNVALIDATED`;
-they are allowed but are not represented as validated in this matrix.
+5.2.0 build. In-range versions other than certified 5.2.0 emit
+`MIKU_BLENDER_VERSION_UNVALIDATED`; 5.0.1 and 5.1.2 are nevertheless recorded
+as Supported Windows compatibility lanes because their final-ZIP evidence was
+executed successfully.
 
-Miku 2.2.11 relaxes version validation to a major-version policy. Any Blender
-5.x, any Unity 6000.x (Unity 6), and any URP/Shader Graph 17.x is accepted;
-wrong-major versions fail before any asset write, and in-major versions that
-are not exactly certified emit `MIKU_..._UNVALIDATED` warnings. The certified
-(warning-free) reference is Blender 5.2.0, Unity 6000.5.4f1, and URP/Shader
-Graph 17.5.4. Only Blender 5.2.0 and the previously validated
-6000.4.5f1/17.4.0 editor tuple are locally validated; 6000.5.4f1/17.5.4 is the
-declared target and remains to be validated on an actual Unity 6.5.4 install.
-Versions accepted under a warning are not represented as validated here.
+Miku 2.2.12 supersedes the unsafe 2.2.11 major-only policy. Blender is bounded
+to `>=5.0.0,<5.3.0`. Unity 6000.N requires URP 17.N and Shader Graph 17.N for
+N=0..5, and the two package versions must be identical. Stable in-range patches
+that are not in the matrix emit `MIKU_..._VERSION_UNVALIDATED` and run complete
+Blender or Shader Graph capability preflight. Alpha, Beta, RC, Blender 5.3+,
+Unity 6000.6+, and package 17.6+ are rejected before generated assets are
+written. The warning-free target is Blender 5.2.0, Unity 6000.5.7f1, and
+URP/Shader Graph 17.5.4. A row is marked Supported only after its actual Windows
+execution record exists; macOS and Linux remain Unknown.
 
 Miku 2.2.8 Blender exports reject effective `Input.Time.*` dependencies before
 creating output or bake-request files. Disconnected time nodes are allowed.

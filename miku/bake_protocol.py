@@ -11,6 +11,8 @@ from .contracts import DocumentValidationError, make_document, validate_document
 BLENDER_VERSION = "5.2.0 LTS"
 BLENDER_COMMIT = "fbe6228777e7d9afefcd61a413844e790ae75db7"
 CERTIFIED_RUNTIME_VERSION = "5.2.0"
+MIN_RUNTIME_VERSION = (5, 0, 0)
+MAX_RUNTIME_VERSION_EXCLUSIVE = (5, 3, 0)
 SUPPORTED_BAKE_RESOLUTIONS = (512, 1024, 2048, 4096)
 DEFAULT_BAKE_RESOLUTION = 1024
 BAKE_REQUEST_KINDS = frozenset(
@@ -47,10 +49,11 @@ def normalize_bake_blender_version(value: Any) -> str:
             "$.settings.blenderVersion",
         )
     version = tuple(int(part) for part in match.groups())
-    if version[0] != 5:
+    if not MIN_RUNTIME_VERSION <= version < MAX_RUNTIME_VERSION_EXCLUSIVE:
         raise DocumentValidationError(
             "MIKU_BAKE_BLENDER_VERSION_UNSUPPORTED",
-            f"Supported Blender major version is 5, got {text}",
+            "Supported Blender range is >=5.0.0 and <5.3.0, "
+            f"got {text}",
             "$.settings.blenderVersion",
         )
     return text
