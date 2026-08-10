@@ -63,6 +63,8 @@ FIXED_TEXTURE_ROLES = (
     "HairRefineMap",
     "HairShiftMap",
     "HairLineMap",
+    "SpecularRefineF0",
+    "SpecularRefineColor",
 )
 
 WORKFLOW_TEXTURE_ROLES = {
@@ -76,6 +78,7 @@ WORKFLOW_TEXTURE_ROLES = {
             "FaceSDF",
             "HairRampMap",
             "HairSpecMap",
+            "NormalMap",
         }
     ),
     "wuwa_toon": frozenset(
@@ -139,6 +142,8 @@ WORKFLOW_TEXTURE_ROLES = {
             "HairRefineMap",
             "HairShiftMap",
             "HairLineMap",
+            "SpecularRefineF0",
+            "SpecularRefineColor",
         }
     ),
 }
@@ -191,6 +196,7 @@ LINEAR_TEXTURE_ROLES = frozenset(
         "HairRefineMap",
         "HairShiftMap",
         "HairLineMap",
+        "SpecularRefineF0",
     }
 )
 

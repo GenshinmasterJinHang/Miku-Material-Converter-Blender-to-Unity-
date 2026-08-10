@@ -1,4 +1,4 @@
-# Miku 2.2.12
+# Miku 2.3.0
 
 [![CI](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml/badge.svg)](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/code%20license-MIT-blue.svg)](LICENSE)
@@ -25,6 +25,9 @@ English is the canonical public documentation language. Read the
 - A Unity material creator at `Miku > Game Toon > Materials > Create Material`
   with explicit texture fields, required-field validation, no asset overwrite,
   and no automatic Renderer, FBX, or Prefab binding.
+- Opt-in Endfield tutorial lighting, tangent-space skinned outlines, and a
+  project-owned pre-post-process game-LUT installer. See the
+  [Endfield 2.3.0 guide](docs/features/endfield-tutorial-rendering.md).
 - English/Simplified Chinese Miku Editor UI selected per user at
   `Miku > Settings`.
 
@@ -39,7 +42,7 @@ only field-name templates.
 | Genshin | Body, Hair, Face, Eye | Light-map/ramp Toon lighting, Face SDF, hair, eye, outline, and screen-rim support |
 | Honkai: Star Rail (HSR) | Body, Hair, Face, Eye | Light-map/ramp shading, Face SDF, hair highlights, eyes, and outline support |
 | Wuthering Waves (Wuwa) | Body, Hair, Face, Eye, Effect | ID/Stockings dual binding, face basis controls, authored eye maps, highlights, and emission |
-| Arknights: Endfield | Body, Skin, Hair, Face, Eye, Mouth, Overlay, Effect, HairShadow | Parameter/ramp/LUT maps, Face SDF, hair refine/shift/line maps, overlays, effects, and hair shadow |
+| Arknights: Endfield | Body, Skin, Hair, Face, Eye, Mouth, Overlay, Effect, HairShadow | Continuous day/top lighting, three-band ramps, DFG, Face SDF, skin/eye/hair paths, lit overlays, shadows, outlines, and project LUT setup |
 
 Together the creator exposes 22 valid material parts. The presets are
 **Experimental** compatibility implementations and do not promise pixel-exact
@@ -49,8 +52,8 @@ texture rule, the example gallery, and the Unity Editor tool guide.
 
 ## Install the release
 
-1. Download `miku_shader_converter-2.2.12.zip` and
-   `com.miku.shaderconverter-2.2.12.tgz` from the 2.2.12 release assets when
+1. Download `miku_shader_converter-2.3.0.zip` and
+   `com.miku.shaderconverter-2.3.0.tgz` from the 2.3.0 release assets when
    they are published.
 2. In Blender 5.0-5.2, open **Edit > Preferences > Extensions**, choose
    **Install from Disk**, select the ZIP, and enable Miku.
@@ -89,7 +92,7 @@ an unvalidated warning. Blender 5.3+, Unity 6000.6+, package 17.6+, and
 prerelease builds are rejected before generated assets are written. Miku is
 currently **Experimental**. MaterialIR 2.0,
 Bundle 1.0, conversion-plan, bake-result, and public Shader property/reference
-names are unchanged in 2.2.12. See the
+names remain compatible in 2.3.0. See the
 [compatibility matrix](docs/compatibility.md).
 
 The repository's MIT-licensed code remains under the [MIT License](LICENSE);

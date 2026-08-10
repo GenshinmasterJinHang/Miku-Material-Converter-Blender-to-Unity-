@@ -77,16 +77,51 @@ float3 Genshin_CompressNonEmissive(float3 color, float compression, float knee, 
     return lerp(color, Genshin_HuePreservingSoftShoulder(color, knee, ceiling), saturate(compression));
 }
 
+struct Genshin_RampRowParams
+{
+    float a0;
+    float a1;
+    float a2;
+    float a3;
+    float a4;
+};
+
+// Tutorial contract: five LightMap-alpha material ids (0.0/0.3/0.5/0.7/1.0)
+// map to artist-adjustable ramp rows through `a * -0.1 + 1.05`, and 0.5 is
+// subtracted when _InNight is enabled. The default rows are the tutorial's
+// 1, 4, 3, 5, 2 mapping.
+float Genshin_TutorialRampRow(
+    float materialId,
+    Genshin_RampRowParams rows,
+    float inNight)
+{
+    float rampSampling = saturate(inNight) * 0.5;
+    float ramp0 = rows.a0 * -0.1 + 1.05 - rampSampling;
+    float ramp1 = rows.a1 * -0.1 + 1.05 - rampSampling;
+    float ramp2 = rows.a2 * -0.1 + 1.05 - rampSampling;
+    float ramp3 = rows.a3 * -0.1 + 1.05 - rampSampling;
+    float ramp4 = rows.a4 * -0.1 + 1.05 - rampSampling;
+    float lightmapA2 = step(0.25, materialId);
+    float lightmapA3 = step(0.45, materialId);
+    float lightmapA4 = step(0.65, materialId);
+    float lightmapA5 = step(0.95, materialId);
+    float rampV = ramp0;
+    rampV = lerp(rampV, ramp1, lightmapA2);
+    rampV = lerp(rampV, ramp2, lightmapA3);
+    rampV = lerp(rampV, ramp3, lightmapA4);
+    rampV = lerp(rampV, ramp4, lightmapA5);
+    return saturate(rampV);
+}
+
 float Genshin_ReferenceRampRow(float materialId, float inNight)
 {
-    // The Blender group selects one of five discrete 20px ramp rows from the
-    // LightMap alpha/material id.  Nearest ranges are more stable than exact
-    // float comparisons after PNG import.
-    float row = materialId < 0.15 ? 0.95 :
-                materialId < 0.40 ? 0.65 :
-                materialId < 0.60 ? 0.75 :
-                materialId < 0.85 ? 0.55 : 0.85;
-    return saturate(row - 0.5 * saturate(inNight));
+    Genshin_RampRowParams defaultRows;
+    defaultRows.a0 = 1.0;
+    defaultRows.a1 = 4.0;
+    defaultRows.a2 = 3.0;
+    defaultRows.a3 = 5.0;
+    defaultRows.a4 = 2.0;
+    return Genshin_TutorialRampRow(materialId, defaultRows, inNight);
 }
 
 float Genshin_ReferenceLightingSignal(float ndotLRaw, float lightMapGreen, float shadowAttenuation)
@@ -121,6 +156,7 @@ float3 Genshin_BodyDiffuse(
     float3 mainLightColor,
     float shadowAttenuation,
     float bodyShadowSmooth,
+    Genshin_RampRowParams rampRows,
     float inNight,
     float highlightCompression,
     TEXTURE2D_PARAM(shadowRampMap, sampler_shadowRampMap))
@@ -128,7 +164,7 @@ float3 Genshin_BodyDiffuse(
     float ndotLRaw = dot(normalize(normalWS), normalize(lightDirWS));
     float lightingSignal = Genshin_ReferenceLightingSignal(ndotLRaw, lightMap.g, shadowAttenuation);
     float rampU = lerp(0.01, 0.998, lightingSignal);
-    float rampV = Genshin_ReferenceRampRow(lightMap.a, inNight);
+    float rampV = Genshin_TutorialRampRow(lightMap.a, rampRows, inNight);
     float3 rampShadow = Genshin_ReferenceRampGrade(
         SAMPLE_TEXTURE2D(shadowRampMap, sampler_shadowRampMap, float2(rampU, rampV)).rgb);
     float transition = max(0.001, bodyShadowSmooth * 0.02);
@@ -148,12 +184,13 @@ float3 Genshin_HairDoubleShadow(
     float hairDarkShadowArea,
     float hairShadowSmooth,
     float hairSmoothShadowIntensity,
+    Genshin_RampRowParams rampRows,
     float highlightCompression,
     TEXTURE2D_PARAM(hairRampMap, sampler_hairRampMap))
 {
     float lightingSignal = Genshin_ReferenceLightingSignal(ndotLRaw, lightMap.g, shadowAttenuation);
     float rampU = lerp(0.01, 0.998, lightingSignal);
-    float rampV = Genshin_ReferenceRampRow(lightMap.a, inNight);
+    float rampV = Genshin_TutorialRampRow(lightMap.a, rampRows, inNight);
     float3 rampShadow = Genshin_ReferenceRampGrade(
         SAMPLE_TEXTURE2D(hairRampMap, sampler_hairRampMap, float2(rampU, rampV)).rgb);
     // Hair in the source material has a second, deliberately placed dark
@@ -318,35 +355,100 @@ float3 Genshin_FaceDiffuse(
     float3 baseColor,
     float inLight,
     float3 mainLightColor,
+    Genshin_RampRowParams rampRows,
     float inNight,
     float highlightCompression,
     TEXTURE2D_PARAM(shadowRampMap, sampler_shadowRampMap))
 {
     float rampU = lerp(0.01, 0.998, saturate(inLight));
-    float rampV = Genshin_ReferenceRampRow(1.0, inNight);
+    float rampV = Genshin_TutorialRampRow(1.0, rampRows, inNight);
     float3 faceShadowColor = Genshin_ReferenceRampGrade(
         SAMPLE_TEXTURE2D(shadowRampMap, sampler_shadowRampMap, float2(rampU, rampV)).rgb);
     float3 faceColor = Genshin_ReferenceBaseGrade(baseColor, highlightCompression) * lerp(faceShadowColor, mainLightColor, saturate(inLight));
     return Genshin_ReferenceSkinTone(faceColor, highlightCompression);
 }
 
-float3 Genshin_GetOutlineNormalOS(float3 smoothNormalOS, float3 fallbackNormalOS)
-{
-    float3 selectedNormalOS = dot(smoothNormalOS, smoothNormalOS) > 1e-5 ? smoothNormalOS : fallbackNormalOS;
-    return normalize(selectedNormalOS);
-}
-
-float Genshin_DistanceCompensatedOutlineWidth(float3 positionWS, float outlineWidth, float referenceDistance, float distanceScale)
-{
-    float cameraDistance = distance(_WorldSpaceCameraPos, positionWS);
-    float farScale = max(cameraDistance / max(referenceDistance, 1e-5), 1.0);
-    return outlineWidth * lerp(1.0, farScale, saturate(distanceScale));
-}
-
 float3 Genshin_OutlineColor(float3 baseColor, float4 vertexColor, float outlineGamma, float3 outlineTint)
 {
     float3 vertexTint = lerp(1.0.xxx, saturate(vertexColor.rgb), step(0.001, dot(vertexColor.rgb, vertexColor.rgb)));
     return pow(max(baseColor * vertexTint, 0.0.xxx), max(outlineGamma, 1e-5)) * outlineTint;
+}
+
+float Genshin_OutlineVertexMask(float4 vertexColor)
+{
+    // Tutorial contract: vertex-color A stores the outline width mask on
+    // imported Genshin assets (Furina's A spans 0..0.502). Miku-baked meshes
+    // use the green Miku_ToonMask channel; fall back to it only when A is
+    // empty so Hu Tao-style meshes without vertex colors stay unchanged.
+    float alphaMask = saturate(vertexColor.a);
+    return alphaMask > 1e-4 ? alphaMask : saturate(vertexColor.g);
+}
+
+float3 Genshin_OutlineRegionColor(
+    float4 lightMap,
+    float3 baseColor,
+    float4 vertexColor,
+    float3 outlineColor0,
+    float3 outlineColor1,
+    float3 outlineColor2,
+    float3 outlineColor3,
+    float3 outlineColor4,
+    float outlineGamma,
+    float3 outlineTint,
+    float regionMode)
+{
+    if (regionMode <= 0.5)
+    {
+        return Genshin_OutlineColor(
+            baseColor,
+            vertexColor,
+            outlineGamma,
+            outlineTint);
+    }
+
+    // Tutorial contract: lightmap.a carries the five material ids and the
+    // outline pass reassembles them into five authored outline colors.
+    float lightmapA2 = step(0.25, lightMap.a);
+    float lightmapA3 = step(0.45, lightMap.a);
+    float lightmapA4 = step(0.65, lightMap.a);
+    float lightmapA5 = step(0.95, lightMap.a);
+    float3 regionColor = outlineColor0;
+    regionColor = lerp(regionColor, outlineColor1, lightmapA2);
+    regionColor = lerp(regionColor, outlineColor2, lightmapA3);
+    regionColor = lerp(regionColor, outlineColor3, lightmapA4);
+    regionColor = lerp(regionColor, outlineColor4, lightmapA5);
+    return max(regionColor, 0.0.xxx);
+}
+
+float3 Genshin_DiffuseAlphaEmission(
+    float baseAlpha,
+    float3 baseColor,
+    float4 glow,
+    float flicker)
+{
+    // Tutorial contract: diffuse.a is an emission mask after a 0..1
+    // smoothstep, and the glow flickers with sin(_Time.w * _flicker).
+    float mask = smoothstep(0.0, 1.0, saturate(baseAlpha));
+    float pulse = sin(_Time.w * max(flicker, 0.0)) * 0.5 + 0.5;
+    return baseColor * (pulse * max(glow.rgb, 0.0.xxx)) * mask;
+}
+
+float3 Genshin_DecodeNormalMap(float4 normalSample, float bumpScale)
+{
+    // Tutorial contract: UnpackNormal, scale xy by the bump strength, then
+    // rebuild z so the tangent-space normal stays unit length.
+    float3 normalTS = UnpackNormal(normalSample).rgb;
+    normalTS.xy *= max(bumpScale, 0.0);
+    normalTS.z = sqrt(1.0 - saturate(dot(normalTS.xy, normalTS.xy)));
+    return normalize(normalTS);
+}
+
+void Genshin_DiffuseAlphaClip(float baseAlpha, float cutoff)
+{
+    // Tutorial contract: diffuse.a cutout removes noise with a 0.05..0.7
+    // smoothstep before clip(diffuseA - _Cutoff).
+    float mask = smoothstep(0.05, 0.7, saturate(baseAlpha));
+    clip(mask - cutoff);
 }
 
 #endif

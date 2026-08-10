@@ -210,6 +210,128 @@ namespace Miku.ShaderConverter.Editor
                 redChannel);
         }
 
+        internal static float WuwaDirectBrdfSpecular(
+            Vector3 normal,
+            Vector3 lightDirection,
+            Vector3 viewDirection,
+            float roughness)
+        {
+            var safeNormal = SafeNormalize(normal, Vector3.up);
+            var safeLight = SafeNormalize(lightDirection, Vector3.forward);
+            var safeView = SafeNormalize(viewDirection, Vector3.forward);
+            var halfDir = SafeNormalize(safeLight + safeView, Vector3.forward);
+            var noH = Mathf.Clamp01(Vector3.Dot(safeNormal, halfDir));
+            var loH = Mathf.Clamp01(Vector3.Dot(safeLight, halfDir));
+            var noL = Mathf.Clamp01(Vector3.Dot(safeNormal, safeLight));
+            var noV = Mathf.Clamp01(Vector3.Dot(safeNormal, safeView));
+            var safeRoughness = Mathf.Clamp(roughness, 0.001f, 1f);
+            var roughness2 = safeRoughness * safeRoughness;
+            var roughness2MinusOne = roughness2 - 1f;
+            var normalizationTerm = Mathf.Max(4f * loH * noH, 0.001f);
+            var d = noH * noH * roughness2MinusOne + 1.00001f;
+            var loH2 = loH * loH;
+            var specularTerm = roughness2 /
+                ((d * d) * Mathf.Max(0.1f, loH2) * normalizationTerm);
+            if (!float.IsFinite(specularTerm) || noL <= 0f || noV <= 0f)
+                return 0f;
+            return Mathf.Clamp01(specularTerm);
+        }
+
+        internal static Color WuwaMatcapAlbedo(
+            Color albedo,
+            Color matcap,
+            float saturation,
+            float mask,
+            float strength)
+        {
+            var gray = new Color(
+                matcap.r * 0.3f + matcap.g * 0.59f + matcap.b * 0.11f,
+                matcap.r * 0.3f + matcap.g * 0.59f + matcap.b * 0.11f,
+                matcap.r * 0.3f + matcap.g * 0.59f + matcap.b * 0.11f,
+                matcap.a);
+            var tone = Color.Lerp(gray, matcap, Mathf.Clamp01(saturation));
+            return albedo + tone * Mathf.Clamp01(mask) * Mathf.Max(0f, strength);
+        }
+
+        internal static float WuwaTutorialOutlineWidth(float distance)
+        {
+            if (!float.IsFinite(distance) || distance < 0f)
+                return 1f;
+            var nearFar = new Vector3(0.005f, 1f, 10f);
+            var weight = new Vector3(0.13f, 0.3f, 1.5f);
+            var disNear = Mathf.Clamp01(
+                (distance - nearFar.x) / Mathf.Max(nearFar.y - nearFar.x, 0.00001f));
+            var disFar = Mathf.Clamp01(
+                (distance - nearFar.y) / Mathf.Max(nearFar.z - nearFar.y, 0.00001f));
+            return Mathf.Lerp(weight.x, weight.y, disNear) +
+                (weight.z - weight.y) * disFar;
+        }
+
+        internal static Color WuwaVerticalGradient(
+            Color color,
+            Color lowColor,
+            float gradingValue)
+        {
+            var amount = Mathf.Clamp01(gradingValue);
+            return Color.LerpUnclamped(
+                color * new Color(
+                    Mathf.Max(0f, lowColor.r),
+                    Mathf.Max(0f, lowColor.g),
+                    Mathf.Max(0f, lowColor.b),
+                    1f),
+                color,
+                amount);
+        }
+
+        internal static Color WuwaFresnelStepRim(
+            Vector3 normal,
+            Vector3 viewDirection,
+            float fresnelPower,
+            float brightness,
+            Color tint,
+            Color baseColor)
+        {
+            var noV = Mathf.Clamp01(Vector3.Dot(
+                SafeNormalize(normal, Vector3.up),
+                SafeNormalize(viewDirection, Vector3.forward)));
+            var fresnel = Mathf.Pow(
+                Mathf.Clamp01(1f - noV),
+                Mathf.Max(fresnelPower, 0.1f));
+            fresnel = fresnel >= 0.5f ? 1f : 0f;
+            var positiveTint = new Color(
+                Mathf.Max(0f, tint.r),
+                Mathf.Max(0f, tint.g),
+                Mathf.Max(0f, tint.b),
+                1f);
+            var positiveBase = new Color(
+                Mathf.Max(0f, baseColor.r),
+                Mathf.Max(0f, baseColor.g),
+                Mathf.Max(0f, baseColor.b),
+                1f);
+            return positiveTint * positiveBase *
+                fresnel * Mathf.Max(0f, brightness);
+        }
+
+        internal static float WuwaGradientValue(
+            Vector2 uv0,
+            Vector2 uv1,
+            Vector2 uv3,
+            float channel,
+            float invert)
+        {
+            var index = Mathf.RoundToInt(channel);
+            var selected = uv0;
+            if (index == 1)
+                selected = uv1;
+            else if (index == 3)
+                selected = uv3;
+            var value = selected.y;
+            if (!float.IsFinite(value))
+                value = uv0.y;
+            value = Mathf.Clamp01(value);
+            return invert > 0.5f ? 1f - value : value;
+        }
+
         internal static void WuwaFaceBasis(
             Matrix4x4 objectToWorld,
             Vector3 rightObjectSpace,

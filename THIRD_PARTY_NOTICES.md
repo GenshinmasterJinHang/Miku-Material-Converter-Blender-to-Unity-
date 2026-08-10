@@ -9,6 +9,7 @@ Miku source is MIT-licensed. Dependencies retain their upstream terms.
 | Newtonsoft Json for Unity | 3.2.1 declaration | Upstream Json.NET/Unity notices | Resolved by Unity Package Manager |
 | Blender | 5.2.0 | GPL and Blender upstream notices | Separate application, not bundled |
 | Miku Bake Worker sources | 1.0.0 | GPL-2.0-or-later | Included in the GPL-3.0-or-later Miku Shader Converter extension ZIP |
+| NVIDIA Streamline DFG reference | Streamline `main`, DLSS-RR guide section 4.2.1 | MIT; Copyright (c) 2023 NVIDIA Corporation | DFG coefficients/equation reimplemented in original Miku HLSL; no Streamline SDK or binary is bundled |
 
 The Genshin, WuWa, and HSR Shader/HLSL backends are first-party, original Miku
 Project Authors code licensed under MIT. They are not third-party ports and do
@@ -34,3 +35,9 @@ in either installable package or the existing v2.2.8 Release assets.
 The MIT Semantic Exporter communicates with the GPL Bake Worker only through
 versioned request/result JSON and baked files. MIT code does not import the GPL
 worker implementation.
+
+Miku 2.3.0's Endfield environment response cites NVIDIA Streamline's public
+`EnvBRDFApprox2` reference and the Kulla--Conty energy-compensation design.
+The surrounding URP integration, finite guards, compatibility switch, material
+interfaces, and tests are original Miku code. See
+`docs/provenance/game-workflow-backends.md` for the implementation boundary.

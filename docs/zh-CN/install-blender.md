@@ -1,6 +1,6 @@
 # Blender 5.0–5.2 扩展安装
 
-安装 `miku_shader_converter-2.2.12.zip`。支持 Blender 5.0–5.2；区间内未记录的
+安装 `miku_shader_converter-2.3.0.zip`。支持 Blender 5.0–5.2；区间内未记录的
 补丁会显示未经完整验证警告并执行能力预检。Blender 5.3+、4.x 和 6.x 不会放行。
 不要手动复制到 Blender Scripts 目录。
 所有本地验证必须使用：

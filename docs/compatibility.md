@@ -2,6 +2,7 @@
 
 | Blender | Unity Editor | URP | Shader Graph | Miku | OS | Status |
 | --- | --- | --- | --- | --- | --- | --- |
+| 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.3.0 | Windows D3D11 | Experimental; source-linked isolated Unity 53/53 and deterministic TGZ passed; final-TGZ port-8080 suite/scene/visual acceptance pending |
 | 5.0.1 | 6000.0.81f1 | 17.0.4 | 17.0.4 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
 | 5.1.2 | 6000.1.17f1 | 17.1.0 | 17.1.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
 | 5.2.0 | 6000.2.15f1 | 17.2.0 | 17.2.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
@@ -20,11 +21,11 @@
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.1.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.0.0 | Windows D3D11 | Experimental |
-| Blender <5.0 or >=5.3; Unity outside 6000.0-6000.5; URP/SG outside 17.0-17.5; prerelease | Any | Any | Any | 2.2.12 | Any | Unsupported (hard fail before asset writes) |
-| Mismatched Unity/URP/Shader Graph technical lines or unequal URP/SG package versions | Any | Any | Any | 2.2.12 | Any | Unsupported via `MIKU_UNITY_PACKAGE_VERSION_MISMATCH` before asset writes |
+| Blender <5.0 or >=5.3; Unity outside 6000.0-6000.5; URP/SG outside 17.0-17.5; prerelease | Any | Any | Any | 2.2.12 and 2.3.0 | Any | Unsupported (hard fail before asset writes) |
+| Mismatched Unity/URP/Shader Graph technical lines or unequal URP/SG package versions | Any | Any | Any | 2.2.12 and 2.3.0 | Any | Unsupported via `MIKU_UNITY_PACKAGE_VERSION_MISMATCH` before asset writes |
 | Any other tuple | Any | Any | Any | 2.2.8 and earlier | Any | Unsupported |
 
-## Miku 2.2.12 technical-line adapters
+## Miku 2.2.12 and 2.3.0 technical-line adapters
 
 | Unity Editor | URP / Shader Graph | Adapter |
 | --- | --- | --- |
@@ -59,6 +60,14 @@ Per the requested documentation-based acceptance boundary, exact Unity editor
 installs are not required for the six new technical-line adapters. Those rows
 remain Experimental until an external matrix executes them. The existing local
 6000.4.5f1 regression is the only Unity row marked Supported.
+
+Miku 2.3.0 retains the same bounded adapter/version policy. Its current row is
+Experimental because the 53/53 Unity result was produced in a source-linked
+isolated project, not by installing the final TGZ into the port-8080 target and
+executing the scene/D3D11 acceptance. Python 262/262, Ruff, identity 13/13,
+Blender 5.2.0 8/8 plus final-ZIP installed smoke, and two byte-identical TGZ
+builds are recorded in the 2.3.0 release note; they do not promote the Unity
+scene row to Supported.
 
 ## Public workflow matrix
 
@@ -112,6 +121,41 @@ matrix. Bundle schema remains 1.0, but a bundle containing these additions
 requires the paired 2.2.7 importer. Optional EG follows the directional Main
 Light in tangent space and falls back to zero movement when tangents are
 invalid.
+
+Miku 2.3.0 adds Wuwa tutorial-compliance controls without schema changes.
+Body uses a simplified CookTorrance direct-specular term (`_Roughness`,
+`_SpecularColor`, `_SpecularStrength`) plus reflection-probe indirect
+specular (`_ReflectionStrength`), applies MatCap onto the albedo before
+lighting with a 10% saturation default, and samples the model's UV3 channel
+for the vertical gradient (`_GradientUVIndex=3` default). Body/Hair/Face
+outlines consume the vertex-color green width mask (`_OutlineVertexColorMask`)
+and default to the tutorial's near/far two-segment distance response
+(`_OutlineDistanceMode=1`). Face enables the SDF soft channel and hair-shadow
+sampling; Eye adds a main-light response between `_EyeShadowTint` and
+`_EyeLitTint`. Materials without vertex colors or UV3 fall back to a neutral
+mask and UV0 respectively. These properties are additive public surface;
+existing materials keep their authored values unless the explicit
+recommended-profile action is applied.
+
+Miku 2.3.0 also adds Genshin tutorial-conformance controls without schema
+changes. Body, Hair, and Face accept the tutorial's `diffuse.a` cutout and
+flickering emission modes (`_DiffuseA`, `_Cutoff`, `_Glow`, `_Flicker`),
+per-material ramp rows (`_LightmapA0..A4`), and lightmap.a five-region
+outline colors (`_OutlineColor0..4`, `_OutlineColorMode`). Body and Hair
+opt into the tutorial's UV1 back-face rendering with
+`_DoubleSided`/`_Cull`/`_BackUV1`; Genshin outlines read vertex-color A as
+the width mask with a green fallback so imported game assets (Furina) and
+Miku-baked meshes (Hu Tao) both work. These properties are additive public
+surface; existing materials remain on the legacy path unless the new
+controls are enabled.
+
+Genshin Body and Hair additionally accept an optional normal map
+(`_NormalMap`, `_BumpScale`, keyword `_GENSHIN_NORMALMAP_ON`) and
+`NormalMap` is an accepted genshin texture role, matching the Wuwa/Endfield
+binding convention. When `_AREA_SKIN` is enabled, the legacy
+`Genshin_ReferenceSkinTone` curve applies only to regions whose LightMap
+alpha marks skin, so mixed body materials (skin + cloth/cape) no longer get
+the whole material tinted; pure-skin materials keep the previous response.
 
 The shared 2.2.7 URP Volume Profile keeps White Balance, channel mixing, hue,
 and color filters neutral. Its master luminance curve, Exposure `+0.35`,

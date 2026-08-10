@@ -66,10 +66,17 @@ namespace Miku.ShaderConverter.Editor
                     "endfield_toon",
                 },
                 StringComparer.Ordinal);
-        static readonly HashSet<string> GameParts =
-            new HashSet<string>(
-                new[] { "Body", "Hair", "Face", "Eye", "Effect" },
-                StringComparer.Ordinal);
+        static readonly IReadOnlyDictionary<string, HashSet<string>> GameParts =
+            new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
+            {
+                ["genshin_toon"] = Parts("Body", "Hair", "Face", "Eye"),
+                ["wuwa_toon"] = Parts(
+                    "Body", "Hair", "Face", "Eye", "Effect"),
+                ["hsr_toon"] = Parts("Body", "Hair", "Face", "Eye"),
+                ["endfield_toon"] = Parts(
+                    "Body", "Skin", "Hair", "Face", "Eye", "Mouth",
+                    "Overlay", "Effect", "HairShadow"),
+            };
 
         internal static void PreflightTemplates(string shaderGraphVersion)
         {
@@ -156,9 +163,13 @@ namespace Miku.ShaderConverter.Editor
             var part = workflow["part"]?.Value<string>();
             if (GameWorkflows.Contains(kind))
             {
-                if (string.IsNullOrWhiteSpace(part) || !GameParts.Contains(part))
+                if (string.IsNullOrWhiteSpace(part))
                     throw new InvalidDataException(
                         "MIKU_WORKFLOW_PART_REQUIRED:" + kind);
+                if (!GameParts.TryGetValue(kind, out var allowedParts) ||
+                    !allowedParts.Contains(part))
+                    throw new InvalidDataException(
+                        "MIKU_WORKFLOW_PART_INVALID:" + kind + ":" + part);
             }
             else if (part != null)
             {
@@ -295,18 +306,18 @@ namespace Miku.ShaderConverter.Editor
                     "MIKU_SURFACE_CONTRACT_COVERAGE_NOT_SCALAR:" + semantic);
         }
 
-        static string ResolvePart(JObject materialIr)
+        static string ResolvePart(string workflow, JObject materialIr)
         {
             var value = materialIr["workflow"]?["part"]?.Value<string>() ?? "";
-            return value switch
-            {
-                "Hair" => "Hair",
-                "Face" => "Face",
-                "Eye" => "Eye",
-                "Effect" => "Effect",
-                _ => "Body",
-            };
+            if (!GameParts.TryGetValue(workflow, out var allowedParts) ||
+                !allowedParts.Contains(value))
+                throw new InvalidDataException(
+                    "MIKU_WORKFLOW_PART_INVALID:" + workflow + ":" + value);
+            return value;
         }
+
+        static HashSet<string> Parts(params string[] values) =>
+            new HashSet<string>(values, StringComparer.Ordinal);
 
         sealed class EditableGraphBackend : IMikuWorkflowBackend
         {
@@ -345,10 +356,8 @@ namespace Miku.ShaderConverter.Editor
 
             public Shader ResolveShader(JObject materialIr, Shader editableGraphShader)
             {
-                var shaderName = shaderPrefix + ResolvePart(materialIr);
+                var shaderName = shaderPrefix + ResolvePart(Kind, materialIr);
                 var shader = Shader.Find(shaderName);
-                if (shader == null && shaderName.EndsWith("/Effect", StringComparison.Ordinal))
-                    shader = Shader.Find(shaderPrefix + "Body");
                 return shader != null
                     ? shader
                     : throw new InvalidDataException(

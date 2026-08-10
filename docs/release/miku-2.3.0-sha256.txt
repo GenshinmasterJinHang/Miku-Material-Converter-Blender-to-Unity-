@@ -1,0 +1,2 @@
+ad78ca6fbf376d94b6e50c5382fe7df72d07854e455e4df146a0ce2a12d8534b  com.miku.shaderconverter-2.3.0.tgz
+f4557a134c7f34da3ebdc3feec2b18f0dd916dcf391699a2607f58da76c762c9  miku_shader_converter-2.3.0.zip

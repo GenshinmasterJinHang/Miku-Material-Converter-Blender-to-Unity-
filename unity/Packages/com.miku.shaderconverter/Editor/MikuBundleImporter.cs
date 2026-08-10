@@ -281,8 +281,9 @@ namespace Miku.ShaderConverter.Editor
         const string LegacyKindV2 = "migr-bundle-2.0";
         const string LegacyKindV21 = "migr-bundle-2.1";
         const string LegacyKindV22 = "migr-bundle-2.2";
-        const string PackageVersion = "2.2.12";
-        const string ExpectedProfileHash = "c112d0a2add487722a08b732b9be2339ecf54be0b53bcfcdbf462cc8ade7c460";
+        const string PackageVersion = "2.3.0";
+        const string ExpectedProfileHash = "68f1fa6246ebb9abd910784d825ba3f287e6121df01a990f4879434646bdbc6c";
+        const string Package2212ProfileHash = "c112d0a2add487722a08b732b9be2339ecf54be0b53bcfcdbf462cc8ade7c460";
         const string Package2211ProfileHash = "e9e70a6e2e38205a4ecf7facedba8e55a8f1d8815316470affc7e5ad2c2bce50";
         const string Package2210ProfileHash = "ec88a8bee99c86fd3885f7e7a1596a22439632a648004a065e45ea1b4f1179d4";
         const string Package228ProfileHash = "7700bb62aae8ddcfaa2e519079c2bd8e79e30c7fa30f8e493d084117aab1228d";
@@ -345,6 +346,7 @@ namespace Miku.ShaderConverter.Editor
             new[]
             {
                 ExpectedProfileHash,
+                Package2212ProfileHash,
                 Package2211ProfileHash,
                 Package2210ProfileHash,
                 Package228ProfileHash,

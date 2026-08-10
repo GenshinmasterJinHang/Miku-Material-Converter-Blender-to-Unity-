@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Miku.ShaderConverter.Editor
@@ -14,7 +15,8 @@ namespace Miku.ShaderConverter.Editor
             {
                 ["genshin_toon"] = Set(
                     "BaseMap", "LightMap", "ShadowRampMap", "MetalMap",
-                    "EmissionMap", "HairRampMap", "HairSpecMap", "FaceSDF"),
+                    "EmissionMap", "HairRampMap", "HairSpecMap", "FaceSDF",
+                    "NormalMap"),
                 ["wuwa_toon"] = Set(
                     "BaseMap", "NormalMap", "IDMap", "MatCap", "EmissionMap",
                     "HairHM", "FaceSDF", "FaceID", "FaceHET", "SkinRamp",
@@ -221,9 +223,27 @@ namespace Miku.ShaderConverter.Editor
         {
             if (material == null)
                 return;
+            var orderedBindings = (bindings ??
+                    Array.Empty<MikuToonTextureBinding>())
+                .Where(item => item != null)
+                .OrderBy(item => item.role ?? "", StringComparer.Ordinal)
+                .ToArray();
+            ValidateEndfieldShadowBindings(
+                material.shader,
+                workflow,
+                orderedBindings);
             ResetEyeUvTransforms(material, workflow);
             var stockingsBindingSupplied = false;
-            foreach (var binding in bindings ?? Array.Empty<MikuToonTextureBinding>())
+            var shaderName = material.shader != null
+                ? material.shader.name
+                : "";
+            var hasEyeShadow = orderedBindings.Any(item =>
+                string.Equals(
+                    item.role,
+                    "EyeShadowMap",
+                    StringComparison.Ordinal) &&
+                item.texture != null);
+            foreach (var binding in orderedBindings)
             {
                 var role = CanonicalRole(material, workflow, binding.role, out var migrated);
                 stockingsBindingSupplied |= string.Equals(
@@ -235,6 +255,12 @@ namespace Miku.ShaderConverter.Editor
                         "MIKU_ENDFIELD_ROLE_MIGRATED:" +
                         binding.role + ":" + role,
                         material);
+                if (!ShouldBindEndfieldBaseRole(
+                        workflow,
+                        shaderName,
+                        role,
+                        hasEyeShadow))
+                    continue;
                 var property = TextureProperty(workflow, role);
                 if (!string.IsNullOrEmpty(property) && material.HasProperty(property))
                 {
@@ -246,7 +272,141 @@ namespace Miku.ShaderConverter.Editor
                 material,
                 workflow,
                 stockingsBindingSupplied);
+            ApplyEndfieldPartState(material, workflow);
             MikuManualTextureKeywordUtility.SyncKeywords(material);
+        }
+
+        internal static void ValidateForShader(
+            Shader shader,
+            string workflow,
+            IEnumerable<MikuToonTextureBinding> bindings)
+        {
+            var orderedBindings = (bindings ??
+                    Array.Empty<MikuToonTextureBinding>())
+                .Where(item => item != null)
+                .OrderBy(item => item.role ?? "", StringComparer.Ordinal)
+                .ToArray();
+            ValidateEndfieldShadowBindings(shader, workflow, orderedBindings);
+        }
+
+        static void ValidateEndfieldShadowBindings(
+            Shader shader,
+            string workflow,
+            IReadOnlyList<MikuToonTextureBinding> bindings)
+        {
+            if (!string.Equals(
+                    workflow,
+                    "endfield_toon",
+                    StringComparison.Ordinal))
+                return;
+            var hairCount = bindings.Count(item =>
+                string.Equals(
+                    item.role,
+                    "HairShadowMap",
+                    StringComparison.Ordinal) &&
+                item.texture != null);
+            var eyeCount = bindings.Count(item =>
+                string.Equals(
+                    item.role,
+                    "EyeShadowMap",
+                    StringComparison.Ordinal) &&
+                item.texture != null);
+            if (hairCount > 0 && eyeCount > 0)
+                throw new InvalidOperationException(
+                    "MIKU_ENDFIELD_SHADOW_BASEMAP_ROLE_CONFLICT");
+            if (hairCount > 1 || eyeCount > 1)
+                throw new InvalidOperationException(
+                    "MIKU_ENDFIELD_SHADOW_BASEMAP_ROLE_DUPLICATE");
+
+            var shaderName = shader != null
+                ? shader.name
+                : "";
+            if (string.Equals(
+                    shaderName,
+                    "MIKU/Endfield/HairShadow",
+                    StringComparison.Ordinal) &&
+                hairCount != 1)
+                throw new InvalidOperationException(
+                    "MIKU_ENDFIELD_HAIR_SHADOW_TEXTURE_REQUIRED");
+        }
+
+        static bool ShouldBindEndfieldBaseRole(
+            string workflow,
+            string shaderName,
+            string role,
+            bool hasEyeShadow)
+        {
+            if (!string.Equals(
+                    workflow,
+                    "endfield_toon",
+                    StringComparison.Ordinal))
+                return true;
+            if (string.Equals(
+                    role,
+                    "HairShadowMap",
+                    StringComparison.Ordinal))
+                return string.Equals(
+                    shaderName,
+                    "MIKU/Endfield/HairShadow",
+                    StringComparison.Ordinal);
+            if (string.Equals(
+                    role,
+                    "EyeShadowMap",
+                    StringComparison.Ordinal))
+                return string.Equals(
+                    shaderName,
+                    "MIKU/Endfield/Overlay",
+                    StringComparison.Ordinal);
+            if (!string.Equals(role, "BaseMap", StringComparison.Ordinal))
+                return true;
+            if (string.Equals(
+                    shaderName,
+                    "MIKU/Endfield/HairShadow",
+                    StringComparison.Ordinal))
+                return false;
+            return !hasEyeShadow || !string.Equals(
+                shaderName,
+                "MIKU/Endfield/Overlay",
+                StringComparison.Ordinal);
+        }
+
+        internal static void ApplyEndfieldPartState(
+            Material material,
+            string workflow)
+        {
+            if (material == null || material.shader == null ||
+                !string.Equals(
+                    workflow,
+                    "endfield_toon",
+                    StringComparison.Ordinal))
+                return;
+            var state = material.shader.name switch
+            {
+                "MIKU/Endfield/Body" => new Vector2(0f, 0f),
+                "MIKU/Endfield/Skin" => new Vector2(1f, 2f),
+                "MIKU/Endfield/Hair" => new Vector2(2f, 2f),
+                "MIKU/Endfield/Face" => new Vector2(3f, 2f),
+                "MIKU/Endfield/Eye" => new Vector2(4f, 2f),
+                "MIKU/Endfield/Mouth" => new Vector2(5f, 2f),
+                "MIKU/Endfield/Overlay" => new Vector2(6f, 0f),
+                "MIKU/Endfield/Effect" => new Vector2(7f, 0f),
+                "MIKU/Endfield/HairShadow" => new Vector2(8f, 0f),
+                _ => throw new InvalidOperationException(
+                    "MIKU_ENDFIELD_SHADER_PART_INVALID:" +
+                    material.shader.name),
+            };
+            SetFloatIfPresent(material, "_PartMode", state.x);
+            SetFloatIfPresent(material, "_Cull", state.y);
+            SetFloatIfPresent(material, "_DebugView", 0f);
+        }
+
+        static void SetFloatIfPresent(
+            Material material,
+            string property,
+            float value)
+        {
+            if (material.HasProperty(property))
+                material.SetFloat(property, value);
         }
 
         static void ResetEyeUvTransforms(Material material, string workflow)

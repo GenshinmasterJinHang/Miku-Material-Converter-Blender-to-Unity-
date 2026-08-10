@@ -48,6 +48,10 @@ Shader "MIKU/Wuwa/Eye"
         _EyeEGScale ("EG Scale", Vector) = (1,1,0,0)
         _EyeEGOffset ("EG Fine Offset", Vector) = (0,0,0,0)
         _EyeParallaxStrength ("Eye Parallax Strength", Range(-0.1,0.1)) = 0
+        _EyeShadowStart ("Eye Shadow Start", Range(0,1)) = 0.25
+        _EyeShadowEnd ("Eye Shadow End", Range(0,1)) = 0.55
+        _EyeLitTint ("Eye Lit Tint", Color) = (1,1,1,1)
+        _EyeShadowTint ("Eye Shadow Tint", Color) = (0.82,0.82,0.82,1)
         _EyeBaseEmissionStrength ("Eye Base Emission Strength", Range(0,8)) = 0
         _EmissionStrength ("Highlight Emission Strength", Range(0,20)) = 1
         [HideInInspector] _EyeDebugView ("Eye Debug View", Float) = 0
@@ -98,7 +102,8 @@ Shader "MIKU/Wuwa/Eye"
                 float _EyeHighlightThreshold; float _EyeHighlightSoftness;
                 float4 _EyeEGColor; float _EyeEGStrength; float _EyeEGFresnelPower; float _EyeEGLightFollow;
                 float4 _EyeEGCenter; float4 _EyeEGScale; float4 _EyeEGOffset;
-                float _EyeParallaxStrength; float _EyeBaseEmissionStrength; float _EmissionStrength;
+                float _EyeParallaxStrength; float _EyeShadowStart; float _EyeShadowEnd; float4 _EyeLitTint; float4 _EyeShadowTint;
+                float _EyeBaseEmissionStrength; float _EmissionStrength;
                 float _EyeDebugView;
             CBUFFER_END
             struct Attributes
@@ -173,6 +178,13 @@ Shader "MIKU/Wuwa/Eye"
                 float topMask = smoothstep(0.42, 1.0, uv.y);
                 float topShadow = saturate(topMask * _EyeTopShadowStrength);
                 float3 color = baseColor * lerp(1.0, 0.62, topShadow);
+                Light mainLight = GetMainLight();
+                float3 lightDirWS = WuwaEyeSafeNormalize(mainLight.direction, normalWS);
+                float ndl = saturate(dot(normalWS, lightDirWS));
+                color *= lerp(
+                    max(_EyeShadowTint.rgb, 0.0.xxx),
+                    max(_EyeLitTint.rgb, 0.0.xxx),
+                    smoothstep(_EyeShadowStart, _EyeShadowEnd, ndl));
 
                 float hetMask = 0.0;
                 #if defined(_WUWA_EYE_HET_ON)
@@ -235,8 +247,6 @@ Shader "MIKU/Wuwa/Eye"
 
                 float egMask = 0.0;
                 #if defined(_WUWA_EYE_EG_ON)
-                    Light mainLight = GetMainLight();
-                    float3 lightDirWS = WuwaEyeSafeNormalize(mainLight.direction, normalWS);
                     float2 lightOffset = float2(
                         dot(lightDirWS, tangentWS),
                         dot(lightDirWS, bitangentWS)) *

@@ -1,4 +1,4 @@
-# Miku 2.2.12 Manual
+# Miku 2.3.0 Manual
 
 Miku is a production-oriented Blender 5.x to Unity 6 material converter. The
 public Blender front end exports Standard PBR semantics into target-neutral
@@ -21,7 +21,7 @@ project overview.
 | Unity Editor | 6000.0-6000.5 (certified: 6000.5.7f1) | Matching technical-line adapter |
 | Universal Render Pipeline | 17.5.4 | Required |
 | Shader Graph | 17.5.4 | Version-specific backend |
-| Miku | 2.2.12 | Experimental |
+| Miku | 2.3.0 | Experimental |
 
 Unity 6000.N requires URP 17.N and Shader Graph 17.N, where N is 0 through 5;
 URP and Shader Graph must have exactly the same package version. Stable `f`/`p`
@@ -33,10 +33,10 @@ writes. This release is formally validated on Windows only.
 ## 2. Install from a Release
 
 Download these files from the
-[v2.2.12 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.12):
+[v2.3.0 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.3.0):
 
-- `miku_shader_converter-2.2.12.zip` — Blender 5.0-5.2 extension.
-- `com.miku.shaderconverter-2.2.12.tgz` — single Unity 6000.0-6000.5 package.
+- `miku_shader_converter-2.3.0.zip` — Blender 5.0-5.2 extension.
+- `com.miku.shaderconverter-2.3.0.tgz` — single Unity 6000.0-6000.5 package.
 - `SHA256SUMS.txt` — release integrity manifest.
 
 In Blender, choose **Edit > Preferences > Extensions > Install from Disk** and
@@ -105,7 +105,7 @@ Ownership is explicit:
   regeneration.
 
 MaterialIR 2.0, Bundle 1.0, conversion-plan, bake-result, and public Shader
-property/reference names remain stable in 2.2.12. Historical bundles, including
+property/reference names remain stable in 2.3.0. Historical bundles, including
 older runtime-time contracts, remain readable even though the current Blender
 front end creates no new time-dependent bundle.
 
@@ -126,6 +126,16 @@ These 22 valid material parts are **Experimental** compatibility presets. They
 do not promise pixel-exact parity with any game and do not include game models,
 textures, logos, extracted Shader source, or other game assets.
 
+The Genshin preset supports the published Genshin tutorial's `diffuse.a`
+cutout/emission modes, UV1 double-sided back faces, vertex-color A outline
+width, and lightmap.a region outline colors. These controls are opt-in
+material properties (`_DiffuseA`, `_DoubleSided`, `_BackUV1`,
+`_OutlineColorMode`, and friends); defaults preserve the legacy Miku look.
+Body and Hair also accept an optional `_NormalMap`/`_BumpScale` pair (the
+`NormalMap` texture role); when `_AREA_SKIN` is on, the legacy skin-tone
+curve is limited to LightMap-masked skin regions so cloth and capes keep
+their authored color.
+
 ### Documentation render gallery
 
 | Genshin — Hu Tao | Honkai: Star Rail — Bronya |
@@ -139,7 +149,7 @@ textures, logos, extracted Shader source, or other game assets.
 > Commercial use is prohibited. All related characters, designs, and
 > intellectual property belong to their respective rights holders; Miku grants
 > no rights to game assets. These images are not part of the Blender or Unity
-> installable packages or the 2.2.12 release candidates.
+> installable packages or the 2.3.0 release candidates.
 
 ## 6. Unity Game Toon material creator
 
@@ -212,11 +222,16 @@ source Mesh and output folder (default
 `Assets/Miku/ToonMeshes`), then set position tolerance, smoothing angle, and
 whether bone-weight signatures separate otherwise coincident vertices.
 
-The generated smooth outline normal is written to UV7/TEXCOORD7 on a cloned
-Mesh asset. If the source already has UV7, **Preserve** blocks a normals-only
-write; choose **Replace** and confirm to replace UV7 only on the clone. The
-source Mesh, Texture/Mesh importer, and all Renderer references remain
-untouched, including for a non-CPU-readable imported Mesh.
+The generated smooth outline normal is written as marked tangent-space
+`float4(normalTS.xyz, 2.0)` data in UV7/TEXCOORD7 on a cloned Mesh asset. This
+2.3.0 contract deforms with a SkinnedMeshRenderer; unmarked historical
+object-space UV7 remains readable. If the source already has UV7, **Preserve**
+blocks a normals-only write; choose **Replace** and confirm to replace UV7 only
+on the clone. Missing or invalid tangents report
+`MIKU_TOON_TANGENTS_REQUIRED` before any UV7 write. The source Mesh,
+Texture/Mesh importer, and all Renderer references remain untouched, including
+for a non-CPU-readable imported Mesh. See the
+[migration note](migrations/outline-tangent-space-v2.md).
 
 ### 7.5 Screen Rim Installer
 
@@ -239,7 +254,26 @@ selects it. It is destructive to edits made directly to that package asset and
 has no preview. Keep custom grades in a separate user-owned Volume Profile; if
 an immutable installed package rejects the rebuild, reinstall the package.
 
-### 7.7 Miku Material Inspector
+### 7.7 Endfield LUT and tutorial lighting
+
+Open **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer** to
+install one project-owned flattened 32-cube LUT before URP post processing and
+create the strict Neutral/Bloom/Vignette profile. The tool validates and
+configures the LUT importer, supports Preview and Undo, updates an existing
+Miku feature without duplication, and rolls back a failed attempt. It does not
+use the URP ColorLookup Volume component and does not assign the generated
+profile to a scene automatically.
+
+Add exactly one `MikuEndfieldLightingController` to a scene to enable the 2.3.0
+Endfield tutorial contribution. Without it, old lit materials retain legacy
+lighting. Overlay independently defaults to `_LightingMode=0` (Legacy Unlit);
+set `_LightingMode=1` to choose Toon Lit Transparent before the controller can
+contribute tutorial lighting to that material.
+Setup, defaults, the double-sided Body contract, part-specific behavior, and
+validation requirements are in the
+[Endfield tutorial rendering guide](features/endfield-tutorial-rendering.md).
+
+### 7.8 Miku Material Inspector
 
 Select a material using a `MIKU/Genshin/`, `MIKU/HSR/`, `MIKU/Wuwa/`, or
 `MIKU/Endfield/` shader. The custom Inspector displays the shader's public
@@ -248,7 +282,7 @@ debug views, shows Screen Rim installation status, and—when a companion recipe
 exists—offers a filtered material-part selector. Changes affect the selected
 material; use Undo and review debug views before returning them to **Final**.
 
-### 7.8 Mesh Binding Description Inspector
+### 7.9 Mesh Binding Description Inspector
 
 Select a generated `MikuMeshBindingDescription`, then select a GameObject with
 a `MeshRenderer` and `MeshFilter` whose Mesh fingerprint matches the recorded
@@ -257,7 +291,7 @@ the specified slots. A mismatch reports `MIKU_MESH_BINDING_MISMATCH` and makes
 no assignment. The successful operation records Renderer Undo; use the
 generated Prefab when possible.
 
-### 7.9 Toon Material Recipe Inspector
+### 7.10 Toon Material Recipe Inspector
 
 A `MikuToonMaterialRecipe` records the generated base material, user material,
 workflow, part, texture bindings and UV transforms, stable identities, and
@@ -267,7 +301,7 @@ the Miku Material Inspector's part selector so the shader, bindings, recommended
 profile, and recipe stay synchronized. Raw Recipe Inspector edits alone do not
 apply a material regeneration.
 
-### 7.10 Legacy migration tools
+### 7.11 Legacy migration tools
 
 For historical MiGR assets only, first select explicit assets or folders and
 run **Miku > Migration > Dry Run Selected MiGR Assets**. Review the logged
@@ -277,7 +311,7 @@ to apply the property and metadata-name migration.
 
 The migration does not traverse scene objects or change Renderer assignments.
 It rejects retired Generic Toon materials instead of silently substituting a
-different shader. Normal 2.2.12 authoring does not require these commands.
+different shader. Normal 2.3.0 authoring does not require these commands.
 
 ## 8. Editor languages
 

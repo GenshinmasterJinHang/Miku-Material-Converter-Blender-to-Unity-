@@ -54,7 +54,7 @@ namespace Miku.ShaderConverter.Editor
     /// </summary>
     public sealed class MikuToonMaterialRecipe : ScriptableObject
     {
-        public const string CurrentShaderFamilyVersion = "2.2.12";
+        public const string CurrentShaderFamilyVersion = "2.3.0";
 
         public Material generatedBaseMaterial;
         public Material userMaterial;
@@ -188,25 +188,62 @@ namespace Miku.ShaderConverter.Editor
             var shader = Shader.Find(shaderName)
                 ?? throw new InvalidOperationException(
                     "MIKU_WORKFLOW_SHADER_MISSING:" + shaderName);
+            // Validate against the target shader before recording or mutating
+            // either persistent object. In particular, a HairShadow selection
+            // without its dedicated texture must leave the current material
+            // byte-for-byte unchanged.
+            MikuFixedWorkflowTextureBindings.ValidateForShader(
+                shader,
+                recipe.workflowKind,
+                recipe.textureBindings);
+            var material = recipe.generatedBaseMaterial;
+            var materialSnapshot = new Material(material);
+            var originalShader = material.shader;
+            var originalKeywords = material.shaderKeywords;
+            var originalRenderQueue = material.renderQueue;
+            var originalEnableInstancing = material.enableInstancing;
+            var originalDoubleSidedGi = material.doubleSidedGI;
+            var originalGiFlags = material.globalIlluminationFlags;
+            var originalPart = recipe.gamePart;
             Undo.RecordObjects(
                 new UnityEngine.Object[]
                 {
-                    recipe.generatedBaseMaterial,
+                    material,
                     recipe,
                 },
                 MikuEditorLocalization.Tr(
                     "Change Miku game Toon material part"));
-            recipe.generatedBaseMaterial.shader = shader;
-            recipe.gamePart = ParsePart(recipe.workflowKind, recipe.gamePart.ToString());
-            MikuFixedWorkflowTextureBindings.Bind(
-                recipe.generatedBaseMaterial,
-                recipe.workflowKind,
-                recipe.textureBindings);
-            MikuGameToonMaterialProfiles.ApplyRecommended(
-                recipe.generatedBaseMaterial);
-            EditorUtility.SetDirty(recipe.generatedBaseMaterial);
-            EditorUtility.SetDirty(recipe);
-            AssetDatabase.SaveAssets();
+            try
+            {
+                material.shader = shader;
+                recipe.gamePart = ParsePart(
+                    recipe.workflowKind,
+                    recipe.gamePart.ToString());
+                MikuFixedWorkflowTextureBindings.Bind(
+                    material,
+                    recipe.workflowKind,
+                    recipe.textureBindings);
+                MikuGameToonMaterialProfiles.ApplyRecommended(material);
+                EditorUtility.SetDirty(material);
+                EditorUtility.SetDirty(recipe);
+                AssetDatabase.SaveAssets();
+            }
+            catch
+            {
+                material.shader = originalShader;
+                material.CopyPropertiesFromMaterial(materialSnapshot);
+                material.shaderKeywords = originalKeywords;
+                material.renderQueue = originalRenderQueue;
+                material.enableInstancing = originalEnableInstancing;
+                material.doubleSidedGI = originalDoubleSidedGi;
+                material.globalIlluminationFlags = originalGiFlags;
+                recipe.gamePart = originalPart;
+                throw;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(materialSnapshot);
+            }
         }
 
         internal static MikuToonMaterialRecipe CreateOrUpdateImported(

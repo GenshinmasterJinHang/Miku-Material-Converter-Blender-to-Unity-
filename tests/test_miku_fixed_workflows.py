@@ -10,6 +10,7 @@ from miku.fixed_workflows import (
     allowed_texture_role,
     infer_filename_texture_role,
     normalize_texture_role,
+    texture_role_color_space,
 )
 from miku.planner import ConversionPlanner
 from miku.semantic import build_material_ir
@@ -88,10 +89,35 @@ class FixedWorkflowTests(unittest.TestCase):
         )
         self.assertEqual("", infer_filename_texture_role("abnormalish.png"))
         self.assertTrue(allowed_texture_role("genshin_toon", "ShadowRampMap"))
+        self.assertTrue(allowed_texture_role("genshin_toon", "NormalMap"))
         self.assertFalse(allowed_texture_role("genshin_toon", "SkinRamp"))
         self.assertFalse(allowed_texture_role("generic_toon", "BaseMap"))
         self.assertTrue(
             allowed_texture_role("endfield_toon", "HairShadowMap")
+        )
+        self.assertTrue(
+            allowed_texture_role("endfield_toon", "SpecularRefineF0")
+        )
+        self.assertTrue(
+            allowed_texture_role("endfield_toon", "SpecularRefineColor")
+        )
+        self.assertIn("SpecularRefineF0", FIXED_TEXTURE_ROLES)
+        self.assertIn("SpecularRefineColor", FIXED_TEXTURE_ROLES)
+        self.assertEqual(
+            "SpecularRefineF0",
+            normalize_texture_role("MIKU:Specular Refine F0"),
+        )
+        self.assertEqual(
+            "SpecularRefineColor",
+            normalize_texture_role("specular_refine_color"),
+        )
+        self.assertEqual(
+            "Linear",
+            texture_role_color_space(["SpecularRefineF0"]),
+        )
+        self.assertEqual(
+            "sRGB",
+            texture_role_color_space(["SpecularRefineColor"]),
         )
         self.assertTrue(allowed_texture_role("wuwa_toon", "StockingsMap"))
         self.assertIn("EyeHET", FIXED_TEXTURE_ROLES)
@@ -222,7 +248,8 @@ class FixedWorkflowTests(unittest.TestCase):
         self.assertIn("1.0 - tangentDotHalf * tangentDotHalf", common)
         self.assertIn("projectedRight", common)
         self.assertIn("scleraMode", common)
-        self.assertIn("matcapSpecular", common)
+        self.assertIn("legacyMatcapSpecular", common)
+        self.assertIn("tutorialMatcapBrdf", common)
         self.assertIn("primaryColor", common)
         self.assertIn("accessorySpecular", common)
         self.assertIn("_OverlayUseTintOnly", common)

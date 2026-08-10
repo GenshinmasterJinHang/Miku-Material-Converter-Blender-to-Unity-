@@ -136,25 +136,147 @@ float Wuwa_HairShadowMask(
     return saturate(shadow * strength * step(0.5, available));
 }
 
-float3 Wuwa_GetOutlineNormalOS(float3 smoothNormalOS, float3 fallbackNormalOS)
+// Tutorial 3.1.1: minimal CookTorrance direct specular from the IcePaper Wuwa
+// tutorial. roughness2MinusOne and normalizationTerm follow URP BRDFData so
+// the same formulas can be validated by CPU math mirrors in EditMode tests.
+float Wuwa_DirectBRDFSpecular(
+    float3 normalWS,
+    float3 lightDirWS,
+    float3 viewDirWS,
+    float roughness)
 {
-    float3 selectedNormalOS = dot(smoothNormalOS, smoothNormalOS) > 1e-5
-        ? smoothNormalOS
-        : fallbackNormalOS;
-    return normalize(selectedNormalOS);
+    float3 safeNormalWS = normalize(normalWS);
+    float3 safeLightDirWS = normalize(lightDirWS);
+    float3 safeViewDirWS = normalize(viewDirWS);
+    float3 halfDir = normalize(safeLightDirWS + safeViewDirWS);
+
+    float NoH = saturate(dot(safeNormalWS, halfDir));
+    float LoH = saturate(dot(safeLightDirWS, halfDir));
+    float NoL = saturate(dot(safeNormalWS, safeLightDirWS));
+    float NoV = saturate(dot(safeNormalWS, safeViewDirWS));
+    float safeRoughness = clamp(roughness, 1e-3, 1.0);
+    float roughness2 = safeRoughness * safeRoughness;
+    float roughness2MinusOne = roughness2 - 1.0;
+    float normalizationTerm = max(4.0 * LoH * NoH, 1e-3);
+
+    float d = NoH * NoH * roughness2MinusOne + 1.00001;
+    float LoH2 = LoH * LoH;
+    float specularTerm = roughness2 /
+        ((d * d) * max(0.1, LoH2) * normalizationTerm);
+    // Guard against invalid inputs while keeping the tutorial's response.
+    return (specularTerm == specularTerm) &&
+        abs(specularTerm) < 1e19 &&
+        NoL > 0.0 && NoV > 0.0
+        ? saturate(specularTerm)
+        : 0.0;
 }
 
-float Wuwa_DistanceCompensatedOutlineWidth(
-    float3 positionWS,
-    float outlineWidth,
-    float referenceDistance,
-    float distanceScale)
+// Tutorial 3.1.2: reflection-probe indirect specular without the Fresnel term
+// (the tutorial removes fresnelTerm because a separate rim effect follows).
+float3 Wuwa_IndirectSpecular(
+    float3 normalWS,
+    float3 viewDirWS,
+    float roughness)
 {
-    float safeReferenceDistance = max(referenceDistance, 1e-5);
-    float cameraDistance = distance(_WorldSpaceCameraPos, positionWS);
-    float farScale = max(cameraDistance / safeReferenceDistance, 1.0);
-    return outlineWidth * lerp(1.0, farScale, saturate(distanceScale));
+    float3 safeNormalWS = normalize(normalWS);
+    float3 safeViewDirWS = normalize(viewDirWS);
+    float3 reflectVector = reflect(-safeViewDirWS, safeNormalWS);
+    float perceptualRoughness = clamp(roughness, 0.0, 1.0);
+    float3 reflected = GlossyEnvironmentReflection(
+        reflectVector,
+        perceptualRoughness,
+        1.0);
+    float reflectedEnergy = dot(reflected, reflected);
+    return (reflectedEnergy == reflectedEnergy) &&
+        abs(reflectedEnergy) < 1e19
+        ? reflected
+        : 0.0.xxx;
 }
+
+// Tutorial 3.2: MatCap is desaturated before it is added onto the albedo so
+// the metal highlight reads as energy on the base color rather than an
+// independent unlit overlay.
+float3 Wuwa_MatcapAlbedo(
+    float3 albedo,
+    float3 matcap,
+    float saturation,
+    float mask,
+    float strength)
+{
+    float3 tone = lerp(Wuwa_Desaturate(matcap), matcap, saturate(saturation));
+    return albedo + tone * saturate(mask) * max(strength, 0.0);
+}
+
+// Tutorial 3.4: vertical gradient applied as a multiply toward a low color.
+float3 Wuwa_VerticalGradient(
+    float3 color,
+    float3 lowColor,
+    float gradingValue)
+{
+    float amount = saturate(gradingValue);
+    return lerp(color * max(lowColor, 0.0.xxx), color, amount);
+}
+
+// Tutorial 3.5.1: Fresnel edge light with a hard step.
+float3 Wuwa_FresnelStepRim(
+    float3 normalWS,
+    float3 viewDirWS,
+    float fresnelPower,
+    float brightness,
+    float3 tint,
+    float3 baseColor)
+{
+    float NoV = saturate(dot(normalize(normalWS), normalize(viewDirWS)));
+    float fresnel = pow(
+        saturate(1.0 - NoV),
+        max(fresnelPower, 0.1));
+    fresnel = step(0.5, fresnel);
+    return fresnel * max(brightness, 0.0) * max(tint, 0.0.xxx) *
+        max(baseColor, 0.0.xxx);
+}
+
+// Selects the V coordinate of one of the model's four UV sets for the
+// vertical-gradient channel (tutorial 3.4). Feibi's EXTRAUVS2 (Unity uv3)
+// spans 0..1 from bottom to top on body parts and stays constant on the face.
+float Wuwa_GradientValue(
+    float2 uv0,
+    float2 uv1,
+    float2 uv3,
+    float channel,
+    float invert)
+{
+    int index = (int)round(channel);
+    float2 selected = uv0;
+    if (index == 1)
+        selected = uv1;
+    else if (index == 3)
+        selected = uv3;
+    float value = selected.y;
+    if (!(value == value) || abs(value) >= 1e19)
+        value = uv0.y;
+    value = saturate(value);
+    return step(0.5, invert) > 0.5 ? 1.0 - value : value;
+}
+
+// Tutorial 3.10: two-segment empirical outline width by camera distance.
+// Near 0..1 m grows from 0.13 toward 0.3, far 1..10 m grows toward 1.5.
+float Wuwa_TutorialOutlineWidth(
+    float3 positionWS,
+    float3 cameraPos)
+{
+    float3 nearfar = float3(0.005, 1, 10);
+    float3 weight = float3(0.13, 0.3, 1.5);
+    float dis = distance(cameraPos, positionWS);
+    if (!(dis == dis) || abs(dis) >= 1e19 || dis < 0.0)
+        return 1.0;
+    float disNear = saturate(
+        (dis - nearfar.x) / max(nearfar.y - nearfar.x, 1e-5));
+    float disFar = saturate(
+        (dis - nearfar.y) / max(nearfar.z - nearfar.y, 1e-5));
+    return lerp(weight.x, weight.y, disNear) +
+        (weight.z - weight.y) * disFar;
+}
+
 
 float3 Wuwa_IDOutlineColor(float4 idMap, float3 outlineColor)
 {

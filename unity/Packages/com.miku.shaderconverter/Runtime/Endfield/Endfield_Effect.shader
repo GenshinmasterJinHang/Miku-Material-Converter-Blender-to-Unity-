@@ -11,6 +11,8 @@ Shader "MIKU/Endfield/Effect"
         [Toggle] _UseEffectMask ("Use Effect Mask", Float) = 0
         [Toggle] _UseEmissionMap ("Use Emission", Float) = 0
         _EmissionIntensity ("Emission", Range(0,16)) = 1
+        _EmissionColor ("Emission Color", Color) = (1,1,1,1)
+        [Enum(R Mask,0,Authored RGB,1,RGB x Base Alpha,2)] _EmissionMapMode ("Emission Map Mode", Float) = 1
         [Enum(Texture Alpha,0,Luminance,1,Inverse Red,2)] _AlphaSource ("Alpha Source", Float) = 0
         _AlphaClip ("Alpha Clip", Range(0,1)) = 0.01
         [HideInInspector] _PartMode ("Part", Float) = 7

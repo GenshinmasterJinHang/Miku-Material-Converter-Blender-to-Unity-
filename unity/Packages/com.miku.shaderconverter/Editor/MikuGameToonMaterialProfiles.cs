@@ -102,6 +102,19 @@ namespace Miku.ShaderConverter.Editor
                     changed |= ApplySkin(material, 0.16f, 0.34f, 1.03f, 0.12f, "_IDMap", logMissingMask);
                     changed |= SetFloat(material, "_BodyEmissionStrength", 1f);
                     changed |= SetFloat(material, "_MatcapStrength", 0.15f);
+                    changed |= SetFloat(material, "_MatcapSaturation", 0.1f);
+                    changed |= SetFloat(material, "_Roughness", 0.6f);
+                    changed |= SetFloat(material, "_SpecularStrength", 0.25f);
+                    changed |= SetFloat(material, "_ReflectionStrength", 0.1f);
+                    changed |= SetColor(
+                        material,
+                        "_VerticalGradientColor",
+                        new Color(0.86f, 0.80f, 0.94f, 1f));
+                    changed |= SetFloat(material, "_VerticalGradientStrength", 0.35f);
+                    changed |= SetFloat(material, "_GradientUVIndex", 3f);
+                    changed |= SetFloat(material, "_GradientInvert", 0f);
+                    changed |= SetFloat(material, "_OutlineDistanceMode", 1f);
+                    changed |= SetFloat(material, "_OutlineVertexColorMask", 1f);
                     changed |= SetFloat(material, "_StockingSheerness", 0.58f);
                     changed |= SetColor(
                         material,
@@ -137,6 +150,13 @@ namespace Miku.ShaderConverter.Editor
                     changed |= SetFloat(material, "_FaceShadowStrength", 0.72f);
                     changed |= SetFloat(material, "_SkinRampBrightness", 1.0f);
                     changed |= SetFloat(material, "_SkinRampStrength", 0.35f);
+                    changed |= SetFloat(material, "_FaceSoftChannelStrength", 1f);
+                    changed |= SetFloat(material, "_UseHairShadow", 1f);
+                    changed |= SetFloat(material, "_VerticalGradientStrength", 0f);
+                    changed |= SetFloat(material, "_GradientUVIndex", 3f);
+                    changed |= SetFloat(material, "_GradientInvert", 0f);
+                    changed |= SetFloat(material, "_OutlineDistanceMode", 1f);
+                    changed |= SetFloat(material, "_OutlineVertexColorMask", 1f);
                 }
                 else if (shaderName == "MIKU/Wuwa/Eye")
                 {
@@ -169,6 +189,16 @@ namespace Miku.ShaderConverter.Editor
                     changed |= SetFloat(material, "_EyeEGLightFollow", 0.08f);
                     changed |= SetFloat(material, "_EyeBaseEmissionStrength", 0f);
                     changed |= SetFloat(material, "_EmissionStrength", 1f);
+                    changed |= SetFloat(material, "_EyeShadowStart", 0.25f);
+                    changed |= SetFloat(material, "_EyeShadowEnd", 0.55f);
+                    changed |= SetColor(
+                        material,
+                        "_EyeLitTint",
+                        Color.white);
+                    changed |= SetColor(
+                        material,
+                        "_EyeShadowTint",
+                        new Color(0.82f, 0.82f, 0.82f, 1f));
                 }
                 else if (shaderName == "MIKU/Wuwa/Hair")
                 {
@@ -178,6 +208,15 @@ namespace Miku.ShaderConverter.Editor
                     changed |= SetFloat(material, "_IndirectLightUsage", 0.18f);
                     changed |= SetFloat(material, "_MainLightColorUsage", 0.15f);
                     changed |= SetFloat(material, "_RimLightBrightness", 0.08f);
+                    changed |= SetColor(
+                        material,
+                        "_VerticalGradientColor",
+                        new Color(0.86f, 0.80f, 0.94f, 1f));
+                    changed |= SetFloat(material, "_VerticalGradientStrength", 0.35f);
+                    changed |= SetFloat(material, "_GradientUVIndex", 3f);
+                    changed |= SetFloat(material, "_GradientInvert", 0f);
+                    changed |= SetFloat(material, "_OutlineDistanceMode", 1f);
+                    changed |= SetFloat(material, "_OutlineVertexColorMask", 1f);
                 }
                 else if (shaderName == "MIKU/Wuwa/Effect")
                 {
