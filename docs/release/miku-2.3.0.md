@@ -58,9 +58,9 @@ Executed on 2026-08-10:
   EditMode suite, 283 tests with 282 passed, 0 failed, and 1 skipped.
 - Two independent release builds were byte-identical. Final SHA-256:
   - ZIP `miku_shader_converter-2.3.0.zip`:
-    `f4557a134c7f34da3ebdc3feec2b18f0dd916dcf391699a2607f58da76c762c9`
+    `db2da64cb2a03cd409e61baa7684f17e8e412854df80e43507d3c6ebb31a0c3f`
   - TGZ `com.miku.shaderconverter-2.3.0.tgz`:
-    `ad78ca6fbf376d94b6e50c5382fe7df72d07854e455e4df146a0ce2a12d8534b`
+    `be6d326c0ada6a97554695a1902344c0acaf3f5fcc89e24e5b2ce23a41c9471d`
 
 Still pending and not claimed as passing: final-TGZ installation and installed
 package hash comparison in the port-8080 project; transactional migration and

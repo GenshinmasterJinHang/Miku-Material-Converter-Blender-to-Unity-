@@ -32,9 +32,9 @@ Blender 5.2.0。
   283 项，282 通过、0 失败、1 跳过。
 - 两次独立构建字节一致。最终 SHA-256：
   - ZIP `miku_shader_converter-2.3.0.zip`：
-    `f4557a134c7f34da3ebdc3feec2b18f0dd916dcf391699a2607f58da76c762c9`
+    `db2da64cb2a03cd409e61baa7684f17e8e412854df80e43507d3c6ebb31a0c3f`
   - TGZ `com.miku.shaderconverter-2.3.0.tgz`：
-    `ad78ca6fbf376d94b6e50c5382fe7df72d07854e455e4df146a0ce2a12d8534b`
+    `be6d326c0ada6a97554695a1902344c0acaf3f5fcc89e24e5b2ce23a41c9471d`
 
 仍待执行且不宣称通过：最终 TGZ 在端口 8080 工程的安装与已安装包 hash 核对、
 `Assets/endfield/终末地.unity` 事务式迁移与保存，以及所有 D3D11 双面、
