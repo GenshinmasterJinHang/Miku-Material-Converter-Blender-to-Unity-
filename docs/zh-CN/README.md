@@ -1,4 +1,4 @@
-# Miku 2.2.12
+# Miku 2.3.0
 
 Miku 将 Blender 5.x EEVEE 材质转换为目标无关的 MaterialIR 2.0，再将确定性、
 可继续编辑的 Standard PBR Shader Graph 资产导入 Unity 6 URP。Blender 只显示一条
@@ -17,6 +17,8 @@ Standard PBR 路线；Unity 编辑器内提供四套随包附带的 Game Toon Sh
   结构化诊断，并继续读取历史 Bundle 1.0。
 - Unity 材质创建器位于 `Miku > Game Toon > Materials > Create Material`，提供
   显式贴图字段和必填校验，不覆盖现有资产，也不自动绑定 Renderer、FBX 或 Prefab。
+- 可选择启用的终末地教程光照、支持蒙皮的切线空间描边，以及项目自有的后处理前
+  游戏 LUT 安装器。详见[终末地 2.3.0 指南](endfield-tutorial-rendering.md)。
 - 在 `Miku > Settings` 中按用户选择 English 或简体中文，不修改项目资产。
 
 ## 内置 Game Toon Shader/HLSL 预设
@@ -29,7 +31,7 @@ Unity 包直接附带四套由 Miku 独立编写的实验性 Shader/HLSL 代码�
 | 原神（Genshin） | Body、Hair、Face、Eye | Light Map/Ramp 卡通光照、Face SDF、头发、眼睛、描边和屏幕边缘光支持 |
 | 崩坏：星穹铁道（HSR） | Body、Hair、Face、Eye | Light Map/Ramp、Face SDF、头发高光、眼睛和描边支持 |
 | 鸣潮（Wuwa） | Body、Hair、Face、Eye、Effect | ID/Stockings 双绑定、脸部基向量、眼睛专用贴图、高光和自发光 |
-| 明日方舟：终末地（Endfield） | Body、Skin、Hair、Face、Eye、Mouth、Overlay、Effect、HairShadow | 参数/Ramp/LUT 贴图、Face SDF、头发 refine/shift/line、Overlay、Effect 和 HairShadow |
+| 明日方舟：终末地（Endfield） | Body、Skin、Hair、Face、Eye、Mouth、Overlay、Effect、HairShadow | 连续昼夜/顶光、三层 Ramp、DFG、Face SDF、皮肤/眼睛/头发、受光 Overlay、阴影、描边和项目 LUT |
 
 创建器合计提供 22 个有效材质部位。这些预设处于 **Experimental（实验性）** 状态，
 不承诺与任何游戏逐像素一致。Miku 不包含从游戏提取的 Shader 源码、模型、贴图、Logo
@@ -38,8 +40,8 @@ Unity 包直接附带四套由 Miku 独立编写的实验性 Shader/HLSL 代码�
 
 ## 安装发布版本
 
-1. 在 2.2.12 发布资产可用后，下载 `miku_shader_converter-2.2.12.zip` 和
-   `com.miku.shaderconverter-2.2.12.tgz`。
+1. 在 2.3.0 发布资产可用后，下载 `miku_shader_converter-2.3.0.zip` 和
+   `com.miku.shaderconverter-2.3.0.tgz`。
 2. 在 Blender 5.0–5.2 打开 **编辑 > 偏好设置 > 扩展**，选择 **从磁盘安装**，选中 ZIP
    并启用 Miku。
 3. 在 Unity 6000.0–6000.5 打开 **Window > Package Manager > + > Add package
@@ -70,7 +72,7 @@ Shader Graph 17.5.4。正式范围为 Blender 5.0–5.2，以及严格匹配的
 Unity 6000.0/URP 17.0 到 Unity 6000.5/URP 17.5 技术线；URP 与 Shader Graph
 版本必须完全相同。区间内未记录的稳定补丁会先执行能力预检并显示警告。
 Blender 5.3+、Unity 6000.6+、17.6+ 和预发布版本会在写资产前拒绝。
-2.2.12 不修改
+2.3.0 不修改
 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开 Shader
 property/reference 名称。详见[兼容性矩阵](../compatibility.md)。
 

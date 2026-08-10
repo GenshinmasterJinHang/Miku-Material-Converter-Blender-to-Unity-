@@ -14,6 +14,9 @@ Shader "MIKU/HSR/Body"
         [Toggle(_AREA_UPPER_BODY)] _AreaUpperBody ("Area Upper Body", Float) = 0
         [Toggle(_AREA_LOWER_BODY)] _AreaLowerBody ("Area Lower Body", Float) = 0
         [Toggle(_HSR_STOCKINGS_ON)] _UseStockings ("Use Stockings", Float) = 0
+        [Toggle(_HSR_DOUBLE_SIDED)] _DoubleSided ("Double Sided (Cloak/Skirt)", Float) = 0
+        _Cull ("Cull (0 Off, 1 Front, 2 Back)", Float) = 2
+        _BackUV1 ("Use UV1 on Back Face", Float) = 0
         _IndirectLightUsage ("Indirect Light Usage", Range(0,2)) = 0.35
         _IndirectLightOcclusionUsage ("Indirect Light AO Usage", Range(0,1)) = 0.7
         _IndirectLightMixBaseColor ("Indirect Mix Base Color", Range(0,1)) = 1
@@ -66,7 +69,7 @@ Shader "MIKU/HSR/Body"
         {
             Name "UniversalForward"
             Tags { "LightMode"="UniversalForward" }
-            Cull Back
+            Cull [_Cull]
             ZWrite On
             ZTest LEqual
             Blend One Zero
@@ -78,6 +81,7 @@ Shader "MIKU/HSR/Body"
             #pragma shader_feature_local _AREA_UPPER_BODY
             #pragma shader_feature_local _AREA_LOWER_BODY
             #pragma shader_feature_local _HSR_STOCKINGS_ON
+            #pragma shader_feature_local _HSR_DOUBLE_SIDED
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "HSRCommon.hlsl"
@@ -89,6 +93,7 @@ Shader "MIKU/HSR/Body"
             TEXTURE2D(_StockingsMap); SAMPLER(sampler_StockingsMap);
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST; float4 _StockingsMap_ST; float4 _BaseColorTint;
+                float _Cull; float _BackUV1;
                 float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal;
                 float _ShadowThresholdCenter; float _ShadowThresholdSoftness; float _ShadowRampOffset; float _BodyRampRowCount; float _MainLightColorUsage;
                 float _SpecularExponent; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness; float _MetallicLightMapTarget; float _MetallicLightMapWidth;
@@ -97,21 +102,34 @@ Shader "MIKU/HSR/Body"
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float3 smoothNormalOS : TEXCOORD7; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float3 viewDirWS : TEXCOORD2; float2 uvBase : TEXCOORD3; float2 uvStocking : TEXCOORD4; float4 shadowCoord : TEXCOORD5; };
-            Varyings HSRVert(Attributes input) { Varyings output; VertexPositionInputs pos = GetVertexPositionInputs(input.positionOS.xyz); VertexNormalInputs normal = GetVertexNormalInputs(input.normalOS, input.tangentOS); output.positionCS = pos.positionCS; output.positionWS = pos.positionWS; output.normalWS = normalize(normal.normalWS); output.viewDirWS = normalize(GetWorldSpaceViewDir(pos.positionWS)); output.uvBase = TRANSFORM_TEX(input.uv, _BaseMap); output.uvStocking = TRANSFORM_TEX(input.uv, _StockingsMap); output.shadowCoord = TransformWorldToShadowCoord(pos.positionWS); return output; }
-            half4 HSRFrag(Varyings input) : SV_Target
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; float4 smoothNormalData : TEXCOORD7; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float3 viewDirWS : TEXCOORD2; float2 uvBase : TEXCOORD3; float2 uvStocking : TEXCOORD4; float4 shadowCoord : TEXCOORD5; float2 uvBackBase : TEXCOORD6; float2 uvBackStocking : TEXCOORD7; };
+            struct HSRFragmentInput : Varyings { float facing : VFACE; };
+            Varyings HSRVert(Attributes input) { Varyings output; VertexPositionInputs pos = GetVertexPositionInputs(input.positionOS.xyz); VertexNormalInputs normal = GetVertexNormalInputs(input.normalOS, input.tangentOS); output.positionCS = pos.positionCS; output.positionWS = pos.positionWS; output.normalWS = normalize(normal.normalWS); output.viewDirWS = normalize(GetWorldSpaceViewDir(pos.positionWS)); output.uvBase = TRANSFORM_TEX(input.uv, _BaseMap); output.uvStocking = TRANSFORM_TEX(input.uv, _StockingsMap); output.uvBackBase = TRANSFORM_TEX(input.uv1, _BaseMap); output.uvBackStocking = TRANSFORM_TEX(input.uv1, _StockingsMap); output.shadowCoord = TransformWorldToShadowCoord(pos.positionWS); return output; }
+            half4 HSRFrag(HSRFragmentInput input) : SV_Target
             {
-                float4 baseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uvBase) * _BaseColorTint;
-                float4 lightMap = SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, input.uvBase);
+                float2 uvBase = input.uvBase;
+                float2 uvStocking = input.uvStocking;
+                #if defined(_HSR_DOUBLE_SIDED)
+                    if (input.facing < 0.0)
+                    {
+                        uvBase = lerp(uvBase, input.uvBackBase, _BackUV1);
+                        uvStocking = lerp(uvStocking, input.uvBackStocking, _BackUV1);
+                    }
+                #endif
+                float4 baseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, uvBase) * _BaseColorTint;
+                float4 lightMap = SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, uvBase);
                 Light mainLight = GetMainLight(input.shadowCoord);
                 float3 lightDirWS = normalize(mainLight.direction);
                 float3 normalWS = normalize(input.normalWS);
+                #if defined(_HSR_DOUBLE_SIDED)
+                    normalWS *= input.facing;
+                #endif
                 float3 viewDirWS = normalize(input.viewDirWS);
                 float3 baseColor = baseSample.rgb;
                 float skinMask = MikuGameToonStarRailBodySkinMask(lightMap.a, baseSample.rgb);
                 #if defined(_HSR_STOCKINGS_ON)
-                    float4 stockingsMap = SAMPLE_TEXTURE2D(_StockingsMap, sampler_StockingsMap, input.uvStocking);
+                    float4 stockingsMap = SAMPLE_TEXTURE2D(_StockingsMap, sampler_StockingsMap, uvStocking);
                     float stockingsFac = 1.0;
                     float3 stockingsEffect = HSR_ComputeStockingsEffect(normalWS, viewDirWS, stockingsMap, _StockingsTransitionPower, _StockingsTransitionHardness, _StockingsTextureUsage, _StockingsDetailStrength, _StockingsDetailMin, _StockingsDarkColor.rgb, _StockingsTransitionColor.rgb, _StockingsLightColor.rgb, _StockingsTransitionThreshold, stockingsFac);
                     float stockingsDebugMode = round(_StockingsDebugMode);
@@ -172,7 +190,7 @@ Shader "MIKU/HSR/Body"
             Name "Outline"
             Tags { "LightMode"="SRPDefaultUnlit" }
             Cull Front
-            ZWrite On
+            ZWrite Off
             ZTest LEqual
             Blend One Zero
             ColorMask RGBA
@@ -182,20 +200,30 @@ Shader "MIKU/HSR/Body"
             #pragma fragment OutlineFrag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "HSRCommon.hlsl"
+            #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonOutline.hlsl"
             TEXTURE2D(_BodyCoolRamp); SAMPLER(sampler_BodyCoolRamp);
             TEXTURE2D(_BodyWarmRamp); SAMPLER(sampler_BodyWarmRamp);
             CBUFFER_START(UnityPerMaterial)
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float3 smoothNormalOS : TEXCOORD7; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float4 smoothNormalData : TEXCOORD7; };
             struct Varyings { float4 positionCS : SV_POSITION; };
             Varyings OutlineVert(Attributes input)
             {
                 Varyings output;
                 VertexPositionInputs pos = GetVertexPositionInputs(input.positionOS.xyz);
-                float3 outlineNormalOS = HSR_GetOutlineNormalOS(input.smoothNormalOS, input.normalOS);
-                float3 outlineNormalWS = normalize(TransformObjectToWorldNormal(outlineNormalOS));
-                output.positionCS = HSR_ExtrudeOutlinePositionCS(pos.positionWS, outlineNormalWS, _OutlineWidth, _OutlineReferenceDistance, _OutlineDistanceScale);
+                float3 outlineNormalOS = MikuGameToonOutlineNormalTangentSpaceV2(
+                    input.smoothNormalData, input.normalOS, input.tangentOS);
+                output.positionCS = MikuGameToonOutlinePositionCSWithLegacyMode(
+                    pos.positionCS,
+                    pos.positionWS,
+                    outlineNormalOS,
+                    _OutlineWidth,
+                    _OutlineReferenceDistance,
+                    _OutlineDistanceScale,
+                    float4(1.0, 1.0, 1.0, 1.0),
+                    1.0,
+                    1.0);
                 return output;
             }
             half4 OutlineFrag(Varyings input) : SV_Target

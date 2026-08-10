@@ -29,7 +29,7 @@ Shader "MIKU/Wuwa/Face"
         _FaceShadowOffset ("Face Shadow Offset", Range(-1,1)) = -0.08
         _FaceShadowSoftness ("Face Shadow Softness", Range(0.001,1)) = 0.067
         _FaceThresholdBias ("Face Threshold Bias", Range(-1,1)) = -0.073
-        _FaceSoftChannelStrength ("Face Soft Channel Strength", Range(0,1)) = 0
+        _FaceSoftChannelStrength ("Face Soft Channel Strength", Range(0,1)) = 1
         _FaceShadowStrength ("Face SDF Shadow Strength", Range(0,1)) = 0.65
         _FaceSdfDebugMode ("Face SDF Debug Mode", Range(0,5)) = 0
         _SkinRampUV ("Skin Ramp UV", Vector) = (0.24,0.9,0,0)
@@ -58,9 +58,13 @@ Shader "MIKU/Wuwa/Face"
         _HairShadowDepthBias ("Hair Shadow Depth Bias", Range(-1,1)) = 0.02
         _HairShadowSoftness ("Hair Shadow Softness", Range(0.001,1)) = 0.05
         _HairShadowScreenOffset ("Hair Shadow Screen Offset", Range(-0.1,0.1)) = 0.015
-        [Toggle(_WUWA_HAIR_SHADOW_ON)] _UseHairShadow ("Use Hair Shadow", Float) = 0
+        [Toggle(_WUWA_HAIR_SHADOW_ON)] _UseHairShadow ("Use Hair Shadow", Float) = 1
         _IndirectLightUsage ("Indirect Light Usage", Range(0,2)) = 0
         _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 0
+        _VerticalGradientColor ("Vertical Gradient Low Color", Color) = (0.86,0.80,0.94,1)
+        _VerticalGradientStrength ("Vertical Gradient Strength", Range(0,1)) = 0
+        _GradientUVIndex ("Gradient UV Channel", Range(0,3)) = 3
+        _GradientInvert ("Gradient Invert", Float) = 0
         _RimLightBrightness ("Rim Brightness", Range(0,4)) = 0
         _RimLightTintColor ("Rim Tint", Color) = (1,1,1,1)
         _RimLightWidth ("Rim Width", Range(0,10)) = 1
@@ -71,6 +75,8 @@ Shader "MIKU/Wuwa/Face"
         _OutlineWidth ("Outline Width", Range(0,0.1)) = 0.001
         _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
         _OutlineDistanceScale ("Outline Distance Scale", Range(0,1)) = 1
+        _OutlineDistanceMode ("Outline Distance Mode 0 Miku 1 Tutorial", Range(0,1)) = 1
+        _OutlineVertexColorMask ("Outline Vertex Color Mask", Range(0,1)) = 1
         _OutlineColorTint ("Outline Color", Color) = (0.34,0.18,0.22,1)
     }
     SubShader
@@ -116,11 +122,12 @@ Shader "MIKU/Wuwa/Face"
                 float4 _FaceBlushColor; float _FaceBlushStrength; float4 _FaceBlushCenters; float4 _FaceBlushSize; float _FaceExtraLightChannel; float4 _FaceExtraLightColor; float _FaceExtraLightStrength;
                 float _HairShadowStrength; float _HairShadowDepthBias; float _HairShadowSoftness; float _HairShadowScreenOffset; float _UseHairShadow;
                 float _IndirectLightUsage; float _MainLightColorUsage;
+                float4 _VerticalGradientColor; float _VerticalGradientStrength; float _GradientUVIndex; float _GradientInvert;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
-                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float4 _OutlineColorTint;
+                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineDistanceMode; float _OutlineVertexColorMask; float4 _OutlineColorTint;
             CBUFFER_END
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float3 smoothNormalOS : TEXCOORD7; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float3 viewDirWS : TEXCOORD2; float2 uv : TEXCOORD3; float4 shadowCoord : TEXCOORD4; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; float2 uv3 : TEXCOORD3; float4 smoothNormalData : TEXCOORD7; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float3 viewDirWS : TEXCOORD2; float2 uv : TEXCOORD3; float4 shadowCoord : TEXCOORD4; float2 uv1 : TEXCOORD5; float2 uv3 : TEXCOORD6; };
             Varyings WuwaFaceVert(Attributes input)
             {
                 Varyings output;
@@ -132,6 +139,8 @@ Shader "MIKU/Wuwa/Face"
                 output.viewDirWS = normalize(GetWorldSpaceViewDir(pos.positionWS));
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 output.shadowCoord = TransformWorldToShadowCoord(pos.positionWS);
+                output.uv1 = input.uv1;
+                output.uv3 = input.uv3;
                 return output;
             }
             float3 WuwaFaceSafeNormalize(float3 value, float3 fallback)
@@ -246,6 +255,23 @@ Shader "MIKU/Wuwa/Face"
                 float3 color = faceBase * lerp(1.0.xxx, faceLightingTone, saturate(_FaceShadowStrength)) * _FaceFinalBrightness * mainLightColor;
                 color += Wuwa_SampleSH_Indirect(faceShadingNormalWS, 0.0) * _IndirectLightUsage * skinBase;
                 color += MikuGameToonSkinSSS(faceBase, skinMask, faceShadingNormalWS, viewDirWS, lightDirWS, mainLight.color.rgb, faceLight, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb);
+                color += Wuwa_FresnelStepRim(
+                    faceShadingNormalWS,
+                    viewDirWS,
+                    _FresnelPower,
+                    _RimLightBrightness,
+                    _RimLightTintColor.rgb,
+                    faceBase);
+                float gradientValue = Wuwa_GradientValue(
+                    input.uv,
+                    input.uv1,
+                    input.uv3,
+                    _GradientUVIndex,
+                    _GradientInvert);
+                color = Wuwa_VerticalGradient(
+                    color,
+                    _VerticalGradientColor.rgb,
+                    gradientValue * _VerticalGradientStrength);
                 #if defined(_WUWA_FACE_HET_ON)
                     float4 het = SAMPLE_TEXTURE2D(_FaceHET, sampler_FaceHET, input.uv);
                     float extraLightMask = Wuwa_SelectChannel(het, _FaceExtraLightChannel);
@@ -280,8 +306,9 @@ Shader "MIKU/Wuwa/Face"
                 float4 _FaceBlushColor; float _FaceBlushStrength; float4 _FaceBlushCenters; float4 _FaceBlushSize; float _FaceExtraLightChannel; float4 _FaceExtraLightColor; float _FaceExtraLightStrength;
                 float _HairShadowStrength; float _HairShadowDepthBias; float _HairShadowSoftness; float _HairShadowScreenOffset; float _UseHairShadow;
                 float _IndirectLightUsage; float _MainLightColorUsage;
+                float4 _VerticalGradientColor; float _VerticalGradientStrength; float _GradientUVIndex; float _GradientInvert;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
-                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float4 _OutlineColorTint;
+                float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineDistanceMode; float _OutlineVertexColorMask; float4 _OutlineColorTint;
             CBUFFER_END
             #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonScreenRimPass.hlsl"
             ENDHLSL
@@ -292,7 +319,7 @@ Shader "MIKU/Wuwa/Face"
             Name "Outline"
             Tags { "LightMode"="SRPDefaultUnlit" }
             Cull Front
-            ZWrite On
+            ZWrite Off
             ZTest LEqual
             Blend One Zero
             ColorMask RGBA
@@ -302,20 +329,45 @@ Shader "MIKU/Wuwa/Face"
             #pragma fragment OutlineFrag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "WuwaCommon.hlsl"
+            #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonOutline.hlsl"
             TEXTURE2D(_FaceID); SAMPLER(sampler_FaceID);
             CBUFFER_START(UnityPerMaterial)
-                float4 _BaseMap_ST; float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float4 _OutlineColorTint;
+                float4 _BaseMap_ST; float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineDistanceMode; float _OutlineVertexColorMask; float4 _OutlineColorTint;
             CBUFFER_END
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 uv : TEXCOORD0; float3 smoothNormalOS : TEXCOORD7; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float4 color : COLOR; float4 smoothNormalData : TEXCOORD7; };
             struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; };
             Varyings OutlineVert(Attributes input)
             {
                 Varyings output;
                 VertexPositionInputs pos = GetVertexPositionInputs(input.positionOS.xyz);
-                float3 outlineNormalOS = Wuwa_GetOutlineNormalOS(input.smoothNormalOS, input.normalOS);
-                float3 outlineNormalWS = normalize(TransformObjectToWorldNormal(outlineNormalOS));
-                float outlineWidth = Wuwa_DistanceCompensatedOutlineWidth(pos.positionWS, _OutlineWidth, _OutlineReferenceDistance, _OutlineDistanceScale);
-                output.positionCS = TransformWorldToHClip(pos.positionWS + outlineNormalWS * outlineWidth);
+                float3 outlineNormalOS = MikuGameToonOutlineNormalTangentSpaceV2(
+                    input.smoothNormalData, input.normalOS, input.tangentOS);
+                float mikuDistance = MikuGameToonOutlineDistanceMultiplier(
+                    pos.positionWS,
+                    _OutlineReferenceDistance,
+                    _OutlineDistanceScale,
+                    0.0);
+                float tutorialDistance = Wuwa_TutorialOutlineWidth(
+                    pos.positionWS,
+                    _WorldSpaceCameraPos);
+                float distanceMultiplier = lerp(
+                    mikuDistance,
+                    tutorialDistance,
+                    saturate(_OutlineDistanceMode));
+                float widthMask = lerp(
+                    1.0,
+                    MikuGameToonOutlineVertexMask(input.color),
+                    saturate(_OutlineVertexColorMask));
+                output.positionCS = MikuGameToonOutlinePositionCSWithDistanceMultiplier(
+                    pos.positionCS,
+                    pos.positionWS,
+                    outlineNormalOS,
+                    _OutlineWidth,
+                    _OutlineReferenceDistance,
+                    _OutlineDistanceScale,
+                    float4(1.0, 1.0, 1.0, 1.0),
+                    widthMask,
+                    distanceMultiplier);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 return output;
             }

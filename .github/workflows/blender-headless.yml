@@ -46,7 +46,7 @@ jobs:
           python tools/ci/run_blender_release_smoke.py
           --blender "${{ matrix.path }}"
           --expected-version "${{ matrix.version }}"
-          --extension-zip "dist\miku_shader_converter-2.2.12.zip"
+          --extension-zip "dist\miku_shader_converter-2.3.0.zip"
           --evidence "artifacts\blender-${{ matrix.version }}.json"
       - name: Upload exact-version evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

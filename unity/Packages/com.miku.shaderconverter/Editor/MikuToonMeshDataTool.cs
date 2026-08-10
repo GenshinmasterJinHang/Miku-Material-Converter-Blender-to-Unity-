@@ -31,7 +31,7 @@ namespace Miku.ShaderConverter.Editor
         [SerializeField] string outputFolder = "Assets/Miku/ToonMeshes";
         [SerializeField] string outputName = "";
         [SerializeField, Range(0.000001f, 0.1f)]
-        float positionTolerance = 0.0001f;
+        float positionTolerance = MikuToonMeshData.DefaultPositionTolerance;
         [SerializeField, Range(0f, 180f)] float smoothingAngle = 60f;
         [SerializeField] bool includeBoneWeightSignature = true;
         [SerializeField] MikuUv7ConflictMode uv7ConflictMode =
@@ -324,14 +324,14 @@ namespace Miku.ShaderConverter.Editor
                 throw new InvalidOperationException(
                     "MIKU_TOON_MESH_OPERATION_MISSING");
             var folder = NormalizeFolder(outputFolder);
-            EnsureFolder(folder);
             var name = string.IsNullOrWhiteSpace(outputName)
                 ? sourceMesh.name + "_MikuToon"
                 : outputName.Trim();
-            var path = AssetDatabase.GenerateUniqueAssetPath(
-                folder + "/" + Sanitize(name) + ".asset");
             var clone = CloneForEditing(sourceMesh);
-            clone.name = Path.GetFileNameWithoutExtension(path);
+            clone.name = Sanitize(name);
+            var createdFolders = new List<string>();
+            string path = null;
+            var assetCreated = false;
             try
             {
                 if (writeNormals)
@@ -350,13 +350,25 @@ namespace Miku.ShaderConverter.Editor
                         mergeG,
                         mergeB,
                         mergeA);
+                EnsureFolder(folder, createdFolders);
+                path = AssetDatabase.GenerateUniqueAssetPath(
+                    folder + "/" + Sanitize(name) + ".asset");
+                clone.name = Path.GetFileNameWithoutExtension(path);
                 AssetDatabase.CreateAsset(clone, path);
-                AssetDatabase.SaveAssets();
+                assetCreated = true;
+                AssetDatabase.SaveAssetIfDirty(clone);
                 return clone;
             }
             catch
             {
-                UnityEngine.Object.DestroyImmediate(clone);
+                if (assetCreated && !string.IsNullOrEmpty(path))
+                {
+                    AssetDatabase.DeleteAsset(path);
+                    clone = null;
+                }
+                if (clone != null)
+                    UnityEngine.Object.DestroyImmediate(clone);
+                RollbackFolders(createdFolders);
                 throw;
             }
         }
@@ -364,9 +376,26 @@ namespace Miku.ShaderConverter.Editor
         public static Mesh CreateOrUpdateSmoothNormalAsset(
             Mesh sourceMesh,
             string assetPath,
-            float positionTolerance = 0.0001f,
+            float positionTolerance = MikuToonMeshData.DefaultPositionTolerance,
             float smoothingAngle = 60f,
             bool includeBoneWeightSignature = true)
+        {
+            return CreateOrUpdateSmoothNormalAsset(
+                sourceMesh,
+                assetPath,
+                positionTolerance,
+                smoothingAngle,
+                includeBoneWeightSignature,
+                null);
+        }
+
+        internal static Mesh CreateOrUpdateSmoothNormalAsset(
+            Mesh sourceMesh,
+            string assetPath,
+            float positionTolerance,
+            float smoothingAngle,
+            bool includeBoneWeightSignature,
+            Action beforeCommit)
         {
             if (sourceMesh == null)
                 throw new InvalidOperationException(
@@ -381,9 +410,12 @@ namespace Miku.ShaderConverter.Editor
             if (string.IsNullOrEmpty(folder))
                 throw new InvalidOperationException(
                     "MIKU_TOON_OUTPUT_PATH_INVALID");
-            EnsureFolder(folder);
             var clone = CloneForEditing(sourceMesh);
             clone.name = Path.GetFileNameWithoutExtension(normalized);
+            var createdFolders = new List<string>();
+            Mesh existing = null;
+            Mesh backup = null;
+            var assetCreated = false;
             try
             {
                 MikuToonMeshData.GenerateSmoothNormalsFromSource(
@@ -393,25 +425,51 @@ namespace Miku.ShaderConverter.Editor
                     smoothingAngle,
                     includeBoneWeightSignature,
                     true);
-                var existing = AssetDatabase.LoadAssetAtPath<Mesh>(normalized);
+                EnsureFolder(folder, createdFolders);
+                existing = AssetDatabase.LoadAssetAtPath<Mesh>(normalized);
                 if (existing == null)
                 {
                     AssetDatabase.CreateAsset(clone, normalized);
+                    assetCreated = true;
                     clone = null;
                     existing = AssetDatabase.LoadAssetAtPath<Mesh>(normalized);
+                    if (existing == null)
+                        throw new InvalidOperationException(
+                            "MIKU_TOON_ASSET_CREATE_FAILED:" + normalized);
                 }
                 else
                 {
+                    backup = UnityEngine.Object.Instantiate(existing);
+                    backup.name = existing.name;
                     EditorUtility.CopySerialized(clone, existing);
                     EditorUtility.SetDirty(existing);
                 }
-                AssetDatabase.SaveAssets();
+                beforeCommit?.Invoke();
+                AssetDatabase.SaveAssetIfDirty(existing);
                 return existing;
+            }
+            catch
+            {
+                if (assetCreated)
+                {
+                    AssetDatabase.DeleteAsset(normalized);
+                    existing = null;
+                }
+                else if (existing != null && backup != null)
+                {
+                    EditorUtility.CopySerialized(backup, existing);
+                    EditorUtility.SetDirty(existing);
+                    AssetDatabase.SaveAssetIfDirty(existing);
+                }
+                RollbackFolders(createdFolders);
+                throw;
             }
             finally
             {
                 if (clone != null)
                     UnityEngine.Object.DestroyImmediate(clone);
+                if (backup != null)
+                    UnityEngine.Object.DestroyImmediate(backup);
             }
         }
 
@@ -502,16 +560,31 @@ namespace Miku.ShaderConverter.Editor
             }
         }
 
-        static void EnsureFolder(string folder)
+        static void EnsureFolder(
+            string folder,
+            ICollection<string> createdFolders)
         {
             var current = "Assets";
             foreach (var part in folder.Substring(7).Split('/'))
             {
                 var next = current + "/" + part;
                 if (!AssetDatabase.IsValidFolder(next))
-                    AssetDatabase.CreateFolder(current, part);
+                {
+                    if (string.IsNullOrEmpty(
+                            AssetDatabase.CreateFolder(current, part)))
+                        throw new InvalidOperationException(
+                            "MIKU_TOON_OUTPUT_FOLDER_CREATE_FAILED:" + next);
+                    createdFolders?.Add(next);
+                }
                 current = next;
             }
+        }
+
+        static void RollbackFolders(IEnumerable<string> createdFolders)
+        {
+            foreach (var folder in (createdFolders ?? Array.Empty<string>())
+                         .OrderByDescending(item => item.Length))
+                AssetDatabase.DeleteAsset(folder);
         }
 
         static string Sanitize(string value)
@@ -526,6 +599,14 @@ namespace Miku.ShaderConverter.Editor
 
     public static class MikuToonMeshData
     {
+        /// <summary>
+        /// Default seam-position tolerance used by the smooth-normal tool.
+        /// </summary>
+        public const float DefaultPositionTolerance = 0.000001f;
+
+        const float DirectionLengthSquaredEpsilon = 0.000000000001f;
+        const float TangentSpaceV2Marker = 2f;
+
         readonly struct PositionKey : IEquatable<PositionKey>
         {
             public PositionKey(
@@ -609,6 +690,7 @@ namespace Miku.ShaderConverter.Editor
 
             Vector3[] vertices;
             Vector3[] normals;
+            Vector4[] tangents;
             var submeshIndices = new List<int[]>();
             using (var meshDataArray =
                    MeshUtility.AcquireReadOnlyMeshData(sourceMesh))
@@ -617,17 +699,32 @@ namespace Miku.ShaderConverter.Editor
                     throw new InvalidOperationException(
                         "MIKU_TOON_MESH_DATA_UNAVAILABLE");
                 var meshData = meshDataArray[0];
+                if (!meshData.HasVertexAttribute(
+                        UnityEngine.Rendering.VertexAttribute.Position))
+                    throw MeshDataInvalid("position");
+                if (!meshData.HasVertexAttribute(
+                        UnityEngine.Rendering.VertexAttribute.Normal))
+                    throw new InvalidOperationException(
+                        "MIKU_TOON_NORMALS_MISSING");
+                if (!meshData.HasVertexAttribute(
+                        UnityEngine.Rendering.VertexAttribute.Tangent))
+                    throw TangentsRequired();
                 using (var nativeVertices = new NativeArray<Vector3>(
                            meshData.vertexCount,
                            Allocator.Temp))
                 using (var nativeNormals = new NativeArray<Vector3>(
                            meshData.vertexCount,
                            Allocator.Temp))
+                using (var nativeTangents = new NativeArray<Vector4>(
+                           meshData.vertexCount,
+                           Allocator.Temp))
                 {
                     meshData.GetVertices(nativeVertices);
                     meshData.GetNormals(nativeNormals);
+                    meshData.GetTangents(nativeTangents);
                     vertices = nativeVertices.ToArray();
                     normals = nativeNormals.ToArray();
+                    tangents = nativeTangents.ToArray();
                 }
                 for (var subMesh = 0;
                      subMesh < meshData.subMeshCount;
@@ -652,6 +749,40 @@ namespace Miku.ShaderConverter.Editor
             if (normals.Length != vertices.Length)
                 throw new InvalidOperationException(
                     "MIKU_TOON_NORMALS_MISSING");
+            if (tangents.Length != vertices.Length)
+                throw TangentsRequired();
+            if (destinationMesh.vertexCount != vertices.Length)
+                throw MeshDataInvalid("destination-vertex-count");
+
+            var sourceNormals = new Vector3[vertices.Length];
+            var tangentAxes = new Vector3[vertices.Length];
+            var bitangentAxes = new Vector3[vertices.Length];
+            for (var index = 0; index < vertices.Length; index++)
+            {
+                if (!IsFinite(vertices[index]))
+                    throw MeshDataInvalid("position");
+                if (!TryNormalizeDirection(
+                        normals[index],
+                        out sourceNormals[index]))
+                    throw MeshDataInvalid("normal");
+                if (!TryCreateTangentFrame(
+                        sourceNormals[index],
+                        tangents[index],
+                        out tangentAxes[index],
+                        out bitangentAxes[index]))
+                    throw TangentsRequired();
+            }
+            foreach (var indices in submeshIndices)
+            {
+                if (indices.Length % 3 != 0)
+                    throw MeshDataInvalid("index");
+                foreach (var vertexIndex in indices)
+                {
+                    if (vertexIndex < 0 || vertexIndex >= vertices.Length)
+                        throw MeshDataInvalid("index");
+                }
+            }
+
             var areaNormals = new Vector3[vertices.Length];
             foreach (var indices in submeshIndices)
             {
@@ -663,9 +794,19 @@ namespace Miku.ShaderConverter.Editor
                     var weighted = Vector3.Cross(
                         vertices[b] - vertices[a],
                         vertices[c] - vertices[a]);
-                    areaNormals[a] += weighted;
-                    areaNormals[b] += weighted;
-                    areaNormals[c] += weighted;
+                    if (!IsFinite(weighted) ||
+                        weighted.sqrMagnitude <=
+                        DirectionLengthSquaredEpsilon)
+                        continue;
+                    areaNormals[a] += AlignHemisphere(
+                        weighted,
+                        sourceNormals[a]);
+                    areaNormals[b] += AlignHemisphere(
+                        weighted,
+                        sourceNormals[b]);
+                    areaNormals[c] += AlignHemisphere(
+                        weighted,
+                        sourceNormals[c]);
                 }
             }
 
@@ -697,7 +838,7 @@ namespace Miku.ShaderConverter.Editor
                 group.Add(index);
             }
 
-            var result = new Vector3[vertices.Length];
+            var result = new Vector4[vertices.Length];
             var threshold = Mathf.Cos(
                 Mathf.Clamp(smoothingAngle, 0f, 180f) *
                 Mathf.Deg2Rad);
@@ -709,16 +850,29 @@ namespace Miku.ShaderConverter.Editor
                     var sum = Vector3.zero;
                     foreach (var candidate in group)
                     {
-                        if (Vector3.Dot(
-                                normals[index].normalized,
-                                normals[candidate].normalized) + 0.000001f <
+                        var sourceNormalDot = Vector3.Dot(
+                            sourceNormals[index],
+                            sourceNormals[candidate]);
+                        // A wide smoothing angle may intentionally bridge a
+                        // hard fold. Only nearly opposite duplicated surfaces
+                        // are isolated so front/back shells never cancel.
+                        if (sourceNormalDot <= -0.99f ||
+                            sourceNormalDot +
+                            DefaultPositionTolerance <
                             threshold)
                             continue;
-                        sum += areaNormals[candidate];
+                        sum += AlignHemisphere(
+                            areaNormals[candidate],
+                            sourceNormals[index]);
                     }
-                    result[index] = sum.sqrMagnitude > 0.0000000001f
-                        ? sum.normalized
-                        : normals[index].normalized;
+                    var smoothNormalOS = NormalizeInHemisphere(
+                        sum,
+                        sourceNormals[index]);
+                    result[index] = EncodeTangentSpaceV2(
+                        smoothNormalOS,
+                        sourceNormals[index],
+                        tangentAxes[index],
+                        bitangentAxes[index]);
                 }
             }
             destinationMesh.SetUVs(7, result.ToList());
@@ -773,5 +927,115 @@ namespace Miku.ShaderConverter.Editor
             weight.weight2.ToString("R", CultureInfo.InvariantCulture) + "|" +
             weight.boneIndex3 + ":" +
             weight.weight3.ToString("R", CultureInfo.InvariantCulture);
+
+        static InvalidOperationException TangentsRequired() =>
+            new InvalidOperationException("MIKU_TOON_TANGENTS_REQUIRED");
+
+        static InvalidOperationException MeshDataInvalid(string semantic) =>
+            new InvalidOperationException(
+                "MIKU_TOON_MESH_DATA_INVALID:" + semantic);
+
+        static bool IsFinite(float value) =>
+            !float.IsNaN(value) && !float.IsInfinity(value);
+
+        static bool IsFinite(Vector3 value) =>
+            IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
+
+        static bool IsFinite(Vector4 value) =>
+            IsFinite(value.x) && IsFinite(value.y) &&
+            IsFinite(value.z) && IsFinite(value.w);
+
+        static bool TryNormalizeDirection(
+            Vector3 value,
+            out Vector3 normalized)
+        {
+            normalized = Vector3.zero;
+            if (!IsFinite(value))
+                return false;
+            var componentScale = Mathf.Max(
+                Mathf.Max(Mathf.Abs(value.x), Mathf.Abs(value.y)),
+                Mathf.Abs(value.z));
+            if (componentScale <= 0f)
+                return false;
+            var scaled = value / componentScale;
+            var scaledLength = Mathf.Sqrt(scaled.sqrMagnitude);
+            if (!IsFinite(scaledLength) ||
+                scaledLength <= 0f ||
+                componentScale <=
+                DefaultPositionTolerance / scaledLength)
+                return false;
+            normalized = scaled / scaledLength;
+            return IsFinite(normalized) &&
+                   Mathf.Abs(normalized.sqrMagnitude - 1f) <=
+                   DefaultPositionTolerance;
+        }
+
+        static bool TryCreateTangentFrame(
+            Vector3 normal,
+            Vector4 tangent,
+            out Vector3 tangentAxis,
+            out Vector3 bitangentAxis)
+        {
+            tangentAxis = Vector3.zero;
+            bitangentAxis = Vector3.zero;
+            if (!IsFinite(tangent) ||
+                Mathf.Abs(tangent.w) <= DefaultPositionTolerance)
+                return false;
+
+            if (!TryNormalizeDirection(
+                    new Vector3(tangent.x, tangent.y, tangent.z),
+                    out tangentAxis))
+                return false;
+            tangentAxis -= normal * Vector3.Dot(normal, tangentAxis);
+            if (!TryNormalizeDirection(tangentAxis, out tangentAxis))
+                return false;
+            bitangentAxis = Vector3.Cross(normal, tangentAxis) *
+                (tangent.w < 0f ? -1f : 1f);
+            if (!TryNormalizeDirection(bitangentAxis, out bitangentAxis))
+                return false;
+            return true;
+        }
+
+        static Vector3 AlignHemisphere(Vector3 value, Vector3 reference) =>
+            Vector3.Dot(value, reference) < 0f ? -value : value;
+
+        static Vector3 NormalizeInHemisphere(
+            Vector3 value,
+            Vector3 fallbackNormal)
+        {
+            if (!TryNormalizeDirection(value, out value))
+                return fallbackNormal;
+            value = AlignHemisphere(value, fallbackNormal);
+            return IsFinite(value) &&
+                   value.sqrMagnitude > DirectionLengthSquaredEpsilon
+                ? value
+                : fallbackNormal;
+        }
+
+        static Vector4 EncodeTangentSpaceV2(
+            Vector3 smoothNormalOS,
+            Vector3 sourceNormalOS,
+            Vector3 tangentAxisOS,
+            Vector3 bitangentAxisOS)
+        {
+            var encoded = new Vector3(
+                Vector3.Dot(smoothNormalOS, tangentAxisOS),
+                Vector3.Dot(smoothNormalOS, bitangentAxisOS),
+                Vector3.Dot(smoothNormalOS, sourceNormalOS));
+            if (!TryNormalizeDirection(encoded, out encoded))
+                return new Vector4(0f, 0f, 1f, TangentSpaceV2Marker);
+            if (encoded.z < 0f)
+                encoded = -encoded;
+            if (!IsFinite(encoded) ||
+                Mathf.Abs(encoded.sqrMagnitude - 1f) >
+                DefaultPositionTolerance ||
+                encoded.z < -DefaultPositionTolerance)
+                return new Vector4(0f, 0f, 1f, TangentSpaceV2Marker);
+            return new Vector4(
+                encoded.x,
+                encoded.y,
+                encoded.z,
+                TangentSpaceV2Marker);
+        }
     }
 }

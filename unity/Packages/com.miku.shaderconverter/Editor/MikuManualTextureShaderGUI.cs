@@ -336,6 +336,11 @@ namespace Miku.ShaderConverter.Editor
                     material,
                     "_HSR_EMISSION_ON",
                     HasTexture(material, "_EmissionMap"));
+                SetKeyword(
+                    material,
+                    "_HSR_DOUBLE_SIDED",
+                    material.HasProperty("_DoubleSided") &&
+                    material.GetFloat("_DoubleSided") > 0.5f);
                 return;
             }
             if (shaderName.StartsWith("MIKU/Genshin/", StringComparison.Ordinal))
@@ -348,6 +353,18 @@ namespace Miku.ShaderConverter.Editor
                     material,
                     "_GENSHIN_EMISSION_ON",
                     HasTexture(material, "_EmissionMap"));
+                SetKeyword(
+                    material,
+                    "_GENSHIN_NORMALMAP_ON",
+                    HasTexture(material, "_NormalMap"));
+                if (material.HasProperty("_DoubleSided") &&
+                    material.HasProperty("_Cull"))
+                {
+                    SetFloat(
+                        material,
+                        "_Cull",
+                        material.GetFloat("_DoubleSided") > 0.5f ? 0f : 2f);
+                }
                 return;
             }
             if (shaderName.StartsWith("MIKU/Wuwa/", StringComparison.Ordinal))

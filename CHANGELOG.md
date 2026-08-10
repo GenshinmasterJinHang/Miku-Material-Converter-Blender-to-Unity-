@@ -1,5 +1,73 @@
 # Changelog
 
+- Fixed the Genshin Body shader applying the legacy skin-tone curve to the
+  whole material when `_AREA_SKIN` was enabled, which tinted non-skin regions
+  (for example a blue cape's back face) purple; the curve is now masked by
+  the authored LightMap skin mask. Added optional Genshin Body/Hair normal
+  mapping (`_NormalMap`, `_BumpScale`, `_GENSHIN_NORMALMAP_ON`) and made
+  `NormalMap` an accepted genshin texture role.
+- Fixed the hidden Endfield PassLibrary compile error by adding a float2
+  safe-normalize overload for the eye face-plane light projection, and fixed
+  the full-screen color LUT shader to include URP Core.hlsl before Blit.hlsl
+  so `TEXTURE2D_X` is defined. Both hidden shaders are now covered by the
+  Endfield ShaderHasError compile test.
+- Corrected the opt-in Endfield tutorial path against the published article:
+  the tutorial D/V direct-specular response replaces the generic GGX lobe in
+  Body/Skin/Face, the F0-refine LUT uses the article's UVs
+  (`_RefineF0U_lerp`), the face SDF shadow uses the article's width-scaled
+  smoothstep and ramp signal, the eye shades with the face-plane projected
+  light and no scene shadow, ramp color keeps luminance through
+  `rampColor_control`, NoF gains `_NoFPowStrength` (Skin/Face default off),
+  specular self-AO follows the Day blend, the main/top light desaturates in
+  shaded bands, the face rim follows the article's start/end remap and
+  one-sided mask, face SSS uses the 0.85/0.15 view remap, and Body diffuse
+  energy uses 0.96 - 0.96 * metallic. Legacy 2.2.x behavior is unchanged.
+- Reverted the HSR tutorial semantic restoration by user decision. HSR returns
+  to the original single-pass implementation; the tutorial's two-pass layout
+  is used only as a reference.
+
+## 2.3.0 - 2026-08-10
+
+- Added Genshin tutorial-conformance controls to Body, Hair, and Face:
+  `diffuse.a` cutout/emission modes with `_Cutoff`/`_Glow`/`_Flicker`,
+  per-material ramp rows, the tutorial's UV1 double-sided back-face path
+  (`_DoubleSided`/`_BackUV1`), vertex-color A outline width, and lightmap.a
+  five-region outline colors (`_OutlineColorMode`). Existing materials keep
+  their authored values; no schema or workflow change is introduced.
+- Added Wuwa tutorial-compliance controls to Body, Hair, Face, and Eye:
+  simplified CookTorrance direct specular, reflection-probe indirect
+  specular, MatCap added onto the albedo with 10% saturation, UV3-driven
+  vertical gradient, Fresnel-step rim, official face-SDF soft channel,
+  enabled hair-shadow sampling, eye main-light response, and vertex-color
+  outline width with the tutorial's near/far two-segment distance formula.
+  New material properties are additive public surface; no schema, workflow,
+  or texture-role change is introduced.
+- Added opt-in Endfield tutorial lighting driven by one scene controller:
+  continuous day state, character top light, three-layer diffuse, shaped
+  shadows, back-light/NoF control, camera-forward specular, finite DFG energy
+  compensation, separated rims, and compatible legacy fallback.
+- Completed part-specific Body, Skin, Face, Eye, Hair, and lit-transparent
+  Overlay paths, including double-sided final-normal handling, thin-cloth SSS,
+  skin controls, SDF-refined face normals/rim, eye Toon/MatCap corrections, and
+  authored hair-LUT coordinates. Overlay remains legacy-unlit at
+  `_LightingMode=0` and opts into Toon-lit transparency at `_LightingMode=1`.
+- Introduced TangentSpaceV2 UV7 smooth normals and a shared screen-space outline
+  contract for Genshin, Wuwa, HSR, and Endfield. Legacy UV7 remains readable;
+  invalid tangents now fail before asset writes. Genshin/Endfield use the public
+  green width mask, Wuwa/HSR preserve their neutral width input, and HSR keeps
+  its constant historical distance response.
+- Added an idempotent pre-post-processing 32-cube full-screen LUT installer and
+  an Endfield Volume profile containing Neutral Tonemapping, Bloom, and
+  Vignette. SMAA High remains a separately configured target-camera setting.
+- Expanded Endfield fixed-workflow validation to all nine parts and added
+  Specular Refine F0/Color roles without changing MaterialIR or Bundle schemas.
+- Added stable diagnostics for duplicate Endfield lighting controllers,
+  transactional outline-mesh failures, and missing/mismatched HairShadow
+  offset-mesh and stencil setup.
+- Limited outline-mesh and Endfield post-processing commits to their explicit
+  target assets so project-wide `SaveAssets()` calls cannot persist unrelated
+  dirty editor assets.
+
 ## 2.2.12 - 2026-08-08
 
 - Restored the Unity package install floors to Unity 6000.0 and URP 17.0.0 so

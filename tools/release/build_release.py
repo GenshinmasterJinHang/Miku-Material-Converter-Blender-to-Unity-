@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the reproducible Miku 2.2.12 release candidates."""
+"""Build the reproducible Miku 2.3.0 release candidates."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def main() -> int:
             .read_text(encoding="utf-8")
         )["version"]
     )
-    if blender_version != "2.2.12" or unity_version != "2.2.12":
+    if blender_version != "2.3.0" or unity_version != "2.3.0":
         raise SystemExit(
             "MIKU_RELEASE_VERSION_MISMATCH:"
             f"blender={blender_version}:unity={unity_version}"

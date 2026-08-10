@@ -5,7 +5,7 @@
 URP 与 Shader Graph 的精确版本必须相同。区间内未记录的稳定补丁会显示警告并
 执行完整能力预检。6000.6+、17.6+ 和预发布版本会在写入资产前拒绝。通过
 Package Manager 安装单一
-`com.miku.shaderconverter-2.2.12.tgz`，或从
+`com.miku.shaderconverter-2.3.0.tgz`，或从
 `unity/Packages/com.miku.shaderconverter/package.json` 添加本地包。
 
 将完整 `.mikubundle` 目录放入 `Assets/`。Standard PBR 生成 Shader Graph；

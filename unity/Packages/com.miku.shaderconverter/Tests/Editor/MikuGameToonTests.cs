@@ -103,6 +103,48 @@ namespace Miku.ShaderConverter.Tests.Editor
         }
 
         [Test]
+        public void MaterialCreatorResolvesCurrentFinalShadersForEveryWorkflowPart()
+        {
+            var workflows = new[]
+            {
+                "genshin_toon",
+                "wuwa_toon",
+                "hsr_toon",
+                "endfield_toon",
+            };
+            var created = new List<Material>();
+            try
+            {
+                foreach (var workflow in workflows)
+                {
+                    foreach (var part in MikuFixedWorkflowTextureBindings
+                                 .AllowedParts(workflow))
+                    {
+                        var shaderName =
+                            MikuFixedWorkflowTextureBindings.ShaderName(
+                                workflow,
+                                part.ToString());
+                        var shader = Shader.Find(shaderName);
+                        Assert.That(shader, Is.Not.Null, shaderName);
+                        var material = new Material(shader)
+                        {
+                            name = shaderName,
+                        };
+                        created.Add(material);
+                        Assert.That(material.shader, Is.Not.Null);
+                        Assert.That(material.shader.name, Is.EqualTo(shaderName));
+                    }
+                }
+                Assert.That(created.Count, Is.EqualTo(22));
+            }
+            finally
+            {
+                foreach (var material in created)
+                    UnityEngine.Object.DestroyImmediate(material);
+            }
+        }
+
+        [Test]
         public void MaterialCreatorUsesVisibleTexturePropertiesAndBaseMapRules()
         {
             var body = MikuGameToonMaterialTemplateWindow.GetTextureSlots(
@@ -216,7 +258,7 @@ namespace Miku.ShaderConverter.Tests.Editor
         {
             Assert.That(
                 MikuToonMaterialRecipe.CurrentShaderFamilyVersion,
-                Is.EqualTo("2.2.12"));
+                Is.EqualTo("2.3.0"));
             AssertMaterialProperties(
                 "MIKU/Endfield/Overlay",
                 "_AlphaSource",
@@ -775,6 +817,12 @@ namespace Miku.ShaderConverter.Tests.Editor
                 Vector3.forward,
                 Vector3.forward,
                 Vector3.forward,
+            };
+            source.tangents = new[]
+            {
+                new Vector4(1f, 0f, 0f, 1f),
+                new Vector4(1f, 0f, 0f, 1f),
+                new Vector4(1f, 0f, 0f, 1f),
             };
             source.triangles = new[] { 0, 1, 2 };
             source.UploadMeshData(true);

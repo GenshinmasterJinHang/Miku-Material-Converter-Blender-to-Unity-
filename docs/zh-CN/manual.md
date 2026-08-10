@@ -1,4 +1,4 @@
-# Miku 2.2.12 使用手册
+# Miku 2.3.0 使用手册
 
 Miku 是面向生产使用的 Blender 5.x 到 Unity 6 材质转换器。公开 Blender 前端将
 Standard PBR 语义导出为目标无关的 MaterialIR 2.0；Unity 导入可编辑 Shader Graph
@@ -17,7 +17,7 @@ Standard PBR 语义导出为目标无关的 MaterialIR 2.0；Unity 导入可编�
 | Unity Editor | 6000.0–6000.5（认证：6000.5.7f1） | 技术线适配器 |
 | Universal Render Pipeline | 17.5.4 | 必需 |
 | Shader Graph | 17.5.4 | 版本专用后端 |
-| Miku | 2.2.12 | Experimental（实验性） |
+| Miku | 2.3.0 | Experimental（实验性） |
 
 Blender 仅支持 5.0–5.2。Unity 6000.N 必须配套 URP 17.N 与 Shader Graph
 17.N（N 为 0–5），并且两个包的精确版本必须相同。区间内未记录的稳定补丁会
@@ -26,11 +26,11 @@ Unity 6000.6+ 和包 17.6+ 会在写入资产前失败。本次正式支持平�
 
 ## 2. 从 Release 安装
 
-从 [v2.2.12 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.2.12)
+从 [v2.3.0 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.3.0)
 下载：
 
-- `miku_shader_converter-2.2.12.zip`：Blender 5.0–5.2 扩展。
-- `com.miku.shaderconverter-2.2.12.tgz`：Unity 6000.0–6000.5 单一包。
+- `miku_shader_converter-2.3.0.zip`：Blender 5.0–5.2 扩展。
+- `com.miku.shaderconverter-2.3.0.tgz`：Unity 6000.0–6000.5 单一包。
 - `SHA256SUMS.txt`：发布完整性清单。
 
 在 Blender 中选择 **编辑 > 偏好设置 > 扩展 > 从磁盘安装**并选中 ZIP。在 Unity 中
@@ -84,7 +84,7 @@ Blender 界面不再提供 Game Toon 工作流选择、贴图角色猜测或旧�
 - 包装 `*.shadergraph` 在首次创建后由用户拥有。
 - 只有明确选择完全重新生成时，才允许替换用户修改过的包装图。
 
-2.2.12 不改变 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开
+2.3.0 不改变 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开
 Shader property/reference 名称。Unity 仍可读取历史 Bundle，包括旧的运行时契约；
 当前 Blender 前端不会创建新的时间依赖 Bundle。
 
@@ -103,6 +103,14 @@ Unity 包在四个运行时预设家族中直接附带 Miku 原创 Shader/HLSL �
 这 22 个有效材质部位均为 **Experimental（实验性）** 兼容预设，不承诺与任何游戏
 逐像素一致，也不包含游戏模型、贴图、Logo、提取的 Shader 源码或其他游戏资产。
 
+原神预设支持公开教程中的 `diffuse.a` 裁剪/自发光模式、UV1 背面双面渲染、
+顶点色 A 通道描边宽度和 lightmap.a 分区描边颜色。这些控制均为可选的材质属性
+（`_DiffuseA`、`_DoubleSided`、`_BackUV1`、`_OutlineColorMode` 等）；默认值
+保持 Miku 原有外观。
+身体与头发还可选绑定 `_NormalMap`/`_BumpScale`（`NormalMap` 贴图角色）；
+开启 `_AREA_SKIN` 时，旧版肤色曲线只作用于 LightMap 标记的皮肤区域，布料和
+披风保持自身颜色，不再被整体染色。
+
 ### 文档渲染示例
 
 | 原神—胡桃 | 崩坏：星穹铁道—布洛妮娅 |
@@ -113,7 +121,7 @@ Unity 包在四个运行时预设家族中直接附带 Miku 原创 Shader/HLSL �
 
 > **非商业图片声明：**以上四张角色渲染图仅供非商业学习和文档参考，禁止用于任何
 > 商业用途。相关角色、设计及知识产权归各自权利人所有；Miku 不授予任何游戏资产
-> 使用权。这些图片不属于 Blender/Unity 安装包，也不在 2.2.12 发布候选资产中。
+> 使用权。这些图片不属于 Blender/Unity 安装包，也不在 2.3.0 发布候选资产中。
 
 ## 6. Unity 游戏卡通材质创建器
 
@@ -174,10 +182,13 @@ Mipmap 和类型，然后重新导入变化的贴图；含糊的 `_M` 文件名�
 确认显式 Source Mesh 和输出文件夹（默认 `Assets/Miku/ToonMeshes`），再设置位置容差、
 平滑角度以及是否用骨骼权重区分位置相同的顶点。
 
-工具只在克隆 Mesh 的 UV7/TEXCOORD7 中写入平滑描边法线。源 Mesh 已有 UV7 时，
-**Preserve** 会阻止仅法线写入；选择 **Replace** 并确认后，也只会替换克隆上的 UV7。
-源 Mesh、Mesh/Texture Importer 和所有 Renderer 引用都保持不变；源 Mesh 未开启 CPU
-可读时同样不会修改 importer。
+工具只在克隆 Mesh 的 UV7/TEXCOORD7 中写入带标记的切线空间
+`float4(normalTS.xyz, 2.0)` 平滑描边法线；它可随 SkinnedMeshRenderer 变形，旧的未标记
+object-space UV7 仍可读取。源 Mesh 已有 UV7 时，**Preserve** 会阻止仅法线写入；选择
+**Replace** 并确认后，也只会替换克隆上的 UV7。切线缺失或非法时会在写入前报告
+`MIKU_TOON_TANGENTS_REQUIRED`。源 Mesh、Mesh/Texture Importer 和所有 Renderer 引用
+都保持不变；源 Mesh 未开启 CPU 可读时同样不会修改 importer。详见
+[迁移说明](../migrations/outline-tangent-space-v2.md)。
 
 ### 7.5 Screen Rim 安装器
 
@@ -195,7 +206,20 @@ Renderer Data 资产。**Preview** 只读；**Apply** 只向该资产添加一�
 它会破坏直接写在这个包资产中的自定义修改，并且没有 Preview。自定义调色应保存在
 单独的用户 Volume Profile 中；不可写安装包拒绝重建时，请重新安装包。
 
-### 7.7 Miku 材质 Inspector
+### 7.7 Endfield LUT 与教程光照
+
+打开 **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer**，把项目自有
+32³ 展平游戏 LUT 安装到 URP 后处理之前，并生成严格的 Neutral/Bloom/Vignette
+Profile。工具会校验和配置 LUT Importer，支持 Preview、Undo、幂等更新和失败回滚；
+不会使用 URP ColorLookup Volume，也不会自动把 Profile 绑定到场景。
+
+场景中添加且只添加一个 `MikuEndfieldLightingController` 才会启用 2.3.0 教程光照
+贡献；没有控制器时旧的受光材质保持旧路径。Overlay 还需独立把 `_LightingMode`
+从默认 0（Legacy Unlit）设为 1（Toon Lit Transparent），控制器不会自动切换它。
+默认值、Body 双面、各部位行为及验收要求见
+[终末地教程渲染指南](endfield-tutorial-rendering.md)。
+
+### 7.8 Miku 材质 Inspector
 
 选中使用 `MIKU/Genshin/`、`MIKU/HSR/`、`MIKU/Wuwa/` 或 `MIKU/Endfield/` Shader
 的材质。自定义 Inspector 会显示 Shader 的公开属性、同步贴图关键字、提供受支持的
@@ -203,7 +227,7 @@ Wuwa/Endfield 调试视图、显示 Screen Rim 安装状态；存在配套 Recip
 过滤的材质部位选择器。修改只影响所选材质；可使用 Undo，完成排查后应把调试视图恢复
 为 **Final**。
 
-### 7.8 Mesh Binding Description Inspector
+### 7.9 Mesh Binding Description Inspector
 
 选中生成的 `MikuMeshBindingDescription`，再选中一个同时具有 `MeshRenderer` 和
 `MeshFilter`、且 Mesh 指纹与记录匹配的 GameObject。点击 **Apply to Selected
@@ -211,7 +235,7 @@ Renderer**，即可把记录的材质写入指定槽位。指纹不匹配时会�
 `MIKU_MESH_BINDING_MISMATCH`，不会执行绑定。成功操作会记录 Renderer Undo；条件允许
 时优先使用生成的 Prefab。
 
-### 7.9 Toon Material Recipe Inspector
+### 7.10 Toon Material Recipe Inspector
 
 `MikuToonMaterialRecipe` 记录生成基础材质、用户材质、工作流、部位、贴图绑定及 UV
 变换、稳定标识和 Shader 家族版本。GUID 与版本字段是同步元数据，不应作为普通参数
@@ -219,7 +243,7 @@ Renderer**，即可把记录的材质写入指定槽位。指纹不匹配时会�
 使 Shader、绑定、推荐配置和 Recipe 同步更新。单独编辑 Recipe Inspector 原始字段
 不会自动重新生成材质。
 
-### 7.10 历史迁移工具
+### 7.11 历史迁移工具
 
 仅处理历史 MiGR 资产时，先显式选中资产或文件夹，再执行 **Miku > Migration > Dry
 Run Selected MiGR Assets**，检查日志中的材质、动画曲线和生成元数据计数。提交或备份
@@ -227,7 +251,7 @@ Run Selected MiGR Assets**，检查日志中的材质、动画曲线和生成元
 元数据名称迁移。
 
 迁移不会遍历场景对象，也不会修改 Renderer 材质绑定。遇到已退役 Generic Toon 材质
-时会明确拒绝，不会静默替换 Shader。正常 2.2.12 创作无需使用这些命令。
+时会明确拒绝，不会静默替换 Shader。正常 2.3.0 创作无需使用这些命令。
 
 ## 8. 编辑器语言
 

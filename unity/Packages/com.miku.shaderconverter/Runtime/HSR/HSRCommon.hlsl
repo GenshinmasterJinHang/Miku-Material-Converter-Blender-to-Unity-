@@ -228,29 +228,6 @@ float3 HSR_ComputeStockingsEffect(
     return lerp(1.0.xxx, stockingsColor, stockingsMap.r);
 }
 
-float3 HSR_GetOutlineNormalOS(float3 smoothNormalOS, float3 fallbackNormalOS)
-{
-    float3 selectedNormalOS = dot(smoothNormalOS, smoothNormalOS) > 1e-5
-        ? smoothNormalOS
-        : fallbackNormalOS;
-    return normalize(selectedNormalOS);
-}
-
-float4 HSR_ExtrudeOutlinePositionCS(
-    float3 positionWS,
-    float3 outlineNormalWS,
-    float outlineWidth,
-    float referenceDistance,
-    float distanceScale)
-{
-    float cameraDistance = max(distance(_WorldSpaceCameraPos, positionWS), 1e-5);
-    float distanceCompensation = cameraDistance / max(referenceDistance, 1e-5);
-    float worldWidth = max(outlineWidth, 0.0)
-        * lerp(1.0, distanceCompensation, saturate(distanceScale));
-    float3 extrudedPositionWS = positionWS + normalize(outlineNormalWS) * worldWidth;
-    return TransformWorldToHClip(extrudedPositionWS);
-}
-
 float3 HSR_BodyOutlineColor(
     TEXTURE2D_PARAM(coolRamp, sampler_coolRamp),
     TEXTURE2D_PARAM(warmRamp, sampler_warmRamp),

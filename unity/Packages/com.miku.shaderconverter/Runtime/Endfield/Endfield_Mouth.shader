@@ -9,6 +9,10 @@ Shader "MIKU/Endfield/Mouth"
         _IndirectIntensity ("Indirect", Range(0,2)) = 0.45
         _SpecularIntensity ("Specular", Range(0,4)) = 0.1
         _ShadowSmoothness ("Shadow Smoothness", Range(0.001,0.5)) = 0.12
+        _ShadowCenter ("Character Shadow Center", Range(0,1)) = 0.5
+        _ShadowSigmoidSmoothness ("Character Shadow Sigmoid Smoothness", Range(0.001,0.5)) = 0.12
+        _ShadowOffset ("Character Shadow Offset", Range(-1,1)) = 0
+        _ShadowStrength ("Character Shadow Strength", Range(0,2)) = 1
         [HideInInspector] _PartMode ("Part", Float) = 5
         [HideInInspector] _MouthMode ("Mouth Mode", Float) = 0
         [HideInInspector] _Cull ("Cull", Float) = 2

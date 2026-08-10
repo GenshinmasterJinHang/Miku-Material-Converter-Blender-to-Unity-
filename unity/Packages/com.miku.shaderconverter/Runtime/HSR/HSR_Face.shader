@@ -79,7 +79,7 @@ Shader "MIKU/HSR/Face"
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float3 smoothNormalOS : TEXCOORD7; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float4 smoothNormalData : TEXCOORD7; };
             struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float3 viewDirWS : TEXCOORD2; float2 uv : TEXCOORD3; float4 shadowCoord : TEXCOORD4; };
             Varyings HSRVert(Attributes input) { Varyings output; VertexPositionInputs pos = GetVertexPositionInputs(input.positionOS.xyz); VertexNormalInputs normal = GetVertexNormalInputs(input.normalOS, input.tangentOS); output.positionCS = pos.positionCS; output.positionWS = pos.positionWS; output.normalWS = normalize(normal.normalWS); output.viewDirWS = normalize(GetWorldSpaceViewDir(pos.positionWS)); output.uv = TRANSFORM_TEX(input.uv, _BaseMap); output.shadowCoord = TransformWorldToShadowCoord(pos.positionWS); return output; }
             half4 HSRFrag(Varyings input) : SV_Target
@@ -160,7 +160,7 @@ Shader "MIKU/HSR/Face"
             Name "Outline"
             Tags { "LightMode"="SRPDefaultUnlit" }
             Cull Front
-            ZWrite On
+            ZWrite Off
             ZTest LEqual
             Blend One Zero
             ColorMask RGBA
@@ -170,20 +170,30 @@ Shader "MIKU/HSR/Face"
             #pragma fragment OutlineFrag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "HSRCommon.hlsl"
+            #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonOutline.hlsl"
             TEXTURE2D(_BodyCoolRamp); SAMPLER(sampler_BodyCoolRamp);
             TEXTURE2D(_BodyWarmRamp); SAMPLER(sampler_BodyWarmRamp);
             CBUFFER_START(UnityPerMaterial)
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float3 smoothNormalOS : TEXCOORD7; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float4 smoothNormalData : TEXCOORD7; };
             struct Varyings { float4 positionCS : SV_POSITION; };
             Varyings OutlineVert(Attributes input)
             {
                 Varyings output;
                 VertexPositionInputs pos = GetVertexPositionInputs(input.positionOS.xyz);
-                float3 outlineNormalOS = HSR_GetOutlineNormalOS(input.smoothNormalOS, input.normalOS);
-                float3 outlineNormalWS = normalize(TransformObjectToWorldNormal(outlineNormalOS));
-                output.positionCS = HSR_ExtrudeOutlinePositionCS(pos.positionWS, outlineNormalWS, _OutlineWidth, _OutlineReferenceDistance, _OutlineDistanceScale);
+                float3 outlineNormalOS = MikuGameToonOutlineNormalTangentSpaceV2(
+                    input.smoothNormalData, input.normalOS, input.tangentOS);
+                output.positionCS = MikuGameToonOutlinePositionCSWithLegacyMode(
+                    pos.positionCS,
+                    pos.positionWS,
+                    outlineNormalOS,
+                    _OutlineWidth,
+                    _OutlineReferenceDistance,
+                    _OutlineDistanceScale,
+                    float4(1.0, 1.0, 1.0, 1.0),
+                    1.0,
+                    1.0);
                 return output;
             }
             half4 OutlineFrag(Varyings input) : SV_Target

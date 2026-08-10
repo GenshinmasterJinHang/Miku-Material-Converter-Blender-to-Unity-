@@ -1,5 +1,83 @@
 # Changelog
 
+- Fixed Genshin Body mixed materials turning purple when `_AREA_SKIN` was
+  enabled: the legacy `Genshin_ReferenceSkinTone` curve is now gated by the
+  authored LightMap skin mask instead of tinting the whole material. Added
+  optional normal mapping to Genshin Body and Hair through `_NormalMap`,
+  `_BumpScale`, and `_GENSHIN_NORMALMAP_ON`; `NormalMap` is now an accepted
+  genshin texture role and the material Inspector keeps the keyword in sync.
+- Fixed a compile error in the hidden `Hidden/MIKU/Endfield/PassLibrary`:
+  `EndfieldEyeFlattenedLightDirection` now uses a float2 safe-normalize
+  overload for the face-plane light projection. `Hidden/MIKU/Endfield/
+  FullScreenColorLut` now includes URP Core.hlsl before Blit.hlsl so
+  `TEXTURE2D_X` resolves. Both hidden shaders joined the ShaderHasError
+  compile test.
+- Corrected the opt-in Endfield tutorial path to the published article's
+  formulas: Body/Skin/Face direct specular now uses the tutorial D*V response
+  with the Day-blended specular envelope instead of the generic GGX lobe;
+  the Specular Refine F0 LUT is sampled with the article's
+  `lerp(D * roughness2, NoV^2, _RefineF0U_lerp)` / `1 - roughness * (1 - AO)`
+  UVs; face SDF shadowing uses the article's width-scaled smoothstep and the
+  ramp samples `lerp(sdfNoL, NoL, Refine-G)`; the eye shades with the
+  face-plane projected key light and ignores scene shadow in the tutorial
+  path; ramp RGB influence is luminance-preserving through
+  `rampColor_control`; NoF shaping adds `_NoFPowStrength` and is disabled by
+  default on Skin/Face per the reference; specular self-AO blends the
+  day-zero/day-one bands; the main and top light colors desaturate inside
+  shaded bands; the face rim uses the article's start/end remap, diffuse-brdf
+  lerp, `min(AO, shadow)`, and one-sided camera-half; face SSS uses the
+  `0.85/0.15` view remap; and Body diffuse energy uses `0.96 - 0.96 * metallic`.
+  New properties are additive (`_NoFPowStrength`, `_RefineF0U_lerp`,
+  `_RimLightArea`, `_RimLightDiffuseColorEffect`, hidden
+  `_FaceRoughness`/`_FaceReflectivity`); Skin/Face `_NoFStrength` default is
+  now zero. Legacy 2.2.x lighting and existing materials are unchanged.
+
+## [2.3.0] - 2026-08-10
+
+- Added Genshin tutorial-conformance controls to Body, Hair, and Face:
+  `_DiffuseA` (`0` off, `1` alpha cutout, `2` flickering `diffuse.a`
+  emission), `_Cutoff`, `[HDR] _Glow`, `_Flicker`, per-material
+  `_LightmapA0..A4` ramp rows, `_DoubleSided`/`_Cull`/`_BackUV1` for the
+  tutorial's UV1 back-face pass, and `_OutlineColor0..4` +
+  `_OutlineColorMode` for the tutorial's lightmap.a five-region outline
+  colors. Genshin outlines now read the vertex-color A width mask with a
+  green fallback. All additions are additive public material properties; no
+  schema, workflow, or texture-role change is introduced.
+- Added Wuwa tutorial-compliance properties to Body, Hair, Face, and Eye:
+  `_Roughness`, `_SpecularColor`, `_SpecularStrength`,
+  `_ReflectionStrength`, `_VerticalGradientColor`, `_VerticalGradientStrength`,
+  `_GradientUVIndex`, `_GradientInvert`, `_OutlineDistanceMode`,
+  `_OutlineVertexColorMask`, `_EyeShadowStart`, `_EyeShadowEnd`,
+  `_EyeLitTint`, and `_EyeShadowTint`. Body now applies MatCap onto the
+  albedo before lighting at 10% saturation, adds a minimal CookTorrance
+  direct-specular term and reflection-probe GI, and Body/Hair/Face sample the
+  UV3 vertical-gradient channel; outlines consume the vertex-color green
+  width mask and a two-segment tutorial distance response. Face enables the
+  SDF soft channel and hair-shadow sampling; Eye responds to the main light
+  while keeping authored emission highlights. All additions are additive
+  public material properties; no schema or workflow change is introduced.
+- Added the compatible Endfield day/top-light and three-layer character
+  lighting path plus Body, Skin, Face, Eye, Hair, and transparent-overlay
+  tutorial controls. Existing materials remain on the legacy path until a
+  scene lighting controller opts in; Overlay separately remains legacy-unlit at
+  `_LightingMode=0` and enters the lit-transparent path at `_LightingMode=1`.
+- Added final-normal back-face correction for double-sided Body materials and
+  deterministic part-state restoration for all nine Endfield material parts.
+- Added TangentSpaceV2 UV7 smooth normals, skinned reconstruction, screen-space
+  outline extrusion, finite legacy fallback, and depth-write-safe passes across
+  the four fixed game families. Genshin/Endfield consume the green width mask,
+  Wuwa/HSR preserve their neutral mask input, and HSR keeps its constant
+  historical distance response.
+- Added a validated 32-cube full-screen LUT pass before URP post processing and
+  an Endfield Neutral/Bloom/Vignette profile factory. Game LUT assets are not
+  distributed with the package.
+- Added the Specular Refine F0/Color fixed roles and strict nine-part workflow
+  dispatch without changing JSON schema versions or existing property names.
+- Added structured duplicate-controller, transactional outline-mesh, and
+  HairShadow offset-mesh/stencil diagnostics.
+- Replaced project-wide saves in the outline-mesh and Endfield LUT installers
+  with target-only asset saves, preserving unrelated dirty editor assets.
+
 ## [2.2.12] - 2026-08-08
 
 - Restored the manifest floors to Unity 6000.0 and URP 17.0.0 so one TGZ is

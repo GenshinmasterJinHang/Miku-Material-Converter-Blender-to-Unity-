@@ -10,6 +10,8 @@ Shader "MIKU/Endfield/HairShadow"
         _ShadowSoftness ("Mask Softness", Range(0.1,4)) = 1
         [Enum(R,0,G,1,B,2,A,3)] _MaskChannel ("Mask Channel", Float) = 0
         [Toggle] _InvertMask ("Invert Mask", Float) = 1
+        [HideInInspector] _PartMode ("Part", Float) = 8
+        [HideInInspector] _Cull ("Cull", Float) = 0
         [HideInInspector] _StencilRef ("Stencil Ref", Float) = 36
         [HideInInspector] _StencilReadMask ("Stencil Read Mask", Float) = 255
     }

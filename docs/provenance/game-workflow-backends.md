@@ -1,6 +1,6 @@
 # Game workflow backend provenance
 
-This document is current for Miku 2.2.8. Generic Toon references below are
+This document is current for Miku 2.3.0. Generic Toon references below are
 historical contract context only; the supported game workflows are Genshin,
 WuWa, HSR, and Endfield.
 
@@ -72,8 +72,31 @@ transport, URP emission composition, and main-light EG implementation are
 independent MIT-licensed project code; Blender Shader-to-RGB composition is
 reported as an approximation rather than copied.
 
+The 2.3.0 Wuwa tutorial-compliance work was specified from a user-supplied
+explanatory tutorial and locally supplied character model/texture validation
+inputs. No tutorial prose, extracted game Shader, serialized material,
+texture, model, or scene is copied into the package. The simplified
+CookTorrance specular, reflection-probe GI, MatCap-albedo composition,
+UV3 vertical gradient, Fresnel-step rim, hair-shadow sampling, eye light
+response, and two-segment outline distance are independent Miku
+implementations of the described behaviors using URP public APIs. The
+character textures and environment HDR remain local validation inputs and are
+not distributed.
+
 Locally supplied Endfield model and texture assets are validation inputs and are
 not distributed in the package.
+
+The 2.3.0 tutorial-lighting work was specified from a user-supplied explanatory
+tutorial and observable local validation assets. No tutorial prose, extracted
+game Shader, serialized material, texture, LUT, model, or scene is copied into
+the package. Miku independently implements the described day/top-light,
+three-band diffuse, backlight, part-specific, and outline behaviors through
+URP public APIs. The numerical DFG fit follows NVIDIA Streamline's public
+`EnvBRDFApprox2` reference in `ProgrammingGuideDLSS_RR.md` section 4.2.1;
+Streamline is MIT-licensed and its attribution is recorded in
+`THIRD_PARTY_NOTICES.md`. Multiple-scattering compensation follows the
+published Kulla--Conty design at an algorithmic level. Miku does not bundle
+Streamline source or binaries.
 
 The four character-render examples added to the GitHub manuals after the
 v2.2.8 package release are documentation images outside the installable

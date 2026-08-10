@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Miku Project Authors
 // SPDX-License-Identifier: MIT
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.TestTools;
+using Object = UnityEngine.Object;
 
 namespace Miku.ShaderConverter.Editor.Tests
 {
@@ -34,7 +36,7 @@ namespace Miku.ShaderConverter.Editor.Tests
         {
             Assert.That(
                 MikuToonMaterialRecipe.CurrentShaderFamilyVersion,
-                Is.EqualTo("2.2.12"));
+                Is.EqualTo("2.3.0"));
         }
 
         [Test]
@@ -420,6 +422,56 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(
                 generated.GetVector("_EyeUpperHighlightUVRow1"),
                 Is.EqualTo(new Vector4(0f, 1.27f, -0.05f, 0f)));
+        }
+
+        [Test]
+        public void RecipeBindingFailureRestoresMaterialAndPartState()
+        {
+            var material = new Material(Shader.Find("MIKU/Wuwa/Body"));
+            var recipe = ScriptableObject.CreateInstance<MikuToonMaterialRecipe>();
+            var texture = new Texture2D(1, 1);
+            try
+            {
+                material.renderQueue = 2451;
+                material.EnableKeyword("MIKU_TRANSACTION_SENTINEL");
+                recipe.generatedBaseMaterial = material;
+                recipe.workflowKind = "wuwa_toon";
+                recipe.gamePart = MikuGameMaterialPart.Eye;
+                recipe.textureBindings = new[]
+                {
+                    new MikuToonTextureBinding
+                    {
+                        role = "EyeUpperHighlight",
+                        texture = texture,
+                        uvTransform = new MikuToonUvTransform
+                        {
+                            row0 = new Vector3(float.NaN, 0f, 0f),
+                            row1 = new Vector3(0f, 1f, 0f),
+                        },
+                    },
+                };
+                var before = EditorJsonUtility.ToJson(material);
+                var shaderBefore = material.shader;
+                var partBefore = recipe.gamePart;
+
+                var error = Assert.Throws<InvalidOperationException>(() =>
+                    MikuToonRecipeUtility.ApplySelection(recipe));
+
+                Assert.That(
+                    error.Message,
+                    Is.EqualTo(
+                        "MIKU_FIXED_TEXTURE_UV_MATRIX_INVALID:" +
+                        "EyeUpperHighlight"));
+                Assert.That(material.shader, Is.SameAs(shaderBefore));
+                Assert.That(EditorJsonUtility.ToJson(material), Is.EqualTo(before));
+                Assert.That(recipe.gamePart, Is.EqualTo(partBefore));
+            }
+            finally
+            {
+                Object.DestroyImmediate(texture);
+                Object.DestroyImmediate(recipe);
+                Object.DestroyImmediate(material);
+            }
         }
 
         [Test]

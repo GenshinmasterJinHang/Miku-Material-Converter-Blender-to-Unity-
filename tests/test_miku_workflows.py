@@ -88,7 +88,7 @@ class MikuWorkflowTests(unittest.TestCase):
         first_bytes = first.read_bytes()
         second = build()
         self.assertEqual(first_bytes, second.read_bytes())
-        self.assertEqual("miku_shader_converter-2.2.12.zip", first.name)
+        self.assertEqual("miku_shader_converter-2.3.0.zip", first.name)
         with zipfile.ZipFile(first) as archive:
             names = set(archive.namelist())
             self.assertIn("bake_worker/automatic_bake.py", names)

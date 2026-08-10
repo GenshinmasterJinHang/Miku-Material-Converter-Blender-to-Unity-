@@ -52,7 +52,7 @@ Shader "Hidden/MIKU/Endfield/PassLibrary"
             Name "Outline"
             Tags { "LightMode"="SRPDefaultUnlit" }
             Cull Front
-            ZWrite On
+            ZWrite Off
             ZTest LEqual
             Blend One Zero
             HLSLPROGRAM

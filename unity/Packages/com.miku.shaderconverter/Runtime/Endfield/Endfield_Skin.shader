@@ -18,6 +18,10 @@ Shader "MIKU/Endfield/Skin"
         [Toggle] _UseOutlineMask ("Use Outline Mask", Float) = 0
         _NormalStrength ("Normal Strength", Range(0,1)) = 1
         _ShadowSmoothness ("Shadow Smoothness", Range(0.001,0.5)) = 0.1
+        _ShadowCenter ("Character Shadow Center", Range(0,1)) = 0.5
+        _ShadowSigmoidSmoothness ("Character Shadow Sigmoid Smoothness", Range(0.001,0.5)) = 0.12
+        _ShadowOffset ("Character Shadow Offset", Range(-1,1)) = 0
+        _ShadowStrength ("Character Shadow Strength", Range(0,2)) = 1
         _IndirectIntensity ("Indirect", Range(0,2)) = 0.4
         _SpecularIntensity ("Specular", Range(0,4)) = 0.3
         _SkinSSSIntensity ("Wrapped SSS", Range(0,1)) = 0.12
@@ -27,6 +31,15 @@ Shader "MIKU/Endfield/Skin"
         _SkinToneWhitening ("Skin Tone Whitening", Range(0,1)) = 0
         _SkinToneTarget ("Skin Tone Target", Color) = (1,0.93,0.90,1)
         _SkinAOStrength ("Skin AO Strength", Range(0,1)) = 0.35
+        _SkinRoughness ("Skin Roughness", Range(0.06,1)) = 0.42
+        _SkinReflectivity ("Skin Reflectivity", Range(0,1)) = 0.35
+        _DarkColorStrength ("Dark Color Strength", Range(0,1)) = 1
+        _DarkColorSaturation ("Dark Color Saturation", Range(0,2)) = 0.92
+        _DarkInDarkStrength ("Dark-in-Dark Strength", Range(0,1)) = 0.65
+        _BackLightCompensation ("Back-Light Compensation", Range(0,2)) = 0.55
+        _NoFStrength ("Normal-Facing Ramp Strength", Range(0,1)) = 0
+        _RampColorStrength ("Ramp Color Strength", Range(0,1)) = 0.45
+        _DiffuseAlphaEnergy ("Base Alpha Diffuse Energy", Range(0,1)) = 0
         [HideInInspector] _DebugView ("Debug View", Float) = 0
         _OutlineWidth ("Outline Width", Range(0,0.02)) = 0.001
         _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
@@ -42,6 +55,8 @@ Shader "MIKU/Endfield/Skin"
         _SurfaceRimStrength ("Surface Rim Strength", Range(0,2)) = 0
         _SurfaceRimPower ("Surface Rim Power", Range(0.5,12)) = 5
         _SurfaceRimLightAlign ("Surface Rim Light Align", Range(0,1)) = 0.6
+        _LightRimStrength ("Directional Rim Strength", Range(0,2)) = 0.08
+        _LightRimPower ("Directional Rim Power", Range(0.5,12)) = 2.5
         [HideInInspector] _PartMode ("Part", Float) = 1
         [HideInInspector] _Cull ("Cull", Float) = 2
         [HideInInspector] _StencilRef ("Stencil Ref", Float) = 0
