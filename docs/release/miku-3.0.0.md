@@ -54,6 +54,10 @@ duplicate **Screen Rim Installer** alias was removed.
 - Two new output directories produced byte-identical ZIP, TGZ, and
   `SHA256SUMS.txt` files. Archive inspection found no private scenes, models,
   textures, documentation PNGs, `vibe-kanban/`, `dist/`, or `artifacts/` data.
+- Archive builders canonicalize known text payloads to LF; the Blender ZIP uses
+  stored entries so its identity does not depend on a platform zlib version.
+  This corrects the Windows/Linux mismatch found by the first successful
+  GitHub-hosted candidate build.
 - The fixed Blender 5.2.0 executable (`fbe6228777e7`) passed all eight public
   headless scripts. Installing the exact final ZIP then passed the extension
   compatibility smoke, including UI registration, Standard PBR export, and the
@@ -79,9 +83,9 @@ The unknown star SDF/noise graph remains unsupported.
 
 The twice-reproduced manifest contains:
 
-- `miku_shader_converter-3.0.0.zip` (199,677 bytes):
-  `dbec2ba1fe8cab625ca8749aeb2f028c3c3e1dcd63e808a5289e79d4ea6605bd`
-- `com.miku.shaderconverter-3.0.0.tgz` (514,365 bytes):
-  `ad5581c568a98a32733311af2ae0d3afb42e794ff289bd3d5c59e83e1a89c202`
+- `miku_shader_converter-3.0.0.zip` (898,185 bytes):
+  `296fe11c13bdea7e4c386ab02230e9284fd6a75a0b4bb9e2af26a7a21108c23f`
+- `com.miku.shaderconverter-3.0.0.tgz` (514,349 bytes):
+  `d282c9e5504a32b843358a4f754cd22bc5c8808a1d94f7b3ab5c1a2308b22d3a`
 - `SHA256SUMS.txt` (201 bytes):
-  `a3c5bf25384ec68cf3b939d8f343669ea2af196ac43c410bdd7ecea1a10b1fec`
+  `4937966f0533275163fdc1a94b8bf9dbe860a728803be6503e1ab003b4fa8a2c`

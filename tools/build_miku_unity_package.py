@@ -15,6 +15,26 @@ VERSION = str(
     json.loads((PACKAGE / "package.json").read_text(encoding="utf-8"))["version"]
 )
 OUTPUT = ROOT / "dist" / f"com.miku.shaderconverter-{VERSION}.tgz"
+_TEXT_SUFFIXES = {
+    ".asmdef",
+    ".asset",
+    ".cs",
+    ".hlsl",
+    ".json",
+    ".md",
+    ".meta",
+    ".shader",
+    ".shadergraph",
+    ".shadersubgraph",
+}
+
+
+def canonical_archive_bytes(path: Path) -> bytes:
+    """Return platform-independent package bytes without touching source."""
+    data = path.read_bytes()
+    if path.suffix.lower() in _TEXT_SUFFIXES:
+        data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return data
 
 
 def validate_declared_samples(package: Path = PACKAGE) -> tuple[Path, ...]:
@@ -68,11 +88,7 @@ def build(output: Path | None = None) -> Path:
             key=lambda item: item.relative_to(PACKAGE).as_posix(),
         ):
             relative = "package/" + path.relative_to(PACKAGE).as_posix()
-            data = path.read_bytes()
-            if path.suffix == ".meta":
-                # Keep deterministic Unity metadata readable by tools whose
-                # anchored YAML patterns do not treat CRLF as a line ending.
-                data = data.replace(b"\r\n", b"\n")
+            data = canonical_archive_bytes(path)
             info = tarfile.TarInfo(relative)
             info.size = len(data)
             info.mode = 0o644
