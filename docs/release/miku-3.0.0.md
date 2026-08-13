@@ -48,7 +48,7 @@ duplicate **Screen Rim Installer** alias was removed.
 
 ## Validation
 
-- `py -3.13 tools/ci/run_checks.py --profile pr` passed 272 Python tests,
+- `py -3.13 tools/ci/run_checks.py --profile pr` passed 274 Python tests,
   canonical-source checks, parsing of 99 Python files, all 12 schemas, package
   identity, and deterministic component builds.
 - Two new output directories produced byte-identical ZIP, TGZ, and
