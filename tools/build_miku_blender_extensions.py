@@ -61,6 +61,9 @@ def _write_deterministic_zip(files: dict[Path, str], output: Path) -> Path:
     ) as archive:
         for source, relative in sorted(files.items(), key=lambda item: item[1]):
             info = zipfile.ZipInfo(relative, date_time=(1980, 1, 1, 0, 0, 0))
+            # ZipInfo otherwise inherits 0 (FAT) on Windows and 3 (Unix) on
+            # Linux, changing every central-directory entry across platforms.
+            info.create_system = 3
             info.compress_type = zipfile.ZIP_STORED
             info.external_attr = 0o100644 << 16
             archive.writestr(info, canonical_archive_bytes(source, relative))

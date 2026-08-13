@@ -98,6 +98,9 @@ class MikuWorkflowTests(unittest.TestCase):
                     for item in archive.infolist()
                 )
             )
+            self.assertTrue(
+                all(item.create_system == 3 for item in archive.infolist())
+            )
             self.assertIn("bake_worker/automatic_bake.py", names)
             self.assertIn("miku_blender/__init__.py", names)
             self.assertIn("miku/bake_protocol.py", names)
@@ -109,8 +112,9 @@ class MikuWorkflowTests(unittest.TestCase):
             self.assertIn('blender_version_min = "5.0.0"', manifest)
             self.assertIn('blender_version_max = "5.3.0"', manifest)
 
-    def test_blender_release_text_bytes_are_platform_independent(self):
+    def test_release_text_bytes_are_platform_independent(self):
         from tools.build_miku_blender_extensions import canonical_archive_bytes
+        from tools.release.build_release import manifest_bytes
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -126,6 +130,14 @@ class MikuWorkflowTests(unittest.TestCase):
                 canonical_archive_bytes(extensionless, "LICENSE-MIT-ORIGIN.txt"),
             )
             self.assertEqual(binary.read_bytes(), canonical_archive_bytes(binary))
+            first = root / "first.zip"
+            second = root / "second.tgz"
+            first.write_bytes(b"zip")
+            second.write_bytes(b"tgz")
+            manifest = manifest_bytes([second, first])
+            self.assertTrue(manifest.endswith(b"\n"))
+            self.assertNotIn(b"\r", manifest)
+            self.assertLess(manifest.index(b"first.zip"), manifest.index(b"second.tgz"))
 
 
 if __name__ == "__main__":
