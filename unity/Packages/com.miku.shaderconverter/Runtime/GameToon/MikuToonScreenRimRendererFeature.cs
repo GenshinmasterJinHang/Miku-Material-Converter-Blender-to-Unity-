@@ -18,12 +18,19 @@ namespace Miku.ShaderConverter.Runtime.GameToon
     public sealed class MikuToonScreenRimRendererFeature :
         ScriptableRendererFeature
     {
+        public enum RimAlgorithm
+        {
+            LegacyFourTap = 0,
+            WuwaTutorial = 1,
+        }
+
         [System.Serializable]
         public sealed class Settings
         {
             public RenderPassEvent passEvent =
                 RenderPassEvent.BeforeRenderingTransparents;
             public LayerMask layerMask = -1;
+            public RimAlgorithm algorithm = RimAlgorithm.LegacyFourTap;
         }
 
         public Settings settings = new Settings();
@@ -102,6 +109,9 @@ namespace Miku.ShaderConverter.Runtime.GameToon
             public void Setup(Material value)
             {
                 material = value;
+                material?.SetFloat(
+                    "_MIKU_ScreenRimAlgorithm",
+                    (float)settings.algorithm);
                 renderPassEvent = settings.passEvent;
             }
 

@@ -95,7 +95,7 @@ DOCUMENT_KINDS = {
 }
 
 _HEADER_KEYS = ("documentKind", "schemaVersion", "toolVersion", "id", "canonicalHash")
-TOOL_VERSION = "2.3.0"
+TOOL_VERSION = "3.0.0"
 
 
 class DocumentValidationError(ValueError):

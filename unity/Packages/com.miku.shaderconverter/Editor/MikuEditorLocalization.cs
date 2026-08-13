@@ -145,25 +145,29 @@ namespace Miku.ShaderConverter.Editor
                     "应用将添加一个功能，不会修改其他 Renderer Data 资产。",
                 ["The feature is already installed. Apply is a no-op."] =
                     "该功能已安装，应用操作不会产生变化。",
-                ["Multiple existing Miku features were found. Apply will not add another; remove unwanted duplicates manually."] =
-                    "发现多个现有 Miku 功能。应用不会再添加，请手动移除不需要的重复项。",
-                ["Open Screen Rim Installer"] = "打开屏幕边缘光安装器",
-                ["Miku Toon Screen Rim"] = "Miku 卡通屏幕边缘光",
-                ["Select exactly one Universal Renderer Data asset. Preview is read-only; Apply changes only this asset."] =
-                    "请选择一个 Universal Renderer Data 资产。预览为只读；应用只修改此资产。",
+                ["Miku Game Toon Renderer Features"] =
+                    "Miku 游戏卡通渲染功能",
+                ["Open Game Toon Renderer Feature Installer"] =
+                    "打开游戏卡通渲染功能安装器",
+                ["Preview is read-only. Apply installs the Geometry and Screen Rim features into every active Universal Renderer Data asset as one Undo transaction."] =
+                    "预览为只读。应用会在一个撤销事务中，为每个活动的 Universal Renderer Data 资产安装 Geometry 与 Screen Rim 功能。",
                 ["Choose a Renderer Data asset."] = "请选择 Renderer Data 资产。",
-                ["Installed one Miku Toon Screen Rim feature."] =
-                    "已安装一个 Miku 卡通屏幕边缘光功能。",
+                ["Installed Game Toon renderer features in {0} active Renderer Data asset(s); {1} subasset(s) created."] =
+                    "已在 {0} 个活动 Renderer Data 资产中安装游戏卡通渲染功能；创建了 {1} 个子资产。",
+                ["Apply will install missing Geometry and Screen Rim features in all active Universal Renderer Data assets."] =
+                    "应用将为所有活动的 Universal Renderer Data 资产安装缺少的 Geometry 与 Screen Rim 功能。",
+                ["Both features are installed on this Renderer Data. Apply remains idempotent across all active renderers."] =
+                    "此 Renderer Data 已安装两项功能；对所有活动渲染器重复应用仍保持幂等。",
+                ["Duplicate Miku renderer features were found. Apply is blocked until duplicates are resolved."] =
+                    "发现重复的 Miku 渲染功能；请先解决重复项再应用。",
                 ["Already installed; no duplicate was added."] =
                     "已安装；未添加重复功能。",
-                ["Screen Rim Renderer Feature: {0}/{1} active Renderer Data assets installed. Use Miku > Game Toon > Rendering > Screen Rim Installer for explicit Preview/Apply."] =
-                    "屏幕边缘光 Renderer Feature：已在 {0}/{1} 个活动 Renderer Data 资产中安装。请使用 Miku > Game Toon > Rendering > Screen Rim Installer 执行明确的预览/应用。",
-                ["Screen Rim Renderer Feature: URP asset not active."] =
-                    "屏幕边缘光 Renderer Feature：URP 资产未启用。",
-                ["Screen Rim Renderer Feature: "] =
-                    "屏幕边缘光 Renderer Feature：",
-                [" active Renderer Data assets installed. Use Miku > Game Toon > Rendering > Screen Rim Installer for explicit Preview/Apply."] =
-                    " 个活动 Renderer Data 资产已安装。请使用 Miku > Game Toon > Rendering > Screen Rim Installer 执行明确的预览/应用。",
+                ["Game Toon Renderer Features: URP asset not active."] =
+                    "游戏卡通渲染功能：URP 资产未启用。",
+                ["Game Toon Geometry + Screen Rim Renderer Features: {0}/{1} active Renderer Data assets installed."] =
+                    "游戏卡通 Geometry + Screen Rim 渲染功能：已在 {0}/{1} 个活动 Renderer Data 资产中安装。",
+                ["Install Miku Game Toon Renderer Features"] =
+                    "安装 Miku 游戏卡通渲染功能",
                 ["Write R / SSS"] = "写入 R / SSS",
                 ["Write G / SDF"] = "写入 G / SDF",
                 ["Write B / Matcap"] = "写入 B / Matcap",
@@ -244,6 +248,26 @@ namespace Miku.ShaderConverter.Editor
                 ["Miku Fixed Workflow"] = "Miku 固定工作流",
                 ["EyeHET is now an emission mask. Re-import this bundle to bind HDMF and authored highlight textures."] =
                     "EyeHET 现在是发光遮罩。请重新导入此 Bundle 以绑定 HDMF 和已制作的高光贴图。",
+                ["Endfield iris materials require an authored MatCap for the tutorial cornea highlight."] =
+                    "Endfield 虹膜材质需要已制作的 MatCap 才能呈现教程中的角膜高光。",
+                ["Assign an authored Face SDF texture; the built-in white fallback cannot reproduce directional facial shadows."] =
+                    "请指定已制作的面部 SDF 贴图；内置白色回退贴图无法产生随方向变化的面部阴影。",
+                ["Face SDF Shadow Strength is zero, so the computed mask cannot affect final direct lighting."] =
+                    "面部 SDF 阴影强度为零，因此计算出的遮罩不会影响最终直接光照。",
+                ["The material face basis is zero, non-finite, or collinear. Supply an orthogonal Right/Up/Forward basis or disable the material basis."] =
+                    "材质面部基向量为零、非有限值或共线。请提供正交的右/上/前基向量，或禁用材质基向量。",
+                ["Import Face SDF as Linear with mipmaps disabled; Clamp and Repeat wrapping are both supported."] =
+                    "请将面部 SDF 按 Linear 且禁用 Mipmap 的方式导入；Clamp 与 Repeat 均受支持。",
+                ["Main and soft SDF channels are identical. This is allowed, but disables the authored two-channel refinement."] =
+                    "主 SDF 与柔化 SDF 通道相同。该设置允许使用，但会停用已制作的双通道细化。",
+                ["Lit Tint and Shadow Tint are identical, so the SDF mask has no visible diffuse contrast."] =
+                    "亮部色与阴影色相同，因此 SDF 遮罩不会产生可见的漫反射对比。",
+                ["A Face SDF debug view is active; set Debug Mode to 0 to inspect final shading."] =
+                    "面部 SDF 调试视图已启用；请将调试模式设为 0 以检查最终着色。",
+                ["Face SDF Shadow Softness or Mirror Blend Width is very wide and can flatten the authored light/shadow regions in final shading."] =
+                    "面部 SDF 阴影柔化范围过宽，可能在最终着色中抹平已制作的明暗区域。",
+                ["Face skin SSS is strong enough to fill the SDF shadow region and reduce its visible contrast."] =
+                    "面部皮肤 SSS 强度较高，可能填充 SDF 阴影区域并降低可见对比度。",
                 ["Final"] = "最终",
                 ["Base Alpha"] = "基础 Alpha",
                 ["HET"] = "HET",

@@ -20,7 +20,8 @@ Shader "MIKU/Genshin/Face"
         _FaceShadowSoftness ("Face Shadow Softness", Range(0.001,1)) = 0.015
         _FaceSdfFlipY ("Face SDF Flip Y", Range(0,1)) = 0
         _FaceSdfDebugMode ("Face SDF Debug 0Off 1Raw 2Mirrored 5Mask", Range(0,5)) = 0
-        _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 0.15
+        _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 1
+        _MainShadowInfluence ("Realtime Main Shadow Influence", Range(0,1)) = 0
         _IndirectLightUsage ("Indirect Light Usage", Range(0,2)) = 0.1
         _HighlightCompression ("Highlight Compression", Range(0,1)) = 1
         _HighlightKnee ("Highlight Knee", Range(0,1)) = 0.72
@@ -33,7 +34,8 @@ Shader "MIKU/Genshin/Face"
         _SkinToneTarget ("Skin Tone Target", Color) = (1,0.93,0.90,1)
         _SkinMaskDebugMode ("Skin Mask Debug Mode", Range(0,1)) = 0
         _EmissionIntensity ("Emission Intensity", Range(0,4)) = 0
-        _DiffuseA ("Diffuse Alpha (0 Off, 1 Cutout, 2 Emission)", Range(0,2)) = 0
+        [Enum(None,0,Cutout,1,DiffuseAlphaEmission,2)] _DiffuseA ("Base Alpha Mode", Float) = 0
+        [HideInInspector] _MikuGenshinMaterialStateVersion ("Miku Genshin Material State Version", Float) = 0
         _Cutoff ("Cutout Threshold", Range(0,1)) = 1
         [HDR] _Glow ("Glow (Emission)", Color) = (1,1,1,1)
         _Flicker ("Flicker Speed", Float) = 0.8
@@ -49,6 +51,7 @@ Shader "MIKU/Genshin/Face"
         _RimLightFadeout ("Rim Fadeout", Range(0.001,1)) = 0.2
         [HideInInspector] _FresnelPower ("Legacy Fresnel Power", Range(0.1,8)) = 2
         [HideInInspector] _FresnelClamp ("Legacy Fresnel Clamp", Range(0,1)) = 1
+        _FresnelStrength ("Tutorial Fresnel Strength", Range(0,4)) = 0
         _OutlineWidth ("Outline Width", Range(0,0.1)) = 0.0015
         _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
         _OutlineDistanceScale ("Outline Distance Scale", Range(0,1)) = 1
@@ -79,6 +82,13 @@ Shader "MIKU/Genshin/Face"
             #pragma fragment GenshinFrag
             #pragma shader_feature_local _AREA_FACE
             #pragma shader_feature_local _GENSHIN_EMISSION_ON
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #if UNITY_VERSION >= 60010000
+                #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
+            #else
+                #pragma multi_compile _ _FORWARD_PLUS
+            #endif
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "GenshinCommon.hlsl"
@@ -90,10 +100,10 @@ Shader "MIKU/Genshin/Face"
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST; float4 _BaseColorTint;
                 float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
-                float _InNight; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceSdfFlipY; float _FaceSdfDebugMode; float _MainLightColorUsage; float _IndirectLightUsage; float _EmissionIntensity;
+                float _InNight; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceSdfFlipY; float _FaceSdfDebugMode; float _MainLightColorUsage; float _MainShadowInfluence; float _IndirectLightUsage; float _EmissionIntensity;
                 float _HighlightCompression; float _HighlightKnee; float _HighlightCeiling;
                 float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
-                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
+                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp; float _FresnelStrength;
                 float _DiffuseA; float _Cutoff; float4 _Glow; float _Flicker;
                 float _LightmapA0; float _LightmapA1; float _LightmapA2; float _LightmapA3; float _LightmapA4;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
@@ -110,7 +120,7 @@ Shader "MIKU/Genshin/Face"
                 output.normalWS = normalize(normal.normalWS);
                 output.viewDirWS = normalize(GetWorldSpaceViewDir(pos.positionWS));
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
-                output.shadowCoord = TransformWorldToShadowCoord(pos.positionWS);
+                output.shadowCoord = GetShadowCoord(pos);
                 output.vertexColor = input.vertexColor;
                 return output;
             }
@@ -118,6 +128,7 @@ Shader "MIKU/Genshin/Face"
             {
                 float4 rawBaseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
                 float4 baseSample = rawBaseSample * _BaseColorTint;
+                Genshin_ApplyBaseAlphaCoverage(baseSample.a, _DiffuseA, _Cutoff);
                 Light mainLight = GetMainLight(input.shadowCoord);
                 float3 normalWS = normalize(input.normalWS);
                 float3 viewDirWS = normalize(input.viewDirWS);
@@ -143,18 +154,18 @@ Shader "MIKU/Genshin/Face"
                 rampRows.a2 = _LightmapA2;
                 rampRows.a3 = _LightmapA3;
                 rampRows.a4 = _LightmapA4;
-                float3 diffuse = Genshin_FaceDiffuse(skinBase, inLight, mainLightColor, rampRows, _InNight, _HighlightCompression, TEXTURE2D_ARGS(_ShadowRampMap, sampler_ShadowRampMap));
+                float3 diffuse = Genshin_FaceDiffuse(skinBase, inLight, mainLightColor, rampRows, _InNight, _HighlightCompression, mainLight.shadowAttenuation, mainLight.distanceAttenuation, _MainShadowInfluence, TEXTURE2D_ARGS(_ShadowRampMap, sampler_ShadowRampMap));
                 float3 indirect = Genshin_SampleSH_Indirect(normalWS) * _IndirectLightUsage * skinBase;
-                float3 sss = MikuGameToonSkinSSS(skinBase, skinMask, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, inLight, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb);
+                float faceDirectVisibility = Genshin_MainShadowVisibility(mainLight.shadowAttenuation, mainLight.distanceAttenuation, _MainShadowInfluence);
+                float3 sss = MikuGameToonSkinSSS(skinBase, skinMask, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, inLight, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb) * faceDirectVisibility;
+                float3 fresnel = Genshin_TutorialFresnel(skinBase, normalWS, viewDirWS, _FresnelPower, _FresnelStrength);
                 float3 emission = 0.0.xxx;
                 #if defined(_GENSHIN_EMISSION_ON)
                     emission += SAMPLE_TEXTURE2D(_EmissionMap, sampler_EmissionMap, input.uv).rgb * _EmissionIntensity;
                 #endif
                 if (_DiffuseA > 1.5)
-                    emission += Genshin_DiffuseAlphaEmission(baseSample.a, baseSample.rgb, _Glow, _Flicker);
-                else if (_DiffuseA > 0.5)
-                    Genshin_DiffuseAlphaClip(baseSample.a, _Cutoff);
-                float3 nonEmissive = Genshin_CompressNonEmissive(indirect + diffuse + sss, _HighlightCompression, _HighlightKnee, _HighlightCeiling);
+                    emission += Genshin_DiffuseAlphaEmission(baseSample.a, baseSample.rgb, _Glow, _Flicker) * _EmissionIntensity;
+                float3 nonEmissive = Genshin_CompressNonEmissive(indirect + diffuse + sss + fresnel, _HighlightCompression, _HighlightKnee, _HighlightCeiling);
                 return half4(nonEmissive + emission, 1.0);
             }
             ENDHLSL
@@ -171,13 +182,18 @@ Shader "MIKU/Genshin/Face"
             #pragma vertex MikuGameScreenRimVertex
             #pragma fragment MikuGameScreenRimFragment
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "GenshinCommon.hlsl"
+            #define MIKU_GAME_TOON_ALPHA_COVERAGE 1
+            TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST; float4 _BaseColorTint;
                 float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
-                float _InNight; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceSdfFlipY; float _FaceSdfDebugMode; float _MainLightColorUsage; float _IndirectLightUsage; float _EmissionIntensity;
+                float _InNight; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceSdfFlipY; float _FaceSdfDebugMode; float _MainLightColorUsage; float _MainShadowInfluence; float _IndirectLightUsage; float _EmissionIntensity;
                 float _HighlightCompression; float _HighlightKnee; float _HighlightCeiling;
                 float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
-                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
+                float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp; float _FresnelStrength;
+                float _DiffuseA; float _Cutoff; float4 _Glow; float _Flicker;
+                float _LightmapA0; float _LightmapA1; float _LightmapA2; float _LightmapA3; float _LightmapA4;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
             #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonScreenRimPass.hlsl"
@@ -186,8 +202,8 @@ Shader "MIKU/Genshin/Face"
 
         Pass
         {
-            Name "Outline"
-            Tags { "LightMode"="SRPDefaultUnlit" }
+            Name "MikuToonOutline"
+            Tags { "LightMode"="MikuToonOutline" }
             Cull Front
             ZWrite Off
             ZTest LEqual
@@ -201,14 +217,13 @@ Shader "MIKU/Genshin/Face"
             #include "GenshinCommon.hlsl"
             #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonOutline.hlsl"
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
-            TEXTURE2D(_LightMap); SAMPLER(sampler_LightMap);
             CBUFFER_START(UnityPerMaterial)
-                float4 _BaseMap_ST; float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
+                float4 _BaseMap_ST; float4 _BaseColorTint; float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
                 float _OutlineColorMode; float4 _OutlineColor0; float4 _OutlineColor1; float4 _OutlineColor2; float4 _OutlineColor3; float4 _OutlineColor4;
                 float _DiffuseA; float _Cutoff;
             CBUFFER_END
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float4 vertexColor : COLOR; float4 smoothNormalData : TEXCOORD7; };
-            struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; float4 vertexColor : COLOR; };
+            struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; float outlineCoverage : TEXCOORD1; float4 vertexColor : COLOR; };
             Varyings OutlineVert(Attributes input)
             {
                 Varyings output;
@@ -224,28 +239,25 @@ Shader "MIKU/Genshin/Face"
                     _OutlineDistanceScale,
                     Genshin_OutlineVertexMask(input.vertexColor),
                     1.0);
+                output.outlineCoverage = MikuGameToonOutlineCoverageWithVertexMask(
+                    pos.positionWS,
+                    1.0,
+                    _OutlineWidth,
+                    _OutlineReferenceDistance,
+                    _OutlineDistanceScale,
+                    Genshin_OutlineVertexMask(input.vertexColor),
+                    1.0);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 output.vertexColor = input.vertexColor;
                 return output;
             }
             half4 OutlineFrag(Varyings input) : SV_Target
             {
-                float4 baseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv);
-                if (_DiffuseA > 0.5 && _DiffuseA <= 1.5)
-                    Genshin_DiffuseAlphaClip(baseSample.a, _Cutoff);
-                float4 lightMap = SAMPLE_TEXTURE2D(_LightMap, sampler_LightMap, input.uv);
-                float3 outlineColor = Genshin_OutlineRegionColor(
-                    lightMap,
-                    baseSample.rgb,
-                    input.vertexColor,
-                    _OutlineColor0.rgb,
-                    _OutlineColor1.rgb,
-                    _OutlineColor2.rgb,
-                    _OutlineColor3.rgb,
-                    _OutlineColor4.rgb,
-                    _OutlineGamma,
-                    _OutlineColorTint.rgb,
-                    _OutlineColorMode);
+                MikuGameToonOutlineClipCoverage(input.outlineCoverage);
+                float4 baseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColorTint;
+                Genshin_ApplyBaseAlphaCoverage(baseSample.a, _DiffuseA, _Cutoff);
+                // Face has no LightMap contract. Its outline is always region 0.
+                float3 outlineColor = _OutlineColor0.rgb * _OutlineColorTint.rgb;
                 return half4(outlineColor, 1.0);
             }
             ENDHLSL
@@ -254,42 +266,84 @@ Shader "MIKU/Genshin/Face"
         {
             Name "ShadowCaster"
             Tags { "LightMode"="ShadowCaster" }
+            Cull Back
+            ZWrite On
+            ZTest LEqual
             HLSLPROGRAM
-            #pragma vertex DepthVert
-            #pragma fragment DepthFrag
+            #pragma target 3.5
+            #pragma vertex ShadowVert
+            #pragma fragment CoverageFrag
+            #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            struct Attributes { float4 positionOS : POSITION; };
-            struct Varyings { float4 positionCS : SV_POSITION; };
-            Varyings DepthVert(Attributes input) { Varyings output; output.positionCS = TransformObjectToHClip(input.positionOS.xyz); return output; }
-            half4 DepthFrag(Varyings input) : SV_Target { return 0; }
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
+            #include "GenshinCommon.hlsl"
+            TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
+            float3 _LightDirection; float3 _LightPosition;
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float4 _BaseColorTint; float _DiffuseA; float _Cutoff;
+            CBUFFER_END
+            struct CoverageAttributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 uv : TEXCOORD0; };
+            struct CoverageVaryings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; };
+            CoverageVaryings ShadowVert(CoverageAttributes input)
+            {
+                CoverageVaryings output; float3 positionWS = TransformObjectToWorld(input.positionOS.xyz); float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
+                #if defined(_CASTING_PUNCTUAL_LIGHT_SHADOW)
+                    float3 lightDirectionWS = normalize(_LightPosition - positionWS);
+                #else
+                    float3 lightDirectionWS = _LightDirection;
+                #endif
+                output.positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, lightDirectionWS));
+                #if UNITY_REVERSED_Z
+                    output.positionCS.z = min(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+                #else
+                    output.positionCS.z = max(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
+                #endif
+                output.uv = TRANSFORM_TEX(input.uv, _BaseMap); return output;
+            }
+            half4 CoverageFrag(CoverageVaryings input) : SV_Target { float alpha = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).a * _BaseColorTint.a; Genshin_ApplyBaseAlphaCoverage(alpha, _DiffuseA, _Cutoff); return 0; }
             ENDHLSL
         }
         Pass
         {
             Name "DepthOnly"
             Tags { "LightMode"="DepthOnly" }
+            Cull Back
+            ZWrite On
+            ColorMask R
             HLSLPROGRAM
             #pragma vertex DepthVert
-            #pragma fragment DepthFrag
+            #pragma fragment CoverageFrag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            struct Attributes { float4 positionOS : POSITION; };
-            struct Varyings { float4 positionCS : SV_POSITION; };
-            Varyings DepthVert(Attributes input) { Varyings output; output.positionCS = TransformObjectToHClip(input.positionOS.xyz); return output; }
-            half4 DepthFrag(Varyings input) : SV_Target { return 0; }
+            #include "GenshinCommon.hlsl"
+            TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float4 _BaseColorTint; float _DiffuseA; float _Cutoff;
+            CBUFFER_END
+            struct CoverageAttributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; };
+            struct CoverageVaryings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; };
+            CoverageVaryings DepthVert(CoverageAttributes input) { CoverageVaryings output; output.positionCS = TransformObjectToHClip(input.positionOS.xyz); output.uv = TRANSFORM_TEX(input.uv, _BaseMap); return output; }
+            half4 CoverageFrag(CoverageVaryings input) : SV_Target { float alpha = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).a * _BaseColorTint.a; Genshin_ApplyBaseAlphaCoverage(alpha, _DiffuseA, _Cutoff); return 0; }
             ENDHLSL
         }
         Pass
         {
             Name "DepthNormalsOnly"
             Tags { "LightMode"="DepthNormalsOnly" }
+            Cull Back
+            ZWrite On
             HLSLPROGRAM
             #pragma vertex NormalsVert
             #pragma fragment NormalsFrag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 normalWS : TEXCOORD0; };
-            Varyings NormalsVert(Attributes input) { Varyings output; output.positionCS = TransformObjectToHClip(input.positionOS.xyz); output.normalWS = TransformObjectToWorldNormal(input.normalOS); return output; }
-            half4 NormalsFrag(Varyings input) : SV_Target { return half4(normalize(input.normalWS) * 0.5h + 0.5h, 1); }
+            #include "GenshinCommon.hlsl"
+            TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST; float4 _BaseColorTint; float _DiffuseA; float _Cutoff;
+            CBUFFER_END
+            struct NormalsAttributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 uv : TEXCOORD0; };
+            struct NormalsVaryings { float4 positionCS : SV_POSITION; float3 normalWS : TEXCOORD0; float2 uv : TEXCOORD1; };
+            NormalsVaryings NormalsVert(NormalsAttributes input) { NormalsVaryings output; output.positionCS = TransformObjectToHClip(input.positionOS.xyz); output.normalWS = TransformObjectToWorldNormal(input.normalOS); output.uv = TRANSFORM_TEX(input.uv, _BaseMap); return output; }
+            half4 NormalsFrag(NormalsVaryings input) : SV_Target { float alpha = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).a * _BaseColorTint.a; Genshin_ApplyBaseAlphaCoverage(alpha, _DiffuseA, _Cutoff); return half4(normalize(input.normalWS) * 0.5h + 0.5h, 1); }
             ENDHLSL
         }
     }

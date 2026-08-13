@@ -15,11 +15,12 @@ Shader "MIKU/HSR/Hair"
         _IndirectLightOcclusionUsage ("Indirect Light AO Usage", Range(0,1)) = 0.7
         _IndirectLightMixBaseColor ("Indirect Mix Base Color", Range(0,1)) = 1
         _IndirectLightFlattenNormal ("Indirect Flatten Normal", Range(0,1)) = 0.8
-        _ShadowThresholdCenter ("Shadow Threshold Center", Range(-1,1)) = 0
-        _ShadowThresholdSoftness ("Shadow Threshold Softness", Range(0.001,1)) = 0.035
-        _ShadowRampOffset ("Shadow Ramp Offset", Range(0,1)) = 0.75
+        [HideInInspector] _ShadowThresholdCenter ("Legacy Shadow Threshold Center", Range(-1,1)) = 0
+        [HideInInspector] _ShadowThresholdSoftness ("Legacy Shadow Threshold Softness", Range(0.001,1)) = 0.035
+        [HideInInspector] _ShadowRampOffset ("Legacy Shadow Ramp Offset", Range(0,1)) = 0.15
         _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 0.35
         _SpecularExponent ("Specular Exponent", Range(1,512)) = 48
+        _SpecularSoftness ("Specular Smooth Cut Width", Range(0.001,1)) = 0.1
         _SpecularKsNonMetal ("Specular Ks NonMetal", Range(0,1)) = 0.035
         _SpecularKsMetal ("Specular Ks Metal", Range(0,4)) = 1.1
         _SpecularBrightness ("Specular Brightness", Range(0,4)) = 1
@@ -63,7 +64,7 @@ Shader "MIKU/HSR/Hair"
                 float4 _BaseMap_ST; float4 _BaseColorTint;
                 float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal;
                 float _ShadowThresholdCenter; float _ShadowThresholdSoftness; float _ShadowRampOffset; float _MainLightColorUsage;
-                float _SpecularExponent; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness;
+                float _SpecularExponent; float _SpecularSoftness; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
@@ -79,10 +80,10 @@ Shader "MIKU/HSR/Hair"
                 float3 normalWS = normalize(input.normalWS);
                 float3 viewDirWS = normalize(input.viewDirWS);
                 float3 baseColor = baseSample.rgb;
-                float mainLightShadow = HSR_BodyMainShadow(normalWS, lightDirWS, lightMap, _ShadowThresholdCenter, _ShadowThresholdSoftness) * mainLight.shadowAttenuation;
-                float3 rampColor = HSR_SampleHairRamp(mainLightShadow, lightDirWS, TEXTURE2D_ARGS(_HairCoolRamp, sampler_HairCoolRamp), TEXTURE2D_ARGS(_HairWarmRamp, sampler_HairWarmRamp), _ShadowRampOffset); // rowCount = 1.0
+                float mainLightShadow = HSR_TutorialShadowAoHalfLambert(normalWS, lightDirWS, lightMap.g) * mainLight.shadowAttenuation;
+                float3 rampColor = HSR_SampleHairRamp(mainLightShadow, lightDirWS, TEXTURE2D_ARGS(_HairCoolRamp, sampler_HairCoolRamp), TEXTURE2D_ARGS(_HairWarmRamp, sampler_HairWarmRamp), 0.15); // tutorial: x = signal * 0.85 + 0.15
                 float metallic = 0.0;
-                float3 specular = HSR_ComputeSpecular(baseColor, lightMap, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, _SpecularExponent, _SpecularKsNonMetal, _SpecularKsMetal, _SpecularBrightness, metallic);
+                float3 specular = HSR_ComputeSpecular(baseColor, lightMap, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, _SpecularExponent, _SpecularSoftness, _SpecularKsNonMetal, _SpecularKsMetal, _SpecularBrightness, metallic);
                 float3 indirect = HSR_SampleSH_Indirect(normalWS, _IndirectLightFlattenNormal) * _IndirectLightUsage;
                 indirect *= lerp(1.0, lightMap.r, _IndirectLightOcclusionUsage);
                 indirect *= lerp(1.0.xxx, baseColor, _IndirectLightMixBaseColor);
@@ -109,7 +110,7 @@ Shader "MIKU/HSR/Hair"
                 float4 _BaseMap_ST; float4 _BaseColorTint;
                 float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal;
                 float _ShadowThresholdCenter; float _ShadowThresholdSoftness; float _ShadowRampOffset; float _MainLightColorUsage;
-                float _SpecularExponent; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness;
+                float _SpecularExponent; float _SpecularSoftness; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
@@ -139,7 +140,7 @@ Shader "MIKU/HSR/Hair"
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float4 smoothNormalData : TEXCOORD7; };
-            struct Varyings { float4 positionCS : SV_POSITION; };
+            struct Varyings { float4 positionCS : SV_POSITION; float outlineCoverage : TEXCOORD0; };
             Varyings OutlineVert(Attributes input)
             {
                 Varyings output;
@@ -156,10 +157,20 @@ Shader "MIKU/HSR/Hair"
                     float4(1.0, 1.0, 1.0, 1.0),
                     1.0,
                     1.0);
+                output.outlineCoverage = MikuGameToonOutlineCoverageWithLegacyMode(
+                    pos.positionWS,
+                    1.0,
+                    _OutlineWidth,
+                    _OutlineReferenceDistance,
+                    _OutlineDistanceScale,
+                    float4(1.0, 1.0, 1.0, 1.0),
+                    1.0,
+                    1.0);
                 return output;
             }
             half4 OutlineFrag(Varyings input) : SV_Target
             {
+                MikuGameToonOutlineClipCoverage(input.outlineCoverage);
                 float3 outlineColor = HSR_HairOutlineColor(TEXTURE2D_ARGS(_HairCoolRamp, sampler_HairCoolRamp), TEXTURE2D_ARGS(_HairWarmRamp, sampler_HairWarmRamp), _OutlineGamma) * _OutlineColorTint.rgb;
                 return half4(outlineColor, 1.0);
             }

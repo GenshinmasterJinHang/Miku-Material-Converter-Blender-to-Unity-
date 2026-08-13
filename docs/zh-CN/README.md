@@ -1,4 +1,4 @@
-# Miku 2.3.0
+# Miku 3.0.0
 
 Miku 将 Blender 5.x EEVEE 材质转换为目标无关的 MaterialIR 2.0，再将确定性、
 可继续编辑的 Standard PBR Shader Graph 资产导入 Unity 6 URP。Blender 只显示一条
@@ -19,6 +19,9 @@ Standard PBR 路线；Unity 编辑器内提供四套随包附带的 Game Toon Sh
   显式贴图字段和必填校验，不覆盖现有资产，也不自动绑定 Renderer、FBX 或 Prefab。
 - 可选择启用的终末地教程光照、支持蒙皮的切线空间描边，以及项目自有的后处理前
   游戏 LUT 安装器。详见[终末地 2.3.0 指南](endfield-tutorial-rendering.md)。
+- 最初为未发布 2.4.0 候选开发、最终随 3.0.0 交付的原神教程公式、独立 UV1
+  背面/UV7 描边调度，以及组合式 Geometry/Screen Rim 渲染功能安装器。详见
+  [原神渲染指南](genshin-tutorial-rendering.md)。
 - 在 `Miku > Settings` 中按用户选择 English 或简体中文，不修改项目资产。
 
 ## 内置 Game Toon Shader/HLSL 预设
@@ -40,13 +43,16 @@ Unity 包直接附带四套由 Miku 独立编写的实验性 Shader/HLSL 代码�
 
 ## 安装发布版本
 
-1. 在 2.3.0 发布资产可用后，下载 `miku_shader_converter-2.3.0.zip` 和
-   `com.miku.shaderconverter-2.3.0.tgz`。
-2. 在 Blender 5.0–5.2 打开 **编辑 > 偏好设置 > 扩展**，选择 **从磁盘安装**，选中 ZIP
+1. 从 [v3.0.0 Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v3.0.0)
+   下载 `miku_shader_converter-3.0.0.zip`、`com.miku.shaderconverter-3.0.0.tgz`
+   和 `SHA256SUMS.txt`。
+2. 安装前对 ZIP 与 TGZ 运行 `Get-FileHash -Algorithm SHA256`，并逐项与
+   `SHA256SUMS.txt` 比对。
+3. 在 Blender 5.0–5.2 打开 **编辑 > 偏好设置 > 扩展**，选择 **从磁盘安装**，选中 ZIP
    并启用 Miku。
-3. 在 Unity 6000.0–6000.5 打开 **Window > Package Manager > + > Add package
+4. 在 Unity 6000.0–6000.5 打开 **Window > Package Manager > + > Add package
    from tarball**，选择同一个 TGZ。
-4. 从 Blender 导出材质 Bundle，并把完整 Bundle 目录复制到 Unity 项目的
+5. 从 Blender 导出材质 Bundle，并把完整 Bundle 目录复制到 Unity 项目的
    `Assets/` 下。
 
 源码开发时，在 Package Manager 中选择 **Add package from disk**，并指向
@@ -67,19 +73,20 @@ Unity 包直接附带四套由 Miku 独立编写的实验性 Shader/HLSL 代码�
 
 ## 兼容性与许可范围
 
-认证参考组合为 Blender 5.2.0、Unity 6000.5.7f1、URP 17.5.4 和
-Shader Graph 17.5.4。正式范围为 Blender 5.0–5.2，以及严格匹配的
+已验证参考组合为 Blender 5.2.0、Unity 6000.4.5f1、URP 17.4.0 和
+Shader Graph 17.4.0，并使用 Windows Direct3D 12。正式范围为 Blender 5.0–5.2，以及严格匹配的
 Unity 6000.0/URP 17.0 到 Unity 6000.5/URP 17.5 技术线；URP 与 Shader Graph
 版本必须完全相同。区间内未记录的稳定补丁会先执行能力预检并显示警告。
 Blender 5.3+、Unity 6000.6+、17.6+ 和预发布版本会在写资产前拒绝。
-2.3.0 不修改
+3.0.0 不修改
 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开 Shader
 property/reference 名称。详见[兼容性矩阵](../compatibility.md)。
 
 仓库中采用 MIT 的代码继续适用 [MIT License](../../LICENSE)；带有其他 SPDX 声明的
-文件（包括 Blender Bake Worker）继续适用各自条款。手册中的四张角色渲染图是单独
+文件（包括 Blender Bake Worker）继续适用各自条款。手册中的五张角色渲染图是单独
 管理的文档素材，仅供非商业学习和文档参考，禁止用于任何商业用途。相关角色、
-设计及知识产权归各自权利人所有；Miku 不授予任何游戏资产使用权。详见
+设计及知识产权归各自权利人所有；Miku 不授予任何游戏资产使用权。PNG 随源码文档
+跟踪，不适用 Miku 的 MIT 许可，也不进入可安装 ZIP/TGZ。详见
 [第三方声明](../../THIRD_PARTY_NOTICES.md)和
 [文档图片来源记录](../provenance/documentation-images.md)。
 

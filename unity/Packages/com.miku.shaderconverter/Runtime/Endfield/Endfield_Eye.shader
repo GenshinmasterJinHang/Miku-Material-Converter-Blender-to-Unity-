@@ -14,6 +14,7 @@ Shader "MIKU/Endfield/Eye"
         _SpecularIntensity ("Specular", Range(0,4)) = 0.5
         _IrisParallaxDepth ("Iris Parallax Depth", Range(0,0.03)) = 0.008
         _CorneaBumpStrength ("Cornea Bump Strength", Range(0,1)) = 0.25
+        _MatCapUvScale ("MatCap UV Scale", Range(0,8)) = 1
         _CorneaSpecularIntensity ("Cornea Specular", Range(0,4)) = 1
         [HDR] _CorneaHighlightColor ("Cornea Highlight Color", Color) = (1,1,1,1)
         _EyeRampStrength ("Eye Ramp Strength", Range(0,1)) = 1

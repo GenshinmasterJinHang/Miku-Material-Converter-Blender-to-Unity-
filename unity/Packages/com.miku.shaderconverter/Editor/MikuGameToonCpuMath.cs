@@ -143,6 +143,32 @@ namespace Miku.ShaderConverter.Editor
                 Vector3.Dot(row1, source));
         }
 
+        internal static Vector2 WuwaEyeParallaxUv(
+            Vector2 surfaceUv,
+            Vector3 viewDirection,
+            Vector3 tangent,
+            Vector3 bitangent,
+            float strength,
+            float tangentValid)
+        {
+            var offset = Vector2.zero;
+            if (tangentValid > 0f &&
+                viewDirection.sqrMagnitude > 0.00000001f &&
+                tangent.sqrMagnitude > 0.00000001f &&
+                bitangent.sqrMagnitude > 0.00000001f)
+            {
+                var view = viewDirection.normalized;
+                offset = new Vector2(
+                    Vector3.Dot(view, tangent.normalized),
+                    Vector3.Dot(view, bitangent.normalized)) *
+                    strength * Mathf.Clamp01(tangentValid);
+                offset.y = -offset.y;
+            }
+            return new Vector2(
+                Mathf.Clamp01(surfaceUv.x - offset.x),
+                Mathf.Clamp01(surfaceUv.y - offset.y));
+        }
+
         internal static float WuwaEyeAuthoredHighlightMask(float value)
         {
             const float gate = 0.0400000215f;
@@ -224,18 +250,55 @@ namespace Miku.ShaderConverter.Editor
             var loH = Mathf.Clamp01(Vector3.Dot(safeLight, halfDir));
             var noL = Mathf.Clamp01(Vector3.Dot(safeNormal, safeLight));
             var noV = Mathf.Clamp01(Vector3.Dot(safeNormal, safeView));
-            var safeRoughness = Mathf.Clamp(roughness, 0.001f, 1f);
-            var roughness2 = safeRoughness * safeRoughness;
+            var perceptualRoughness = Mathf.Clamp01(roughness);
+            var linearRoughness = Mathf.Max(
+                perceptualRoughness * perceptualRoughness,
+                0.0078125f);
+            var roughness2 = Mathf.Max(
+                linearRoughness * linearRoughness,
+                0.00006103515625f);
             var roughness2MinusOne = roughness2 - 1f;
-            var normalizationTerm = Mathf.Max(4f * loH * noH, 0.001f);
+            var normalizationTerm = linearRoughness * 4f + 2f;
             var d = noH * noH * roughness2MinusOne + 1.00001f;
             var loH2 = loH * loH;
             var specularTerm = roughness2 /
                 ((d * d) * Mathf.Max(0.1f, loH2) * normalizationTerm);
             if (!float.IsFinite(specularTerm) || noL <= 0f || noV <= 0f)
                 return 0f;
-            return Mathf.Clamp01(specularTerm);
+            return specularTerm;
         }
+
+        internal static void WuwaDecodePackedNormalRoughnessMetallic(
+            Color sample,
+            float normalScale,
+            float metallicScale,
+            float roughnessScale,
+            out Vector3 normalTangentSpace,
+            out float metallic,
+            out float roughness)
+        {
+            var normalXY = new Vector2(
+                sample.r * 2f - 1f,
+                -(sample.g * 2f - 1f)) * Mathf.Max(normalScale, 0f);
+            var normalZ = Mathf.Sqrt(Mathf.Clamp01(
+                1f - Vector2.Dot(normalXY, normalXY)));
+            normalTangentSpace = SafeNormalize(
+                new Vector3(normalXY.x, normalXY.y, normalZ),
+                Vector3.forward);
+            metallic = Mathf.Clamp01(sample.b * Mathf.Max(metallicScale, 0f));
+            roughness = Mathf.Clamp01(sample.a * Mathf.Max(roughnessScale, 0f));
+        }
+
+        internal static float WuwaMetallicMatcapMask(float metallic) =>
+            metallic >= 0.8f ? 1f : 0f;
+
+        internal static Color WuwaFaceShadowTone(
+            Color shadowTint,
+            Color rampSample,
+            float skinRampStrength) => Color.LerpUnclamped(
+                shadowTint,
+                rampSample,
+                Mathf.Clamp01(skinRampStrength));
 
         internal static Color WuwaMatcapAlbedo(
             Color albedo,
@@ -283,6 +346,95 @@ namespace Miku.ShaderConverter.Editor
                 amount);
         }
 
+        internal static Color WuwaApplyVerticalGradient(
+            Color color,
+            Color lowColor,
+            float gradingValue,
+            float strength) => Color.LerpUnclamped(
+                color,
+                WuwaVerticalGradient(color, lowColor, gradingValue),
+                Mathf.Clamp01(strength));
+
+        internal static float WuwaHairTutorialSpecular(
+            float hmRed,
+            float normalDotView,
+            float strength) => Mathf.Max(hmRed, 0f) *
+            (normalDotView >= 0.3f ? 1f : 0f) * Mathf.Max(strength, 0f);
+
+        internal static float WuwaFaceSdfMask(
+            float mainChannel,
+            float softChannel,
+            float threshold,
+            float softness,
+            float softStrength)
+        {
+            var safeSoftness = Mathf.Max(softness, 0.00001f);
+            var main = SmoothStep(
+                threshold - safeSoftness,
+                threshold + safeSoftness,
+                mainChannel);
+            var soft = SmoothStep(
+                threshold - safeSoftness,
+                threshold + safeSoftness,
+                softChannel);
+            return Mathf.Clamp01(main * Mathf.Lerp(
+                1f,
+                soft,
+                Mathf.Clamp01(softStrength)));
+        }
+
+        internal static Vector2 WuwaFaceSdfMirroredUv(Vector2 uv) =>
+            new Vector2(1f - uv.x, uv.y);
+
+        internal static float WuwaFaceSdfMirrorWeight(
+            float sideDot,
+            float mirrorBlendWidth)
+        {
+            var safeWidth = Mathf.Max(mirrorBlendWidth, 0f);
+            return safeWidth <= 0.00001f
+                ? (sideDot > 0f ? 1f : 0f)
+                : SmoothStep(-safeWidth, safeWidth, sideDot);
+        }
+
+        internal static float WuwaFaceSdfBlendMasks(
+            float unmirroredMask,
+            float mirroredMask,
+            float sideDot,
+            float mirrorBlendWidth) => Mathf.Clamp01(Mathf.Lerp(
+                Mathf.Clamp01(unmirroredMask),
+                Mathf.Clamp01(mirroredMask),
+                WuwaFaceSdfMirrorWeight(sideDot, mirrorBlendWidth)));
+
+        internal static Vector2 WuwaHairShadowUv(
+            Vector2 screenUv,
+            Vector2 screenOffset) => new Vector2(
+            Mathf.Clamp01(screenUv.x + screenOffset.x),
+            Mathf.Clamp01(screenUv.y + screenOffset.y));
+
+        internal static float WuwaTutorialScreenRim(
+            float centerDepth,
+            float upperLeftDepth,
+            float upperRightDepth,
+            float lowerCenterDepth,
+            float threshold,
+            float softness)
+        {
+            var distanceAlpha = Mathf.Clamp01(1f - centerDepth / 80f);
+            var delta = Mathf.Max(
+                Mathf.Max(
+                    upperLeftDepth - centerDepth,
+                    upperRightDepth - centerDepth),
+                lowerCenterDepth - centerDepth);
+            var scaledThreshold = threshold * Mathf.Max(centerDepth, 0.0001f);
+            var scaledSoftness = Mathf.Max(
+                softness * Mathf.Max(centerDepth, 1f),
+                0.00001f);
+            return SmoothStep(
+                scaledThreshold,
+                scaledThreshold + scaledSoftness,
+                Mathf.Max(delta, 0f)) * distanceAlpha;
+        }
+
         internal static Color WuwaFresnelStepRim(
             Vector3 normal,
             Vector3 viewDirection,
@@ -315,6 +467,7 @@ namespace Miku.ShaderConverter.Editor
         internal static float WuwaGradientValue(
             Vector2 uv0,
             Vector2 uv1,
+            Vector2 uv2,
             Vector2 uv3,
             float channel,
             float invert)
@@ -323,6 +476,8 @@ namespace Miku.ShaderConverter.Editor
             var selected = uv0;
             if (index == 1)
                 selected = uv1;
+            else if (index == 2)
+                selected = uv2;
             else if (index == 3)
                 selected = uv3;
             var value = selected.y;
@@ -331,6 +486,19 @@ namespace Miku.ShaderConverter.Editor
             value = Mathf.Clamp01(value);
             return invert > 0.5f ? 1f - value : value;
         }
+
+        internal static float WuwaGradientValue(
+            Vector2 uv0,
+            Vector2 uv1,
+            Vector2 uv3,
+            float channel,
+            float invert) => WuwaGradientValue(
+            uv0,
+            uv1,
+            uv0,
+            uv3,
+            channel,
+            invert);
 
         internal static void WuwaFaceBasis(
             Matrix4x4 objectToWorld,

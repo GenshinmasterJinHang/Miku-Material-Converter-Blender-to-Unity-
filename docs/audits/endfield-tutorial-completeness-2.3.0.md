@@ -1,5 +1,15 @@
 # Endfield tutorial completeness audit for Miku 2.3.0
 
+> **3.0 supersession (2026-08-13):** the validation-only hair-shadow menu and
+> dedicated diagnostic test referenced by this audit were later removed from
+> the distributable package. Their completed results remain historical evidence.
+
+> **Correction (2026-08-12):** the historical full-screen LUT setup below used
+> the cloth material dark-color LUT and is invalid as screen grading. Its
+> screenshots remain historical evidence only. The replacement Volume-only,
+> EyeHL, ShadowCaster, and outline work is tracked in
+> `docs/plans/miku-3.0.0-endfield-reference-fidelity.md`.
+
 Scoring is `0` missing, `1` implemented or structurally verified without the
 required target-scene evidence, `2` implemented and verified in the port-8080
 Unity scene, and `N/A` outside the main character-shader scope. A row is not

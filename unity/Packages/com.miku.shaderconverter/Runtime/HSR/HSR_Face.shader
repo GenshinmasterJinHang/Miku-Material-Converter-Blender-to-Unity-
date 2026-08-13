@@ -18,7 +18,7 @@ Shader "MIKU/HSR/Face"
         _FaceShadowOffset ("Face Shadow Offset", Float) = -0.01
         _FaceShadowTransitionSoftness ("Face Shadow Softness", Range(0,1)) = 0.025
         _FaceShadowStrength ("Face Shadow Strength", Range(0,1)) = 1
-        _FaceSdfDebugMode ("Face SDF Debug 0Off 1R 2G 3B 4A 5Mask", Range(0,5)) = 0
+        _FaceSdfDebugMode ("Face Debug 0Off 1R 2G 3B 4A 5SDF 6Nose", Range(0,6)) = 0
         _IndirectLightUsage ("Indirect Light Usage", Range(0,2)) = 0.35
         _IndirectLightOcclusionUsage ("Indirect Light AO Usage", Range(0,1)) = 0.7
         _IndirectLightMixBaseColor ("Indirect Mix Base Color", Range(0,1)) = 1
@@ -26,6 +26,14 @@ Shader "MIKU/HSR/Face"
         _ShadowRampOffset ("Shadow Ramp Offset", Range(0,1)) = 0.75
         _FaceRampRowIndex ("Face Ramp Row Index", Range(0,7)) = 0
         _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 0.35
+        _FaceSpecularThresholdMask ("Face Specular Threshold Mask", Range(0,1)) = 0.5
+        _FaceSpecularExponent ("Face Specular Exponent", Range(1,512)) = 32
+        _FaceSpecularSoftness ("Face Specular Smooth Cut Width", Range(0.001,1)) = 0.1
+        _FaceSpecularStrength ("Face Specular Strength", Range(0,2)) = 0.12
+        [HDR] _FaceSpecularColor ("Face Specular Color", Color) = (1,0.82,0.74,1)
+        _NoseLinePower ("Nose Line View Power", Range(0.1,20)) = 3
+        _NoseLineStrength ("Nose Line Strength", Range(0,16)) = 8
+        _NoseLineColor ("Nose Line Color", Color) = (0.18,0.07,0.06,1)
         _SkinSSSIntensity ("Skin SSS Intensity", Range(0,1)) = 0
         _SSSColor ("SSS Color", Color) = (1,0.5,0.4,1)
         _SSSArea ("SSS Area", Range(0,1)) = 0.35
@@ -75,6 +83,8 @@ Shader "MIKU/HSR/Face"
                 float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
                 float _FaceShadowOffset; float _FaceShadowTransitionSoftness; float _FaceShadowStrength; float _FaceSdfDebugMode;
                 float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal; float _ShadowRampOffset; float _FaceRampRowIndex; float _MainLightColorUsage;
+                float _FaceSpecularThresholdMask; float _FaceSpecularExponent; float _FaceSpecularSoftness; float _FaceSpecularStrength; float4 _FaceSpecularColor;
+                float _NoseLinePower; float _NoseLineStrength; float4 _NoseLineColor;
                 float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
@@ -115,17 +125,37 @@ Shader "MIKU/HSR/Face"
                 // into the ramp's white tail when ShadowRampOffset is high,
                 // making a valid face SDF visually disappear.
                 rampColor = lerp(1.0.xxx, rampColor, saturate(_FaceShadowStrength));
-                float fakeOutline = faceMap.b;
-                float fakeOutlineEffect = smoothstep(0.0, 0.25, pow(saturate(dot(headForwardWS, viewDirWS)), 20.0) * fakeOutline);
-                float3 fakeOutlineColor = HSR_BodyOutlineColor(TEXTURE2D_ARGS(_BodyCoolRamp, sampler_BodyCoolRamp), TEXTURE2D_ARGS(_BodyWarmRamp, sampler_BodyWarmRamp), _OutlineGamma) * _OutlineColorTint.rgb;
-                baseColor = lerp(baseColor, fakeOutlineColor, fakeOutlineEffect);
+                // The tutorial's nose line is pow(surface NdotV, power) *
+                // FaceMap.B. Authored masks may be sparse or low-amplitude, so
+                // explicit strength restores visibility without changing the
+                // channel's meaning or borrowing a Body LightMap.
+                float noseLineMask = HSR_FaceNoseLineMask(
+                    normalWS,
+                    viewDirWS,
+                    faceMap.b,
+                    _NoseLinePower,
+                    _NoseLineStrength);
+                if (debugMode == 6) return half4(noseLineMask.xxx, 1.0);
+                baseColor = lerp(baseColor, _NoseLineColor.rgb, noseLineMask);
                 float3 indirect = HSR_SampleSH_Indirect(normalWS, _IndirectLightFlattenNormal) * _IndirectLightUsage;
                 indirect *= lerp(1.0, faceAO, _IndirectLightOcclusionUsage);
                 indirect *= lerp(1.0.xxx, baseColor, _IndirectLightMixBaseColor);
                 float3 mainLightColor = lerp(HSR_Desaturate(mainLight.color.rgb), mainLight.color.rgb, _MainLightColorUsage);
                 float3 direct = mainLightColor * baseColor * rampColor;
+                float3 specular = HSR_ComputeFaceSpecular(
+                    normalWS,
+                    viewDirWS,
+                    lightDirWS,
+                    mainLight.color.rgb,
+                    _FaceSpecularThresholdMask,
+                    _FaceSpecularExponent,
+                    _FaceSpecularSoftness,
+                    _FaceSpecularStrength,
+                    _FaceSpecularColor.rgb,
+                    skinMask);
+                specular *= mainLight.shadowAttenuation * faceShadow;
                 float3 sss = MikuGameToonSkinSSS(skinBase, skinMask, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, faceShadow, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb);
-                float3 finalColor = indirect + direct + sss;
+                float3 finalColor = indirect + direct + specular + sss;
                 return half4(finalColor, 1.0);
             }
             ENDHLSL
@@ -147,6 +177,8 @@ Shader "MIKU/HSR/Face"
                 float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
                 float _FaceShadowOffset; float _FaceShadowTransitionSoftness; float _FaceShadowStrength; float _FaceSdfDebugMode;
                 float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal; float _ShadowRampOffset; float _FaceRampRowIndex; float _MainLightColorUsage;
+                float _FaceSpecularThresholdMask; float _FaceSpecularExponent; float _FaceSpecularSoftness; float _FaceSpecularStrength; float4 _FaceSpecularColor;
+                float _NoseLinePower; float _NoseLineStrength; float4 _NoseLineColor;
                 float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
@@ -177,7 +209,7 @@ Shader "MIKU/HSR/Face"
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float4 smoothNormalData : TEXCOORD7; };
-            struct Varyings { float4 positionCS : SV_POSITION; };
+            struct Varyings { float4 positionCS : SV_POSITION; float outlineCoverage : TEXCOORD0; };
             Varyings OutlineVert(Attributes input)
             {
                 Varyings output;
@@ -194,10 +226,20 @@ Shader "MIKU/HSR/Face"
                     float4(1.0, 1.0, 1.0, 1.0),
                     1.0,
                     1.0);
+                output.outlineCoverage = MikuGameToonOutlineCoverageWithLegacyMode(
+                    pos.positionWS,
+                    1.0,
+                    _OutlineWidth,
+                    _OutlineReferenceDistance,
+                    _OutlineDistanceScale,
+                    float4(1.0, 1.0, 1.0, 1.0),
+                    1.0,
+                    1.0);
                 return output;
             }
             half4 OutlineFrag(Varyings input) : SV_Target
             {
+                MikuGameToonOutlineClipCoverage(input.outlineCoverage);
                 float3 outlineColor = HSR_BodyOutlineColor(TEXTURE2D_ARGS(_BodyCoolRamp, sampler_BodyCoolRamp), TEXTURE2D_ARGS(_BodyWarmRamp, sampler_BodyWarmRamp), _OutlineGamma) * _OutlineColorTint.rgb;
                 return half4(outlineColor, 1.0);
             }

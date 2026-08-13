@@ -97,7 +97,7 @@ def main() -> int:
         "bl_ext.user_default.miku_shader_converter",
         "miku_shader_converter",
         args.extension_zip,
-        "2.3.0",
+        "3.0.0",
     )
     extension = importlib.import_module(
         "bl_ext.user_default.miku_shader_converter"
@@ -172,7 +172,7 @@ def main() -> int:
             evidence = {
                 "schema": "miku-blender-compatibility-evidence-1.0",
                 "blender": actual,
-                "miku": "2.3.0",
+                "miku": "3.0.0",
                 "archiveSha256": installed["archiveSha256"],
                 "installedTreeSha256": installed["installedTreeSha256"],
                 "normalizedIrSha256": _normalized_ir_hash(first_directory),

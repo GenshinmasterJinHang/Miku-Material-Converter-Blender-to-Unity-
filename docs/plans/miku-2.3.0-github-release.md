@@ -1,5 +1,9 @@
 # Miku 2.3.0 GitHub release delivery
 
+> **2026-08-12 correction:** references to an Endfield game LUT installer are
+> historical. The inspected cloth/skin LUTs are material-local; current setup
+> uses Volume-only grading unless a genuine independent screen LUT is supplied.
+
 Status: completed on 2026-08-10. This plan publishes the 2.3.0 Endfield
 tutorial-lighting, outline, and LUT work as a tagged GitHub Release with the
 two reproducible package artifacts and a SHA-256 manifest.

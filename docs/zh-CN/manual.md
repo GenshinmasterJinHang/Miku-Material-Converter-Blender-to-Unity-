@@ -1,4 +1,4 @@
-# Miku 2.3.0 使用手册
+# Miku 3.0.0 使用手册
 
 Miku 是面向生产使用的 Blender 5.x 到 Unity 6 材质转换器。公开 Blender 前端将
 Standard PBR 语义导出为目标无关的 MaterialIR 2.0；Unity 导入可编辑 Shader Graph
@@ -14,10 +14,10 @@ Standard PBR 语义导出为目标无关的 MaterialIR 2.0；Unity 导入可编�
 | 组件 | 版本 | 状态 |
 | --- | --- | --- |
 | Blender | 5.0–5.2（认证：5.2.0） | Windows 支持 |
-| Unity Editor | 6000.0–6000.5（认证：6000.5.7f1） | 技术线适配器 |
-| Universal Render Pipeline | 17.5.4 | 必需 |
-| Shader Graph | 17.5.4 | 版本专用后端 |
-| Miku | 2.3.0 | Experimental（实验性） |
+| Unity Editor | 6000.0–6000.5（已验证：6000.4.5f1） | 技术线适配器 |
+| Universal Render Pipeline | 已验证 17.4.0；允许严格匹配的 17.0–17.5 | 必需 |
+| Shader Graph | 已验证 17.4.0；允许严格匹配的 17.0–17.5 | 版本专用后端 |
+| Miku | 3.0.0 | Experimental（实验性） |
 
 Blender 仅支持 5.0–5.2。Unity 6000.N 必须配套 URP 17.N 与 Shader Graph
 17.N（N 为 0–5），并且两个包的精确版本必须相同。区间内未记录的稳定补丁会
@@ -26,12 +26,15 @@ Unity 6000.6+ 和包 17.6+ 会在写入资产前失败。本次正式支持平�
 
 ## 2. 从 Release 安装
 
-从 [v2.3.0 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.3.0)
+从 [v3.0.0 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v3.0.0)
 下载：
 
-- `miku_shader_converter-2.3.0.zip`：Blender 5.0–5.2 扩展。
-- `com.miku.shaderconverter-2.3.0.tgz`：Unity 6000.0–6000.5 单一包。
+- `miku_shader_converter-3.0.0.zip`：Blender 5.0–5.2 扩展。
+- `com.miku.shaderconverter-3.0.0.tgz`：Unity 6000.0–6000.5 单一包。
 - `SHA256SUMS.txt`：发布完整性清单。
+
+安装前对 ZIP 与 TGZ 运行 `Get-FileHash -Algorithm SHA256`，并逐项与
+`SHA256SUMS.txt` 比对。
 
 在 Blender 中选择 **编辑 > 偏好设置 > 扩展 > 从磁盘安装**并选中 ZIP。在 Unity 中
 选择 **Window > Package Manager > + > Add package from tarball** 并选中 TGZ。
@@ -84,7 +87,7 @@ Blender 界面不再提供 Game Toon 工作流选择、贴图角色猜测或旧�
 - 包装 `*.shadergraph` 在首次创建后由用户拥有。
 - 只有明确选择完全重新生成时，才允许替换用户修改过的包装图。
 
-2.3.0 不改变 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开
+3.0.0 不改变 MaterialIR 2.0、Bundle 1.0、Conversion Plan、Bake Result 或公开
 Shader property/reference 名称。Unity 仍可读取历史 Bundle，包括旧的运行时契约；
 当前 Blender 前端不会创建新的时间依赖 Bundle。
 
@@ -111,17 +114,47 @@ Unity 包在四个运行时预设家族中直接附带 Miku 原创 Shader/HLSL �
 开启 `_AREA_SKIN` 时，旧版肤色曲线只作用于 LightMap 标记的皮肤区域，布料和
 披风保持自身颜色，不再被整体染色。
 
+星穹铁道 Body 与 Hair 预设按教程字面公式解释 LightMap 绿色通道：
+`HL = 0.5 * NdotL + 0.5`、`shadowAO = 2 * G`，最终
+`signal = saturate(dot(HL.xx, shadowAO.xx))`，即
+`saturate(4 * HL * G)`。Ramp 的 U 坐标固定为
+`0.85 * signal + 0.15`。LightMap 蓝色通道先取反，再作为平滑阈值生成金属与
+非金属共用的 Blinn-Phong 卡通高光 Mask；两个分支只在最终颜色和强度上不同。
+旧材质中的阴影阈值中心、阴影阈值软度和 Ramp Offset 属性仍可反序列化，但不再
+驱动这些已修正的公式。
+
+星穹铁道 Face 不需要新增 LightMap。它使用现有输入提供参数化、仅作用于皮肤区域的
+Blinn-Phong 卡通高光。FaceMap 蓝色通道继续表示鼻线，并与表面 `NdotV`、可调
+幂次、强度和颜色组合，使鼻线保持视角相关，同时不会弱到无法辨认。以上仅改变
+Shader 行为和材质属性，不改变 MaterialIR、Bundle、Schema 或贴图角色契约。
+
+推荐的星穹铁道 Face 配置以 `_FaceSpecularStrength = 0.12`、
+`_FaceSpecularExponent = 32`、`_NoseLinePower = 3` 和
+`_NoseLineStrength = 8` 为起点。把 **Face Debug** 设为 `6` 可只看计算后的鼻线
+Mask。若 Mask 存在但最终鼻线仍偏淡，可提高 `_NoseLineStrength` 或调暗
+`_NoseLineColor`；若视角稍变鼻线就消失，可降低 `_NoseLinePower`。
+
 ### 文档渲染示例
 
-| 原神—胡桃 | 崩坏：星穹铁道—布洛妮娅 |
-| --- | --- |
-| ![使用原神预设渲染的胡桃](../images/preset-genshin-hu-tao.png) | ![使用星穹铁道预设渲染的布洛妮娅](../images/preset-hsr-bronya.png) |
-| 鸣潮—菲比 | 明日方舟：终末地—洁尔佩塔 |
-| ![使用鸣潮预设渲染的菲比](../images/preset-wuwa-phoebe.png) | ![使用终末地预设渲染的洁尔佩塔](../images/preset-endfield-jierpeta.png) |
+<table>
+  <tr><th>原神—胡桃</th><th>原神—芙宁娜</th></tr>
+  <tr>
+    <td><img src="../images/preset-genshin-hu-tao.png" alt="使用原神预设渲染的胡桃"></td>
+    <td><img src="../images/preset-genshin-furina.png" alt="使用原神预设渲染的芙宁娜"></td>
+  </tr>
+  <tr><th>崩坏：星穹铁道—布洛妮娅</th><th>鸣潮—菲比</th></tr>
+  <tr>
+    <td><img src="../images/preset-hsr-bronya.png" alt="使用星穹铁道预设渲染的布洛妮娅"></td>
+    <td><img src="../images/preset-wuwa-phoebe.png" alt="使用鸣潮预设渲染的菲比"></td>
+  </tr>
+  <tr><th colspan="2">明日方舟：终末地—洁尔佩塔</th></tr>
+  <tr><td colspan="2" align="center"><img src="../images/preset-endfield-jierpeta.png" alt="使用终末地预设渲染的洁尔佩塔"></td></tr>
+</table>
 
-> **非商业图片声明：**以上四张角色渲染图仅供非商业学习和文档参考，禁止用于任何
+> **非商业图片声明：**以上五张角色渲染图仅供非商业学习和文档参考，禁止用于任何
 > 商业用途。相关角色、设计及知识产权归各自权利人所有；Miku 不授予任何游戏资产
-> 使用权。这些图片不属于 Blender/Unity 安装包，也不在 2.3.0 发布候选资产中。
+> 使用权。这些 PNG 随源码文档跟踪，因此会出现在 GitHub 自动生成的源码归档中；
+> 它们不适用 Miku 的 MIT 许可，也不进入可安装 ZIP/TGZ。
 
 ## 6. Unity 游戏卡通材质创建器
 
@@ -190,12 +223,14 @@ object-space UV7 仍可读取。源 Mesh 已有 UV7 时，**Preserve** 会阻止
 都保持不变；源 Mesh 未开启 CPU 可读时同样不会修改 importer。详见
 [迁移说明](../migrations/outline-tangent-space-v2.md)。
 
-### 7.5 Screen Rim 安装器
+### 7.5 Game Toon Renderer Feature 安装器
 
-打开 **Miku > Game Toon > Rendering > Screen Rim Installer**，选择一个 Universal
-Renderer Data 资产。**Preview** 只读；**Apply** 只向该资产添加一个
-`MikuToonScreenRimRendererFeature`，并支持 Undo。重复 Apply 不会增加副本；若预览
-发现多个已有 Miku Feature，需要手动删除多余项。打开工具前应先启用 URP Asset。
+打开 **Miku > Game Toon > Rendering > Game Toon Renderer Feature Installer**。
+Preview 会同时显示 Geometry 与 Screen Rim 状态；Apply 会枚举并去重所有活动的
+Universal Renderer Data，并在一个 Undo 事务内幂等安装
+`MikuGameToonGeometryRendererFeature` 与 `MikuToonScreenRimRendererFeature`。
+旧的 **Screen Rim Installer** 别名不再注册；重复或无效的 Feature 状态会在报告
+成功前失败。
 
 ### 7.6 重建 Anime 全局 Volume Profile
 
@@ -206,12 +241,17 @@ Renderer Data 资产。**Preview** 只读；**Apply** 只向该资产添加一�
 它会破坏直接写在这个包资产中的自定义修改，并且没有 Preview。自定义调色应保存在
 单独的用户 Volume Profile 中；不可写安装包拒绝重建时，请重新安装包。
 
-### 7.7 Endfield LUT 与教程光照
+### 7.7 Endfield Volume 调色、可选 LUT 与教程光照
 
-打开 **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer**，把项目自有
-32³ 展平游戏 LUT 安装到 URP 后处理之前，并生成严格的 Neutral/Bloom/Vignette
-Profile。工具会校验和配置 LUT Importer，支持 Preview、Undo、幂等更新和失败回滚；
-不会使用 URP ColorLookup Volume，也不会自动把 Profile 绑定到场景。
+打开 **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer**。默认
+Volume-only 模式生成 Color Adjustments（曝光 `+0.35`、对比度 `+16`、饱和度 `+8`）、
+恒等 Color Curves、Neutral Tonemapping、Bloom 与 Vignette，不需要 LUT。角色资源中的
+cloth 与 female-skin LUT 只用于材质暗部，不能作为屏幕 LUT；高级显式屏幕 LUT 模式
+会在写入前拒绝这类资源。工具支持 Preview、Undo 和逐字节失败回滚，不会自动把
+Profile 绑定到场景。
+
+工具会在写入前拒绝损坏或重复的 Renderer Feature/Local ID 状态，并仅在强制重导入确认
+Feature 引用、执行配置和 Pass Material 已持久化后报告成功。
 
 场景中添加且只添加一个 `MikuEndfieldLightingController` 才会启用 2.3.0 教程光照
 贡献；没有控制器时旧的受光材质保持旧路径。Overlay 还需独立把 `_LightingMode`
@@ -302,7 +342,7 @@ py -3.13 tools/release/build_release.py --output-dir artifacts
 ## 11. 许可证与文档素材
 
 仓库中采用 MIT 的代码继续适用 MIT License；带有其他 SPDX 声明的文件（包括
-Blender Bake Worker）继续适用各自条款。第 5 节中的四张角色渲染图单独限制为仅供
+Blender Bake Worker）继续适用各自条款。第 5 节中的五张角色渲染图单独限制为仅供
 非商业学习和文档参考，禁止用于任何商业用途。图片哈希及适用范围记录在
 [文档图片来源记录](../provenance/documentation-images.md)和
 [第三方声明](../../THIRD_PARTY_NOTICES.md)中。该图片限制不会改变任何现有代码许可证。

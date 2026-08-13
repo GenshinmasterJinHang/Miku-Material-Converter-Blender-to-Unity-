@@ -400,6 +400,16 @@ namespace Miku.ShaderConverter.Editor
         LinearClampNoMips,
     }
 
+    public enum MikuGenshinTextureProfile
+    {
+        Unrecognized,
+        ColorRepeat,
+        LinearRepeat,
+        RampColorClampNoMips,
+        FaceSdfLinearRepeatNoMips,
+        NormalMap,
+    }
+
     public sealed class MikuGameToonTextureImportAuditWindow : EditorWindow
     {
         [SerializeField] DefaultAsset folder;
@@ -427,11 +437,111 @@ namespace Miku.ShaderConverter.Editor
                        !AssetDatabase.IsValidFolder(path)))
             {
                 if (GUILayout.Button(MikuEditorLocalization.Tr(
-                        "Apply Recognized Import Settings")))
+                        "Apply Endfield Import Settings")))
                     ApplyEndfieldFolder(
                         path,
                         "Assets/Miku/Reports/endfield-texture-import-audit.json");
+                if (GUILayout.Button(MikuEditorLocalization.Tr(
+                        "Apply Genshin Import Settings")))
+                    ApplyGenshinFolder(
+                        path,
+                        "Assets/Miku/Reports/genshin-texture-import-audit.json");
             }
+        }
+
+        public static MikuGenshinTextureProfile ClassifyGenshinFileName(
+            string fileName)
+        {
+            var stem = Path.GetFileNameWithoutExtension(fileName ?? "")
+                .ToLowerInvariant();
+            var compact = new string(stem
+                .Where(char.IsLetterOrDigit)
+                .ToArray());
+            if (compact.EndsWith("facelightmap", StringComparison.Ordinal) ||
+                compact.EndsWith("facesdf", StringComparison.Ordinal) ||
+                compact.Contains("facesdf"))
+                return MikuGenshinTextureProfile.FaceSdfLinearRepeatNoMips;
+            if (compact.EndsWith("bodyshadowramp", StringComparison.Ordinal) ||
+                compact.EndsWith("hairshadowramp", StringComparison.Ordinal) ||
+                compact.EndsWith("shadowramp", StringComparison.Ordinal) ||
+                compact.EndsWith("skinramp", StringComparison.Ordinal))
+                return MikuGenshinTextureProfile.RampColorClampNoMips;
+            if (compact.EndsWith("normalmap", StringComparison.Ordinal) ||
+                compact.EndsWith("normal", StringComparison.Ordinal))
+                return MikuGenshinTextureProfile.NormalMap;
+            if (compact.EndsWith("lightmap", StringComparison.Ordinal) ||
+                compact.EndsWith("metalmap", StringComparison.Ordinal))
+                return MikuGenshinTextureProfile.LinearRepeat;
+            if (compact.EndsWith("diffuse", StringComparison.Ordinal) ||
+                compact.EndsWith("emission", StringComparison.Ordinal) ||
+                compact.EndsWith("emissive", StringComparison.Ordinal))
+                return MikuGenshinTextureProfile.ColorRepeat;
+            return MikuGenshinTextureProfile.Unrecognized;
+        }
+
+        public static int ApplyGenshinFolder(
+            string assetFolder,
+            string reportAssetPath)
+        {
+            if (!AssetDatabase.IsValidFolder(assetFolder))
+                throw new InvalidOperationException(
+                    "MIKU_TEXTURE_AUDIT_FOLDER_INVALID:" + assetFolder);
+            var reportPath = MikuGameToonMaterialTemplateWindow.ValidateAssetPath(
+                reportAssetPath,
+                ".json");
+            var changes = new JArray();
+            var changedCount = 0;
+            foreach (var guid in AssetDatabase.FindAssets(
+                         "t:Texture2D",
+                         new[] { assetFolder })
+                     .OrderBy(item => item, StringComparer.Ordinal))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var profile = ClassifyGenshinFileName(Path.GetFileName(path));
+                if (profile == MikuGenshinTextureProfile.Unrecognized)
+                    continue;
+                var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (importer == null)
+                    continue;
+                var before = Snapshot(importer);
+                Undo.RecordObject(importer, "Apply Miku Genshin texture import profile");
+                Apply(importer, profile);
+                var after = Snapshot(importer);
+                var changed = !JToken.DeepEquals(before, after);
+                if (changed)
+                {
+                    importer.SaveAndReimport();
+                    changedCount++;
+                }
+                changes.Add(new JObject
+                {
+                    ["path"] = path,
+                    ["profile"] = profile.ToString(),
+                    ["changed"] = changed,
+                    ["before"] = before,
+                    ["after"] = after,
+                });
+            }
+            var report = new JObject
+            {
+                ["schema"] = "miku-genshin-texture-import-audit-1.0",
+                ["folder"] = assetFolder,
+                ["changedCount"] = changedCount,
+                ["textures"] = changes,
+            };
+            var absolute = Path.GetFullPath(Path.Combine(
+                Directory.GetParent(Application.dataPath)?.FullName ?? "",
+                reportPath));
+            var assetsRoot = Path.GetFullPath(Application.dataPath) +
+                Path.DirectorySeparatorChar;
+            if (!absolute.StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "MIKU_TEXTURE_AUDIT_REPORT_PATH_UNSAFE");
+            MikuAtomicAssetWriter.WriteIfChanged(
+                absolute,
+                report.ToString(Newtonsoft.Json.Formatting.Indented) + "\n");
+            AssetDatabase.ImportAsset(reportPath);
+            return changedCount;
         }
 
         public static MikuEndfieldTextureProfile ClassifyFileName(string fileName)
@@ -548,7 +658,53 @@ namespace Miku.ShaderConverter.Editor
             ["wrapMode"] = importer.wrapMode.ToString(),
             ["mipmapEnabled"] = importer.mipmapEnabled,
             ["textureType"] = importer.textureType.ToString(),
+            ["alphaSource"] = importer.alphaSource.ToString(),
+            ["alphaIsTransparency"] = importer.alphaIsTransparency,
+            ["npotScale"] = importer.npotScale.ToString(),
+            ["textureCompression"] = importer.textureCompression.ToString(),
+            ["crunchedCompression"] = importer.crunchedCompression,
+            ["standaloneOverridden"] = importer
+                .GetPlatformTextureSettings("Standalone").overridden,
         };
+
+        static void Apply(
+            TextureImporter importer,
+            MikuGenshinTextureProfile profile)
+        {
+            importer.textureType = profile == MikuGenshinTextureProfile.NormalMap
+                ? TextureImporterType.NormalMap
+                : TextureImporterType.Default;
+            importer.sRGBTexture =
+                profile == MikuGenshinTextureProfile.ColorRepeat ||
+                profile == MikuGenshinTextureProfile.RampColorClampNoMips;
+            importer.mipmapEnabled =
+                profile != MikuGenshinTextureProfile.RampColorClampNoMips &&
+                profile != MikuGenshinTextureProfile.FaceSdfLinearRepeatNoMips;
+            importer.wrapMode =
+                profile == MikuGenshinTextureProfile.RampColorClampNoMips
+                    ? TextureWrapMode.Clamp
+                    : TextureWrapMode.Repeat;
+            importer.alphaSource = TextureImporterAlphaSource.FromInput;
+            importer.alphaIsTransparency = false;
+            importer.filterMode = FilterMode.Bilinear;
+            var controlData =
+                profile == MikuGenshinTextureProfile.LinearRepeat ||
+                profile == MikuGenshinTextureProfile.RampColorClampNoMips ||
+                profile == MikuGenshinTextureProfile.FaceSdfLinearRepeatNoMips;
+            if (controlData)
+            {
+                importer.npotScale = TextureImporterNPOTScale.None;
+                importer.textureCompression =
+                    TextureImporterCompression.Uncompressed;
+                importer.crunchedCompression = false;
+                var standalone = importer.GetPlatformTextureSettings("Standalone");
+                if (standalone.overridden)
+                {
+                    standalone.overridden = false;
+                    importer.SetPlatformTextureSettings(standalone);
+                }
+            }
+        }
 
         static void Apply(
             TextureImporter importer,

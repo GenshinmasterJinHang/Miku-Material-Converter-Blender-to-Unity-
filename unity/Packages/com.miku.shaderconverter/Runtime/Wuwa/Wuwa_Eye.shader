@@ -52,6 +52,12 @@ Shader "MIKU/Wuwa/Eye"
         _EyeShadowEnd ("Eye Shadow End", Range(0,1)) = 0.55
         _EyeLitTint ("Eye Lit Tint", Color) = (1,1,1,1)
         _EyeShadowTint ("Eye Shadow Tint", Color) = (0.82,0.82,0.82,1)
+        _Roughness ("PBR Roughness", Range(0.02,1)) = 0.52
+        _SpecularColor ("PBR Specular Color", Color) = (1,1,1,1)
+        _SpecularStrength ("PBR Specular Strength", Range(0,4)) = 0.3
+        _ReflectionStrength ("PBR Reflection Strength", Range(0,4)) = 0.18
+        _IndirectLightUsage ("Indirect Light Usage", Range(0,2)) = 1
+        _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 1
         _EyeBaseEmissionStrength ("Eye Base Emission Strength", Range(0,8)) = 0
         _EmissionStrength ("Highlight Emission Strength", Range(0,20)) = 1
         [HideInInspector] _EyeDebugView ("Eye Debug View", Float) = 0
@@ -77,6 +83,15 @@ Shader "MIKU/Wuwa/Eye"
             #pragma shader_feature_local _WUWA_EYE_UPPER_HIGHLIGHT_ON
             #pragma shader_feature_local _WUWA_EYE_LOWER_HIGHLIGHT_ON
             #pragma shader_feature_local _WUWA_EYE_EG_ON
+            #pragma multi_compile _ LIGHTMAP_ON
+            #pragma multi_compile _ DIRLIGHTMAP_COMBINED
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #if UNITY_VERSION >= 60010000
+                #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
+            #else
+                #pragma multi_compile _ _FORWARD_PLUS
+            #endif
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "WuwaCommon.hlsl"
@@ -103,6 +118,7 @@ Shader "MIKU/Wuwa/Eye"
                 float4 _EyeEGColor; float _EyeEGStrength; float _EyeEGFresnelPower; float _EyeEGLightFollow;
                 float4 _EyeEGCenter; float4 _EyeEGScale; float4 _EyeEGOffset;
                 float _EyeParallaxStrength; float _EyeShadowStart; float _EyeShadowEnd; float4 _EyeLitTint; float4 _EyeShadowTint;
+                float _Roughness; float4 _SpecularColor; float _SpecularStrength; float _ReflectionStrength; float _IndirectLightUsage; float _MainLightColorUsage;
                 float _EyeBaseEmissionStrength; float _EmissionStrength;
                 float _EyeDebugView;
             CBUFFER_END
@@ -112,6 +128,7 @@ Shader "MIKU/Wuwa/Eye"
                 float3 normalOS : NORMAL;
                 float4 tangentOS : TANGENT;
                 float2 uv : TEXCOORD0;
+                float2 uv1 : TEXCOORD1;
             };
             struct Varyings
             {
@@ -121,6 +138,9 @@ Shader "MIKU/Wuwa/Eye"
                 float3 normalWS : TEXCOORD2;
                 float3 tangentWS : TEXCOORD3;
                 float3 bitangentWS : TEXCOORD4;
+                float3 positionWS : TEXCOORD5;
+                float4 shadowCoord : TEXCOORD6;
+                DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 7);
             };
             Varyings WuwaEyeVert(Attributes input)
             {
@@ -133,6 +153,10 @@ Shader "MIKU/Wuwa/Eye"
                 output.normalWS = basis.normalWS;
                 output.tangentWS = basis.tangentWS;
                 output.bitangentWS = basis.bitangentWS;
+                output.positionWS = pos.positionWS;
+                output.shadowCoord = GetShadowCoord(pos);
+                OUTPUT_LIGHTMAP_UV(input.uv1, unity_LightmapST, output.lightmapUV);
+                OUTPUT_SH(output.normalWS, output.vertexSH);
                 return output;
             }
             float2 WuwaEyeAffineUV(float2 uv, float4 row0, float4 row1)
@@ -168,32 +192,72 @@ Shader "MIKU/Wuwa/Eye"
                 float3 bitangentWS = WuwaEyeSafeNormalize(input.bitangentWS, float3(0, 0, 0));
                 float tangentValid = step(1e-6, dot(tangentWS, tangentWS)) *
                     step(1e-6, dot(bitangentWS, bitangentWS));
-                float2 parallax = float2(
+                float2 surfaceUV = input.uv;
+                float2 viewTS = float2(
                     dot(viewDirWS, tangentWS),
-                    dot(viewDirWS, bitangentWS)) * _EyeParallaxStrength * tangentValid;
-                float2 uv = saturate(input.uv + parallax);
-                float2 baseUV = TRANSFORM_TEX(uv, _BaseMap);
+                    dot(viewDirWS, bitangentWS));
+                float2 parallaxOffset =
+                    viewTS * _EyeParallaxStrength * tangentValid;
+                parallaxOffset.y = -parallaxOffset.y;
+                float2 irisUV = saturate(surfaceUV - parallaxOffset);
+                float2 baseUV = TRANSFORM_TEX(irisUV, _BaseMap);
                 float4 baseSample = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, baseUV) * _BaseColorTint;
                 float3 baseColor = saturate(Wuwa_ApplyPowerCurve(baseSample.rgb, _EyeBaseCurvePower, _EyeBaseBrightness));
-                float topMask = smoothstep(0.42, 1.0, uv.y);
+                float topMask = smoothstep(0.42, 1.0, surfaceUV.y);
                 float topShadow = saturate(topMask * _EyeTopShadowStrength);
-                float3 color = baseColor * lerp(1.0, 0.62, topShadow);
-                Light mainLight = GetMainLight();
+                float3 pbrBase = baseColor * lerp(1.0, 0.62, topShadow);
+                Light mainLight = GetMainLight(input.shadowCoord);
                 float3 lightDirWS = WuwaEyeSafeNormalize(mainLight.direction, normalWS);
                 float ndl = saturate(dot(normalWS, lightDirWS));
-                color *= lerp(
-                    max(_EyeShadowTint.rgb, 0.0.xxx),
-                    max(_EyeLitTint.rgb, 0.0.xxx),
-                    smoothstep(_EyeShadowStart, _EyeShadowEnd, ndl));
+                float toonVisibility = smoothstep(
+                    _EyeShadowStart,
+                    _EyeShadowEnd,
+                    ndl);
+                float3 mainLightColor = lerp(
+                    1.0.xxx,
+                    mainLight.color.rgb,
+                    saturate(_MainLightColorUsage));
+                BRDFData brdfData = Wuwa_InitializeBRDFData(
+                    pbrBase,
+                    0.0,
+                    _Roughness,
+                    baseSample.a);
+                float3 color = Wuwa_DirectPBR(
+                    brdfData,
+                    normalWS,
+                    lightDirWS,
+                    viewDirWS,
+                    mainLightColor,
+                    mainLight.distanceAttenuation,
+                    mainLight.shadowAttenuation,
+                    toonVisibility,
+                    _EyeShadowTint.rgb,
+                    _EyeLitTint.rgb,
+                    _SpecularColor.rgb,
+                    _SpecularStrength);
+                float3 bakedGI = SAMPLE_GI(
+                    input.lightmapUV,
+                    input.vertexSH,
+                    normalWS);
+                color += Wuwa_IndirectPBR(
+                    brdfData,
+                    bakedGI,
+                    normalWS,
+                    viewDirWS,
+                    input.positionWS,
+                    GetNormalizedScreenSpaceUV(input.positionCS),
+                    1.0,
+                    _IndirectLightUsage,
+                    _ReflectionStrength);
 
                 float hetMask = 0.0;
                 #if defined(_WUWA_EYE_HET_ON)
-                    hetMask = saturate(SAMPLE_TEXTURE2D(_EyeHET, sampler_EyeHET, uv).r);
+                    hetMask = saturate(SAMPLE_TEXTURE2D(_EyeHET, sampler_EyeHET, irisUV).r);
                 #endif
 
                 float4 hdmf = float4(0.0, 1.0, 0.0, 1.0);
                 #if defined(_WUWA_EYE_HDMF_ON)
-                    hdmf = SAMPLE_TEXTURE2D(_EyeHDMF, sampler_EyeHDMF, uv);
+                    hdmf = SAMPLE_TEXTURE2D(_EyeHDMF, sampler_EyeHDMF, irisUV);
                 #endif
                 float pupilMask = saturate(1.0 - hdmf.a);
                 float3 scleraEmission = _EyeHETScleraColor.rgb * max(_EyeHETScleraStrength, 0.0);
@@ -210,7 +274,7 @@ Shader "MIKU/Wuwa/Eye"
                 float lowerRaw = 0.0;
                 #if defined(_WUWA_EYE_UPPER_HIGHLIGHT_ON)
                     float2 upperMappedUV = WuwaEyeAffineUV(
-                        uv,
+                        surfaceUV,
                         _EyeUpperHighlightUVRow0,
                         _EyeUpperHighlightUVRow1);
                     float2 upperUV = WuwaEyeFineUV(
@@ -224,7 +288,7 @@ Shader "MIKU/Wuwa/Eye"
                 #endif
                 #if defined(_WUWA_EYE_LOWER_HIGHLIGHT_ON)
                     float2 lowerMappedUV = WuwaEyeAffineUV(
-                        uv,
+                        surfaceUV,
                         _EyeLowerHighlightUVRow0,
                         _EyeLowerHighlightUVRow1);
                     float2 lowerUV = WuwaEyeFineUV(
@@ -252,7 +316,7 @@ Shader "MIKU/Wuwa/Eye"
                         dot(lightDirWS, bitangentWS)) *
                         _EyeEGLightFollow * tangentValid;
                     float2 egMappedUV = WuwaEyeAffineUV(
-                        uv,
+                        surfaceUV,
                         _EyeEGUVRow0,
                         _EyeEGUVRow1);
                     float2 safeEGScale = max(abs(_EyeEGScale.xy), 1e-4.xx);

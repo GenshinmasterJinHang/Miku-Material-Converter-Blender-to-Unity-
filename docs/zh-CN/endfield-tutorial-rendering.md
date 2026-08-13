@@ -1,6 +1,10 @@
 # Miku 2.3.0 终末地教程渲染
 
-Miku 2.3.0 新增可选择启用的终末地教程光照、项目自有的全屏 LUT
+> **3.0 后续清理（2026-08-13）：** 下文记录的 Hair Shadow 手工验证菜单及其专用
+> 诊断测试已从发布包删除。既有执行结果仅作为历史证据保留；当前验证由持续维护的
+> EditMode 测试和包外测试资产承担。
+
+Miku 2.3.0 新增可选择启用的终末地教程光照、项目自有的 Volume 调色与可选屏幕 LUT
 安装流程，以及四套 Game Toon 共用的描边实现。公开包不包含任何游戏模型、材质、
 贴图、LUT、Logo 或场景资源。英文
 [Endfield tutorial rendering](../features/endfield-tutorial-rendering.md) 是规范文档。
@@ -34,21 +38,36 @@ D*V 响应与 Day 混合自阴影包络；Specular Refine F0 贴图按文章
 脸部 SSS 使用 `NoV*0.85+0.15` 重映射；Body 漫反射能量使用
 `0.96-0.96*metallic`。新增属性均为增量，legacy 路径保持不变。
 
-## 安装游戏 LUT
+## Volume 调色与可选屏幕 LUT
 
-打开 **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer**，选择目标
-Universal Renderer Data 和项目内 1024×32、32³ 展平的游戏 LUT。安装器会预览并
-配置 sRGB、Bilinear、Clamp、无 Mipmap、Uncompressed，然后幂等安装一个
-`BeforeRenderingPostProcessing` Full Screen Pass；只获取 Color，不请求 Depth、
-Normal 或 Motion，也不使用 URP `ColorLookup` Volume。
+打开 **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer**。默认
+Volume-only 模式不需要 LUT 或 Renderer Data，会生成 Color Adjustments（曝光
+`+0.35`、对比度 `+16`、饱和度 `+8`）、恒等 Color Curves、Neutral Tonemapping、
+Bloom（0.85/0.20/0.65/Clamp 4/高质量过滤）和 Vignette 0.04。若选择 Renderer Data，
+还会移除旧的 Miku Endfield 全屏 LUT Feature，而不改动其他 Feature。
 
-生成的 Profile 只含 Neutral Tonemapping、Bloom
-（0.85/0.20/0.65/Clamp 4/高质量过滤）和 Vignette 0.04。Profile 不会自动绑定场景，
+角色资源中的 cloth LUT 和 female-skin LUT 是材质暗部颜色映射：前者供 Body/Cloth，
+后者供 Face/Skin；它们不是全屏调色 LUT。安装器会依据命名、材质 `_ColorLutTex`
+引用和 Recipe `ColorLut` 角色拒绝误用。高级模式仍保留显式屏幕 LUT API，仅供真实
+1024×32、32³ 展平屏幕调色资源。Profile 不会自动绑定场景，
 需要显式赋给目标全局 Volume。终末地验证相机使用 HDR、Post Processing、SMAA
 High，并保持 MSAA 1x。
 
+眼睛高光分为两层：动态角膜层采样 MatCap，`_MatCapUvScale` 默认 1 并只缩放
+MatCap UV；固定 PMX `目HL` 几何采样 `iris_D`，使用 Opaque coverage、纹理 RGB、
+Cull Off 和 Legacy Unlit。`face_01_hl_M` 仍是 Face Shader 的局部高光遮罩。
+
+ShadowCaster 现使用 URP 标准世界空间 Bias/Clamping，并支持方向光和点/聚光；
+DepthOnly 继续使用无 Bias 的相机深度顶点。Outline 仅通过 `MikuToonOutline` 绘制，
+不参与投影。
+
 LUT Shader 在 sRGB 坐标采样前保留线性 HDR 峰值，采样后恢复峰值，Alpha 不变；
-强度为 0 时精确旁路。安装失败会回滚本次 Importer、Feature 和新资产改动。
+强度为 0 时精确旁路。Importer 设置也支持 Undo；安装失败会原子恢复已有 Renderer
+Data、Importer、材质与 Profile 的原始磁盘内容，并删除本次创建的 Feature 和资产。
+
+写入前，安装器会拒绝空引用、外部引用、重复项或过期 Local ID 的 Renderer
+Feature/Map 状态。定向保存并强制重导入 Renderer Data 后，只有在恰好一个有效 LUT
+Feature 的执行点、资源映射和 Pass Material 均持久化时才报告成功。
 
 ## UV7 TangentSpaceV2 描边
 

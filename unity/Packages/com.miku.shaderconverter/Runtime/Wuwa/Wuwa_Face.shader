@@ -30,13 +30,14 @@ Shader "MIKU/Wuwa/Face"
         _FaceShadowSoftness ("Face Shadow Softness", Range(0.001,1)) = 0.067
         _FaceThresholdBias ("Face Threshold Bias", Range(-1,1)) = -0.073
         _FaceSoftChannelStrength ("Face Soft Channel Strength", Range(0,1)) = 1
-        _FaceShadowStrength ("Face SDF Shadow Strength", Range(0,1)) = 0.65
+        _FaceSdfMirrorBlendWidth ("Face SDF Mirror Blend Width", Range(0,0.5)) = 0.10
+        _FaceShadowStrength ("Face SDF Shadow Strength", Range(0,1)) = 0.72
         _FaceSdfDebugMode ("Face SDF Debug Mode", Range(0,5)) = 0
         _SkinRampUV ("Skin Ramp UV", Vector) = (0.24,0.9,0,0)
         _SkinRampSaturation ("Skin Ramp Saturation", Range(0,2)) = 0.77
         _SkinRampBrightness ("Skin Ramp Brightness", Range(0,2)) = 1.36
         _SkinRampCurvePower ("Skin Ramp Curve Power", Range(0.1,4)) = 2.04
-        _SkinRampStrength ("Skin Ramp Strength", Range(0,1)) = 0.42
+        _SkinRampStrength ("Skin Ramp Strength", Range(0,1)) = 0.35
         _FaceBaseCurvePower ("Face Base Curve Power", Range(0.1,4)) = 1.2
         _FaceBaseBrightness ("Face Base Brightness", Range(0,2)) = 1
         _FaceFinalBrightness ("Face Final Brightness", Range(0,2)) = 1
@@ -57,20 +58,27 @@ Shader "MIKU/Wuwa/Face"
         _HairShadowStrength ("Hair Shadow Strength", Range(0,1)) = 0.45
         _HairShadowDepthBias ("Hair Shadow Depth Bias", Range(-1,1)) = 0.02
         _HairShadowSoftness ("Hair Shadow Softness", Range(0.001,1)) = 0.05
-        _HairShadowScreenOffset ("Hair Shadow Screen Offset", Range(-0.1,0.1)) = 0.015
+        [HideInInspector] _HairShadowScreenOffset ("Legacy Hair Shadow Screen Offset", Range(-0.1,0.1)) = 0.015
+        _FaceShadowOffsetX ("Hair Shadow Screen Offset X", Range(-0.1,0.1)) = 0.015
+        _FaceShadowOffsetY ("Hair Shadow Screen Offset Y", Range(-0.1,0.1)) = 0
         [Toggle(_WUWA_HAIR_SHADOW_ON)] _UseHairShadow ("Use Hair Shadow", Float) = 1
+        _Roughness ("PBR Roughness", Range(0.02,1)) = 0.72
+        _SpecularColor ("PBR Specular Color", Color) = (1,0.88,0.84,1)
+        _SpecularStrength ("PBR Specular Strength", Range(0,4)) = 0.08
+        _ReflectionStrength ("PBR Reflection Strength", Range(0,4)) = 0.04
         _IndirectLightUsage ("Indirect Light Usage", Range(0,2)) = 0
         _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 0
+        _MainShadowInfluence ("Realtime Main Shadow Influence", Range(0,1)) = 0
         _VerticalGradientColor ("Vertical Gradient Low Color", Color) = (0.86,0.80,0.94,1)
         _VerticalGradientStrength ("Vertical Gradient Strength", Range(0,1)) = 0
         _GradientUVIndex ("Gradient UV Channel", Range(0,3)) = 3
         _GradientInvert ("Gradient Invert", Float) = 0
-        _RimLightBrightness ("Rim Brightness", Range(0,4)) = 0
-        _RimLightTintColor ("Rim Tint", Color) = (1,1,1,1)
-        _RimLightWidth ("Rim Width", Range(0,10)) = 1
-        _RimLightThreshold ("Rim Depth Threshold", Range(0,1)) = 0.03
-        _RimLightFadeout ("Rim Fadeout", Range(0.001,1)) = 0.2
-        [HideInInspector] _FresnelPower ("Legacy Fresnel Power", Range(0.1,8)) = 2
+        _RimLightBrightness ("Rim Brightness (Fresnel + Screen)", Range(0,4)) = 0
+        _RimLightTintColor ("Rim Tint (Fresnel + Screen)", Color) = (1,1,1,1)
+        _RimLightWidth ("Screen Rim Radius (Pixels)", Range(0,10)) = 1
+        _RimLightThreshold ("Screen Rim Depth Threshold", Range(0,1)) = 0.03
+        _RimLightFadeout ("Screen Rim Softness", Range(0.001,1)) = 0.2
+        _FresnelPower ("Fresnel Rim Power", Range(0.1,8)) = 2
         [HideInInspector] _FresnelClamp ("Legacy Fresnel Clamp", Range(0,1)) = 1
         _OutlineWidth ("Outline Width", Range(0,0.1)) = 0.001
         _OutlineReferenceDistance ("Outline Reference Distance", Float) = 5
@@ -100,6 +108,15 @@ Shader "MIKU/Wuwa/Face"
             #pragma shader_feature_local _WUWA_SKIN_RAMP_ON
             #pragma shader_feature_local _WUWA_HAIR_SHADOW_ON
             #pragma shader_feature_local _WUWA_EMISSION_ON
+            #pragma multi_compile _ LIGHTMAP_ON
+            #pragma multi_compile _ DIRLIGHTMAP_COMBINED
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #if UNITY_VERSION >= 60010000
+                #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
+            #else
+                #pragma multi_compile _ _FORWARD_PLUS
+            #endif
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "WuwaCommon.hlsl"
@@ -116,18 +133,19 @@ Shader "MIKU/Wuwa/Face"
                 float4 _BaseMap_ST; float4 _BaseColorTint; float4 _LitTint; float4 _ShadowTint;
                 float _UseFaceBasis; float4 _FaceRight; float4 _FaceUp; float4 _FaceForward; float _FaceFlatness;
                 float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
-                float _FaceSdfMainChannel; float _FaceSdfSoftChannel; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceThresholdBias; float _FaceSoftChannelStrength; float _FaceShadowStrength; float _FaceSdfDebugMode;
+                float _FaceSdfMainChannel; float _FaceSdfSoftChannel; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceThresholdBias; float _FaceSoftChannelStrength; float _FaceSdfMirrorBlendWidth; float _FaceShadowStrength; float _FaceSdfDebugMode;
                 float4 _SkinRampUV; float _SkinRampSaturation; float _SkinRampBrightness; float _SkinRampCurvePower; float _SkinRampStrength; float _FaceBaseCurvePower; float _FaceBaseBrightness; float _FaceFinalBrightness;
                 float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float4 _FaceBlushColor; float _FaceBlushStrength; float4 _FaceBlushCenters; float4 _FaceBlushSize; float _FaceExtraLightChannel; float4 _FaceExtraLightColor; float _FaceExtraLightStrength;
-                float _HairShadowStrength; float _HairShadowDepthBias; float _HairShadowSoftness; float _HairShadowScreenOffset; float _UseHairShadow;
-                float _IndirectLightUsage; float _MainLightColorUsage;
+                float _HairShadowStrength; float _HairShadowDepthBias; float _HairShadowSoftness; float _HairShadowScreenOffset; float _FaceShadowOffsetX; float _FaceShadowOffsetY; float _UseHairShadow;
+                float _Roughness; float4 _SpecularColor; float _SpecularStrength; float _ReflectionStrength;
+                float _IndirectLightUsage; float _MainLightColorUsage; float _MainShadowInfluence;
                 float4 _VerticalGradientColor; float _VerticalGradientStrength; float _GradientUVIndex; float _GradientInvert;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineDistanceMode; float _OutlineVertexColorMask; float4 _OutlineColorTint;
             CBUFFER_END
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; float2 uv3 : TEXCOORD3; float4 smoothNormalData : TEXCOORD7; };
-            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float3 viewDirWS : TEXCOORD2; float2 uv : TEXCOORD3; float4 shadowCoord : TEXCOORD4; float2 uv1 : TEXCOORD5; float2 uv3 : TEXCOORD6; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; float2 uv2 : TEXCOORD2; float2 uv3 : TEXCOORD3; float4 smoothNormalData : TEXCOORD7; };
+            struct Varyings { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; float3 normalWS : TEXCOORD1; float3 viewDirWS : TEXCOORD2; float2 uv : TEXCOORD3; float4 shadowCoord : TEXCOORD4; float4 uv12 : TEXCOORD5; float2 uv3 : TEXCOORD6; DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 7); };
             Varyings WuwaFaceVert(Attributes input)
             {
                 Varyings output;
@@ -138,9 +156,11 @@ Shader "MIKU/Wuwa/Face"
                 output.normalWS = normalize(normal.normalWS);
                 output.viewDirWS = normalize(GetWorldSpaceViewDir(pos.positionWS));
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
-                output.shadowCoord = TransformWorldToShadowCoord(pos.positionWS);
-                output.uv1 = input.uv1;
+                output.shadowCoord = GetShadowCoord(pos);
+                output.uv12 = float4(input.uv1, input.uv2);
                 output.uv3 = input.uv3;
+                OUTPUT_LIGHTMAP_UV(input.uv1, unity_LightmapST, output.lightmapUV);
+                OUTPUT_SH(output.normalWS, output.vertexSH);
                 return output;
             }
             float3 WuwaFaceSafeNormalize(float3 value, float3 fallback)
@@ -219,10 +239,10 @@ Shader "MIKU/Wuwa/Face"
                     normalWS,
                     headForwardWS,
                     saturate(_FaceFlatness)));
-                float faceLight = Wuwa_FaceSDFLight(input.uv, faceSdf, TEXTURE2D_ARGS(_FaceSDF, sampler_FaceSDF), lightDirWS, headForwardWS, headRightWS, headUpWS, _FaceSdfMainChannel, _FaceSdfSoftChannel, _FaceShadowOffset, _FaceShadowSoftness, _FaceThresholdBias, _FaceSoftChannelStrength) * mainLight.shadowAttenuation;
+                float faceLight = Wuwa_FaceSDFLight(input.uv, faceSdf, TEXTURE2D_ARGS(_FaceSDF, sampler_FaceSDF), lightDirWS, headForwardWS, headRightWS, headUpWS, _FaceSdfMainChannel, _FaceSdfSoftChannel, _FaceShadowOffset, _FaceShadowSoftness, _FaceThresholdBias, _FaceSoftChannelStrength, _FaceSdfMirrorBlendWidth);
                 faceLight = lerp(1.0, faceLight, faceID.r);
                 #if defined(_WUWA_HAIR_SHADOW_ON)
-                    float hairShadow = Wuwa_HairShadowMask(TEXTURE2D_ARGS(_WuwaHairShadowTexture, sampler_WuwaHairShadowTexture), input.positionCS, lightDirWS, _HairShadowScreenOffset, _HairShadowDepthBias, _HairShadowSoftness, _HairShadowStrength, _WuwaHairShadowAvailable);
+                    float hairShadow = Wuwa_HairShadowMask(TEXTURE2D_ARGS(_WuwaHairShadowTexture, sampler_WuwaHairShadowTexture), input.positionCS, float2(_FaceShadowOffsetX, _FaceShadowOffsetY), _HairShadowDepthBias, _HairShadowSoftness, _HairShadowStrength, _WuwaHairShadowAvailable);
                     faceLight *= 1.0 - hairShadow * _UseHairShadow;
                 #endif
                 float debugMode = round(_FaceSdfDebugMode);
@@ -238,7 +258,7 @@ Shader "MIKU/Wuwa/Face"
                     float3 rampSample = SAMPLE_TEXTURE2D(_SkinRamp, sampler_SkinRamp, saturate(_SkinRampUV.xy)).rgb;
                     rampSample = Wuwa_ApplyPowerCurve(rampSample, _SkinRampCurvePower, 1.0);
                     rampSample = saturate(Wuwa_AdjustSaturation(rampSample, _SkinRampSaturation) * _SkinRampBrightness);
-                    shadowTone = lerp(1.0.xxx, rampSample, _SkinRampStrength);
+                    shadowTone = lerp(_ShadowTint.rgb, rampSample, saturate(_SkinRampStrength));
                 #endif
                 float3 faceBase = saturate(Wuwa_ApplyPowerCurve(skinBase, _FaceBaseCurvePower, _FaceBaseBrightness));
                 float2 blushSize = max(_FaceBlushSize.xy, 1e-3.xx);
@@ -251,9 +271,42 @@ Shader "MIKU/Wuwa/Face"
                 float blushMask = saturate(max(cheekMask * cheekMask, noseMask * noseMask) * _FaceBlushStrength);
                 float3 blushTone = saturate(faceBase * _FaceBlushColor.rgb + _FaceBlushColor.rgb * 0.04);
                 faceBase = lerp(faceBase, blushTone, blushMask);
-                float3 faceLightingTone = lerp(shadowTone, _LitTint.rgb, faceLight);
-                float3 color = faceBase * lerp(1.0.xxx, faceLightingTone, saturate(_FaceShadowStrength)) * _FaceFinalBrightness * mainLightColor;
-                color += Wuwa_SampleSH_Indirect(faceShadingNormalWS, 0.0) * _IndirectLightUsage * skinBase;
+                float pbrVisibility = lerp(
+                    1.0,
+                    faceLight,
+                    saturate(_FaceShadowStrength));
+                BRDFData brdfData = Wuwa_InitializeBRDFData(
+                    faceBase,
+                    0.0,
+                    _Roughness,
+                    baseSample.a);
+                float3 color = Wuwa_DirectPBR(
+                    brdfData,
+                    faceShadingNormalWS,
+                    lightDirWS,
+                    viewDirWS,
+                    mainLightColor,
+                    mainLight.distanceAttenuation,
+                    lerp(1.0, mainLight.shadowAttenuation, saturate(_MainShadowInfluence)),
+                    pbrVisibility,
+                    shadowTone,
+                    _LitTint.rgb,
+                    _SpecularColor.rgb,
+                    _SpecularStrength) * _FaceFinalBrightness;
+                float3 bakedGI = SAMPLE_GI(
+                    input.lightmapUV,
+                    input.vertexSH,
+                    faceShadingNormalWS);
+                color += Wuwa_IndirectPBR(
+                    brdfData,
+                    bakedGI,
+                    faceShadingNormalWS,
+                    viewDirWS,
+                    input.positionWS,
+                    GetNormalizedScreenSpaceUV(input.positionCS),
+                    1.0,
+                    _IndirectLightUsage,
+                    _ReflectionStrength);
                 color += MikuGameToonSkinSSS(faceBase, skinMask, faceShadingNormalWS, viewDirWS, lightDirWS, mainLight.color.rgb, faceLight, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb);
                 color += Wuwa_FresnelStepRim(
                     faceShadingNormalWS,
@@ -264,14 +317,16 @@ Shader "MIKU/Wuwa/Face"
                     faceBase);
                 float gradientValue = Wuwa_GradientValue(
                     input.uv,
-                    input.uv1,
+                    input.uv12.xy,
+                    input.uv12.zw,
                     input.uv3,
                     _GradientUVIndex,
                     _GradientInvert);
-                color = Wuwa_VerticalGradient(
+                color = Wuwa_ApplyVerticalGradient(
                     color,
                     _VerticalGradientColor.rgb,
-                    gradientValue * _VerticalGradientStrength);
+                    gradientValue,
+                    _VerticalGradientStrength);
                 #if defined(_WUWA_FACE_HET_ON)
                     float4 het = SAMPLE_TEXTURE2D(_FaceHET, sampler_FaceHET, input.uv);
                     float extraLightMask = Wuwa_SelectChannel(het, _FaceExtraLightChannel);
@@ -300,12 +355,12 @@ Shader "MIKU/Wuwa/Face"
                 float4 _BaseMap_ST; float4 _BaseColorTint; float4 _LitTint; float4 _ShadowTint;
                 float _UseFaceBasis; float4 _FaceRight; float4 _FaceUp; float4 _FaceForward; float _FaceFlatness;
                 float4 _MikuHeadForwardWS; float4 _MikuHeadRightWS; float4 _MikuHeadUpWS; float _MikuHeadAxesValid;
-                float _FaceSdfMainChannel; float _FaceSdfSoftChannel; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceThresholdBias; float _FaceSoftChannelStrength; float _FaceShadowStrength; float _FaceSdfDebugMode;
+                float _FaceSdfMainChannel; float _FaceSdfSoftChannel; float _FaceShadowOffset; float _FaceShadowSoftness; float _FaceThresholdBias; float _FaceSoftChannelStrength; float _FaceSdfMirrorBlendWidth; float _FaceShadowStrength; float _FaceSdfDebugMode;
                 float4 _SkinRampUV; float _SkinRampSaturation; float _SkinRampBrightness; float _SkinRampCurvePower; float _SkinRampStrength; float _FaceBaseCurvePower; float _FaceBaseBrightness; float _FaceFinalBrightness;
                 float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float4 _FaceBlushColor; float _FaceBlushStrength; float4 _FaceBlushCenters; float4 _FaceBlushSize; float _FaceExtraLightChannel; float4 _FaceExtraLightColor; float _FaceExtraLightStrength;
                 float _HairShadowStrength; float _HairShadowDepthBias; float _HairShadowSoftness; float _HairShadowScreenOffset; float _UseHairShadow;
-                float _IndirectLightUsage; float _MainLightColorUsage;
+                float _IndirectLightUsage; float _MainLightColorUsage; float _MainShadowInfluence;
                 float4 _VerticalGradientColor; float _VerticalGradientStrength; float _GradientUVIndex; float _GradientInvert;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineDistanceMode; float _OutlineVertexColorMask; float4 _OutlineColorTint;
@@ -316,8 +371,8 @@ Shader "MIKU/Wuwa/Face"
 
         Pass
         {
-            Name "Outline"
-            Tags { "LightMode"="SRPDefaultUnlit" }
+            Name "MikuToonOutline"
+            Tags { "LightMode"="MikuToonOutline" }
             Cull Front
             ZWrite Off
             ZTest LEqual
@@ -335,7 +390,7 @@ Shader "MIKU/Wuwa/Face"
                 float4 _BaseMap_ST; float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineDistanceMode; float _OutlineVertexColorMask; float4 _OutlineColorTint;
             CBUFFER_END
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 uv : TEXCOORD0; float4 color : COLOR; float4 smoothNormalData : TEXCOORD7; };
-            struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; };
+            struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; float outlineCoverage : TEXCOORD1; };
             Varyings OutlineVert(Attributes input)
             {
                 Varyings output;
@@ -368,11 +423,19 @@ Shader "MIKU/Wuwa/Face"
                     float4(1.0, 1.0, 1.0, 1.0),
                     widthMask,
                     distanceMultiplier);
+                output.outlineCoverage =
+                    MikuGameToonOutlineCoverageWithDistanceMultiplier(
+                        1.0,
+                        _OutlineWidth,
+                        distanceMultiplier,
+                        1.0,
+                        widthMask);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
                 return output;
             }
             half4 OutlineFrag(Varyings input) : SV_Target
             {
+                MikuGameToonOutlineClipCoverage(input.outlineCoverage);
                 float4 idMap = SAMPLE_TEXTURE2D(_FaceID, sampler_FaceID, input.uv);
                 return half4(Wuwa_IDOutlineColor(idMap, _OutlineColorTint.rgb), 1.0);
             }

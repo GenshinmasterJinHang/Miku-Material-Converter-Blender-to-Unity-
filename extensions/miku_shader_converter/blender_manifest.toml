@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "miku_shader_converter"
-version = "2.3.0"
+version = "3.0.0"
 name = "Miku Shader Converter"
 tagline = "Export semantic materials and run version-bound bake requests"
 maintainer = "Miku Project Authors"

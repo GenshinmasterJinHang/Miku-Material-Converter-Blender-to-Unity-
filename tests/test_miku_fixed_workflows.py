@@ -8,7 +8,10 @@ from miku.fixed_workflows import (
     FIXED_TEXTURE_ROLES,
     FIXED_WORKFLOWS,
     allowed_texture_role,
+    genshin_required_texture_roles,
     infer_filename_texture_role,
+    infer_wuwa_filename_texture_role,
+    normalize_genshin_filename_role,
     normalize_texture_role,
     texture_role_color_space,
 )
@@ -91,6 +94,40 @@ class FixedWorkflowTests(unittest.TestCase):
         self.assertTrue(allowed_texture_role("genshin_toon", "ShadowRampMap"))
         self.assertTrue(allowed_texture_role("genshin_toon", "NormalMap"))
         self.assertFalse(allowed_texture_role("genshin_toon", "SkinRamp"))
+        self.assertEqual(
+            "FaceSDF",
+            infer_filename_texture_role("Avatar_FaceLightmap.png"),
+        )
+        self.assertEqual(
+            "ShadowRampMap",
+            infer_filename_texture_role("Avatar_Body_Shadow_Ramp.png"),
+        )
+        self.assertEqual(
+            "HairRampMap",
+            infer_filename_texture_role("Avatar_Hair_Shadow_Ramp.png"),
+        )
+        self.assertEqual(
+            "NormalMap",
+            infer_filename_texture_role("Avatar_Body_Normalmap.png"),
+        )
+
+    def test_genshin_parts_normalize_ramps_and_require_complete_inputs(self):
+        self.assertEqual(
+            "HairRampMap",
+            normalize_genshin_filename_role("Hair", "ShadowRampMap"),
+        )
+        self.assertEqual(
+            "ShadowRampMap",
+            normalize_genshin_filename_role("Face", "HairRampMap"),
+        )
+        self.assertEqual(
+            {"BaseMap", "LightMap", "ShadowRampMap"},
+            set(genshin_required_texture_roles("Body")),
+        )
+        self.assertEqual(
+            {"BaseMap", "FaceSDF", "ShadowRampMap"},
+            set(genshin_required_texture_roles("Face")),
+        )
         self.assertFalse(allowed_texture_role("generic_toon", "BaseMap"))
         self.assertTrue(
             allowed_texture_role("endfield_toon", "HairShadowMap")
@@ -185,7 +222,17 @@ class FixedWorkflowTests(unittest.TestCase):
                 source = path.read_text(encoding="utf-8")
                 self.assertEqual(1, source.count('Name "MikuToonCharacterMask"'), path)
                 self.assertIn("Runtime/GameToon/MikuGameToonScreenRimPass.hlsl", source)
-                self.assertIn("[HideInInspector] _FresnelPower", source)
+                if family == "Wuwa":
+                    self.assertIn(
+                        '_FresnelPower ("Fresnel Rim Power"',
+                        source,
+                    )
+                    self.assertNotIn(
+                        "[HideInInspector] _FresnelPower",
+                        source,
+                    )
+                else:
+                    self.assertIn("[HideInInspector] _FresnelPower", source)
                 self.assertIn("[HideInInspector] _FresnelClamp", source)
         endfield = runtime / "Endfield"
         for part in ("Body", "Skin", "Hair", "Face"):
@@ -304,6 +351,50 @@ class FixedWorkflowTests(unittest.TestCase):
         self.assertIn("_FaceFlatness", face)
         self.assertIn("GetObjectToWorldMatrix()", face)
         self.assertIn("_MikuHeadAxesValid", face)
+
+    def test_wuwa_packed_nrm_and_outline_roles_are_scoped(self):
+        self.assertIn(
+            "WuwaPackedNormalRoughnessMetallic",
+            FIXED_TEXTURE_ROLES,
+        )
+        self.assertIn("OutlineColorMap", FIXED_TEXTURE_ROLES)
+        self.assertTrue(
+            allowed_texture_role(
+                "wuwa_toon",
+                "WuwaPackedNormalRoughnessMetallic",
+            )
+        )
+        self.assertTrue(
+            allowed_texture_role("wuwa_toon", "OutlineColorMap")
+        )
+        self.assertFalse(
+            allowed_texture_role(
+                "genshin_toon",
+                "WuwaPackedNormalRoughnessMetallic",
+            )
+        )
+        self.assertEqual(
+            "WuwaPackedNormalRoughnessMetallic",
+            infer_wuwa_filename_texture_role("Phoebe_Up_N.tga", "Body"),
+        )
+        self.assertEqual(
+            "OutlineColorMap",
+            infer_wuwa_filename_texture_role("Phoebe_Down_LD.tga", "Body"),
+        )
+        self.assertEqual(
+            "FaceHET",
+            infer_wuwa_filename_texture_role("Phoebe_Face_HET.tga", "Face"),
+        )
+        self.assertEqual(
+            "",
+            infer_wuwa_filename_texture_role("Phoebe_Up_Switch_D.tga", "Body"),
+        )
+        self.assertEqual(
+            "Linear",
+            texture_role_color_space(
+                ["WuwaPackedNormalRoughnessMetallic"]
+            ),
+        )
 
 
 if __name__ == "__main__":

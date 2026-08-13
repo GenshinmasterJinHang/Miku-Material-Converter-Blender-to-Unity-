@@ -441,7 +441,7 @@ namespace Miku.ShaderConverter.Tests.Editor
             AssertShaderProperties("MIKU/Endfield/Eye",
                 "_DiffRampMap", "_EyeRampStrength", "_EyeAlphaColor",
                 "_MatCapAlphaColor", "_SelfAoShadowStrength",
-                "_DarkInDarkStrength", "_NoFStrength");
+                "_DarkInDarkStrength", "_NoFStrength", "_MatCapUvScale");
             AssertShaderProperties("MIKU/Endfield/Overlay",
                 "_LightingMode", "_NormalMap", "_MaterialParamMap",
                 "_EmissionMapMode");
@@ -482,6 +482,119 @@ namespace Miku.ShaderConverter.Tests.Editor
         }
 
         [Test]
+        public void EndfieldOutlineStateSynchronizesPropertyPassAndLegacyState()
+        {
+            foreach (var shaderName in new[]
+            {
+                "MIKU/Endfield/Body",
+                "MIKU/Endfield/Skin",
+                "MIKU/Endfield/Face",
+                "MIKU/Endfield/Hair",
+            })
+            {
+                var material = new Material(Shader.Find(shaderName));
+                try
+                {
+                    Assert.That(material.HasProperty("_UseOutline"), Is.True);
+                    Assert.That(
+                        material.FindPass(
+                            MikuEndfieldMaterialState.OutlinePassName),
+                        Is.GreaterThanOrEqualTo(0));
+                    MikuEndfieldMaterialState.Synchronize(material);
+                    Assert.That(
+                        MikuEndfieldMaterialState.GetOutlineEnabled(material),
+                        Is.True);
+
+                    MikuEndfieldMaterialState.SetOutlineEnabled(material, false);
+                    Assert.That(material.GetFloat("_UseOutline"), Is.EqualTo(0f));
+                    Assert.That(
+                        material.GetShaderPassEnabled(
+                            MikuEndfieldMaterialState.OutlinePassName),
+                        Is.False);
+
+                    material.SetFloat("_UseOutline", 1f);
+                    MikuEndfieldMaterialState.Synchronize(material);
+                    Assert.That(
+                        MikuEndfieldMaterialState.GetOutlineEnabled(material),
+                        Is.True);
+
+                    material.SetFloat(
+                        "_MikuEndfieldMaterialStateVersion",
+                        0f);
+                    material.SetFloat("_UseOutline", 1f);
+                    material.SetShaderPassEnabled(
+                        MikuEndfieldMaterialState.OutlinePassName,
+                        false);
+                    MikuEndfieldMaterialState.Synchronize(material);
+                    Assert.That(material.GetFloat("_UseOutline"), Is.EqualTo(0f));
+                    Assert.That(
+                        MikuEndfieldMaterialState.GetOutlineEnabled(material),
+                        Is.False);
+                }
+                finally
+                {
+                    Object.DestroyImmediate(material);
+                }
+            }
+        }
+
+        [Test]
+        public void EndfieldOutlineDisabledPassSurvivesAssetReload()
+        {
+            var path = "Assets/MikuEndfieldOutlineState-" +
+                       System.Guid.NewGuid().ToString("N") + ".mat";
+            var material = new Material(Shader.Find("MIKU/Endfield/Hair"));
+            try
+            {
+                AssetDatabase.CreateAsset(material, path);
+                MikuEndfieldMaterialState.SetOutlineEnabled(material, false);
+                EditorUtility.SetDirty(material);
+                AssetDatabase.SaveAssetIfDirty(material);
+                AssetDatabase.ImportAsset(
+                    path,
+                    ImportAssetOptions.ForceUpdate);
+
+                var reloaded = AssetDatabase.LoadAssetAtPath<Material>(path);
+                Assert.That(reloaded, Is.Not.Null);
+                Assert.That(
+                    MikuEndfieldMaterialState.GetOutlineEnabled(reloaded),
+                    Is.False);
+                Assert.That(
+                    File.ReadAllText(Path.GetFullPath(path)),
+                    Does.Contain("- Outline"));
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(path);
+                if (material != null && !AssetDatabase.Contains(material))
+                    Object.DestroyImmediate(material);
+            }
+        }
+
+        [Test]
+        public void EndfieldOutlineStateRejectsUnsupportedEnable()
+        {
+            var eye = new Material(Shader.Find("MIKU/Endfield/Eye"));
+            try
+            {
+                MikuEndfieldMaterialState.SetOutlineEnabled(eye, false);
+                var error = Assert.Throws<System.InvalidOperationException>(
+                    () => MikuEndfieldMaterialState.SetOutlineEnabled(
+                        eye,
+                        true));
+                Assert.That(
+                    error.Message,
+                    Is.EqualTo(
+                        "MIKU_ENDFIELD_OUTLINE_UNSUPPORTED:" +
+                        "MIKU/Endfield/Eye"));
+            }
+            finally
+            {
+                Object.DestroyImmediate(eye);
+            }
+        }
+
+        [Test]
         public void SharedHlslCarriesFrontFaceAndTutorialLightingContracts()
         {
             var path = Path.GetFullPath(Path.Combine(
@@ -511,7 +624,65 @@ namespace Miku.ShaderConverter.Tests.Editor
             StringAssert.Contains("float rampChroma =", source);
             StringAssert.Contains("float3 tutorialBrightColor", source);
             StringAssert.Contains("float3 tutorialMatcapBrdf", source);
+            StringAssert.Contains(
+                "corneaNormalVS.xy * (0.5 * max(_MatCapUvScale, 0.0))",
+                source);
             StringAssert.Contains("bool EndfieldIsFinite3", source);
+        }
+
+        [Test]
+        public void EndfieldShadowCasterUsesUrpBiasAndKeepsDepthOnlyUnbiased()
+        {
+            var root = Path.Combine(
+                Directory.GetParent(Application.dataPath).FullName,
+                "Packages/com.miku.shaderconverter/Runtime/Endfield");
+            var common = File.ReadAllText(Path.Combine(
+                root,
+                "EndfieldCommon.hlsl"));
+            var passLibrary = File.ReadAllText(Path.Combine(
+                root,
+                "EndfieldPassLibrary.shader"));
+
+            Assert.That(common, Does.Contain(
+                "EndfieldDepthVaryings EndfieldShadowVertex"));
+            Assert.That(common, Does.Contain(
+                "TransformObjectToWorldNormal(input.normalOS)"));
+            Assert.That(common, Does.Contain("ApplyShadowBias("));
+            Assert.That(common, Does.Contain("ApplyShadowClamping("));
+            Assert.That(common, Does.Contain("_LightDirection"));
+            Assert.That(common, Does.Contain("_LightPosition"));
+            Assert.That(passLibrary, Does.Contain(
+                "#pragma vertex EndfieldShadowVertex"));
+            Assert.That(passLibrary, Does.Contain(
+                "#pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW"));
+
+            var depthStart = common.IndexOf(
+                "EndfieldDepthVaryings EndfieldDepthVertex",
+                System.StringComparison.Ordinal);
+            var depthEnd = common.IndexOf(
+                "half4 EndfieldDepthFragment",
+                depthStart,
+                System.StringComparison.Ordinal);
+            var depthVertex = common.Substring(depthStart, depthEnd - depthStart);
+            Assert.That(depthVertex, Does.Contain("TransformObjectToHClip"));
+            Assert.That(depthVertex, Does.Not.Contain("ApplyShadowBias"));
+        }
+
+        [Test]
+        public void EndfieldMatCapUvScaleDefaultsToLegacyCompatibleOne()
+        {
+            var eye = new Material(Shader.Find("MIKU/Endfield/Eye"));
+            try
+            {
+                Assert.That(eye.HasProperty("_MatCapUvScale"), Is.True);
+                Assert.That(
+                    eye.GetFloat("_MatCapUvScale"),
+                    Is.EqualTo(1f).Within(1e-6f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(eye);
+            }
         }
 
         [Test]

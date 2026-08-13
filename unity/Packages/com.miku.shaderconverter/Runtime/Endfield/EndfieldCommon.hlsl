@@ -7,9 +7,9 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 #include "Packages/com.miku.shaderconverter/Runtime/GameToon/MikuGameToonOutline.hlsl"
 
-// Share URP's inline samplers. The pass exposes more packed maps than D3D11's
-// sixteen active sampler registers, while the authored assets need only two
-// sampling intents: trilinear repeat and linear clamp.
+// Share URP's inline samplers to stay within conservative sampler-register
+// budgets. Authored assets need only two sampling intents: trilinear repeat
+// and linear clamp.
 TEXTURE2D(_BaseMap);
 TEXTURE2D(_NormalMap);
 TEXTURE2D(_MaterialParamMap);
@@ -101,6 +101,7 @@ float _UseShadowLut;
 float _UseEmissionMap;
 float _UseMatCap;
 float _UseSplitNormalMap;
+float _UseOutline;
 float _UseOutlineMask;
 float _UseSpecularMask;
 float _UseHairLineMap;
@@ -202,6 +203,7 @@ float _AlphaSource;
 float _AlphaClip;
 float _IrisParallaxDepth;
 float _CorneaBumpStrength;
+float _MatCapUvScale;
 float _CorneaSpecularIntensity;
 float _Cull;
 float _StencilRef;
@@ -2284,10 +2286,12 @@ half4 EndfieldEvaluateEye(EndfieldVaryings input, float faceSign)
         0.12,
         0.04.xxx) * directLight * visibility;
     float3 corneaNormalVS = TransformWorldToViewDir(corneaNormalWS, true);
+    float2 matcapUv = saturate(
+        corneaNormalVS.xy * (0.5 * max(_MatCapUvScale, 0.0)) + 0.5);
     float4 matcap = SAMPLE_TEXTURE2D(
         _MatCap,
         sampler_MatCap,
-        saturate(corneaNormalVS.xy * 0.5 + 0.5));
+        matcapUv);
     float3 lightEnvelope = directLight * visibility;
     float3 legacyMatcapSpecular = matcap.rgb *
         saturate(0.35 + matcap.a * 2.0) * lightEnvelope * _UseMatCap;
@@ -2396,6 +2400,7 @@ struct EndfieldOutlineVaryings
 {
     float4 positionCS : SV_POSITION;
     float2 uv : TEXCOORD0;
+    float outlineCoverage : TEXCOORD1;
     float4 color : COLOR;
 };
 
@@ -2418,6 +2423,10 @@ EndfieldOutlineVaryings EndfieldOutlineVertex(EndfieldAttributes input)
         1.0,
         lerp(0.45, 1.0, accessoryOutlineMask),
         _UseSpecularMask);
+    float outlineEnabled = MikuGameToonOutlineFinite1(_UseOutline)
+        ? saturate(_UseOutline)
+        : 0.0;
+    float additionalWidthMask = outlineMask * accessoryOutlineMask;
     output.positionCS = MikuGameToonOutlinePositionCS(
         position.positionCS,
         position.positionWS,
@@ -2426,7 +2435,15 @@ EndfieldOutlineVaryings EndfieldOutlineVertex(EndfieldAttributes input)
         _OutlineReferenceDistance,
         _OutlineDistanceScale,
         input.color,
-        outlineMask * accessoryOutlineMask);
+        additionalWidthMask * outlineEnabled);
+    output.outlineCoverage = MikuGameToonOutlineCoverageWithVertexMask(
+        position.positionWS,
+        outlineEnabled,
+        _OutlineWidth,
+        _OutlineReferenceDistance,
+        _OutlineDistanceScale,
+        MikuGameToonOutlineVertexMask(input.color),
+        additionalWidthMask);
     output.uv = uv;
     output.color = input.color;
     return output;
@@ -2434,6 +2451,7 @@ EndfieldOutlineVaryings EndfieldOutlineVertex(EndfieldAttributes input)
 
 half4 EndfieldOutlineFragment(EndfieldOutlineVaryings input) : SV_Target
 {
+    MikuGameToonOutlineClipCoverage(input.outlineCoverage);
     float3 baseColor = SAMPLE_TEXTURE2D(
         _BaseMap, sampler_BaseMap, input.uv).rgb;
     float3 color = pow(max(baseColor, 0.0.xxx), max(_OutlineGamma, 1e-5)) *
@@ -2442,6 +2460,25 @@ half4 EndfieldOutlineFragment(EndfieldOutlineVaryings input) : SV_Target
 }
 
 struct EndfieldDepthVaryings { float4 positionCS : SV_POSITION; };
+float3 _LightDirection;
+float3 _LightPosition;
+
+EndfieldDepthVaryings EndfieldShadowVertex(EndfieldAttributes input)
+{
+    EndfieldDepthVaryings output;
+    float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+    float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
+#if defined(_CASTING_PUNCTUAL_LIGHT_SHADOW)
+    float3 lightDirectionWS = normalize(_LightPosition - positionWS);
+#else
+    float3 lightDirectionWS = _LightDirection;
+#endif
+    output.positionCS = TransformWorldToHClip(
+        ApplyShadowBias(positionWS, normalWS, lightDirectionWS));
+    output.positionCS = ApplyShadowClamping(output.positionCS);
+    return output;
+}
+
 EndfieldDepthVaryings EndfieldDepthVertex(EndfieldAttributes input)
 {
     EndfieldDepthVaryings output;

@@ -1,5 +1,14 @@
 # Miku 2.3.0
 
+> **3.0 supersession (2026-08-13):** the validation-only hair-shadow menu and
+> its dedicated diagnostic test were removed from the later distributable
+> package. The 2.3 execution record below remains historical evidence.
+
+> **Correction (2026-08-12):** the character cloth and female-skin 1024x32
+> textures previously treated as candidate game LUTs are material dark-color
+> LUTs. They must not be installed full-screen. Miku 3.0.0 defaults to standard
+> Volume grading and rejects this misuse.
+
 Miku 2.3.0 completes the opt-in Endfield tutorial-lighting architecture,
 repairs smooth-normal outlines across all four Game Toon families, and adds a
 project-owned full-screen game-LUT workflow before URP post processing.

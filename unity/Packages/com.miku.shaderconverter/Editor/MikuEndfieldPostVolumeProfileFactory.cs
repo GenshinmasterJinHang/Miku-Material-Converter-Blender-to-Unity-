@@ -45,6 +45,17 @@ namespace Miku.ShaderConverter.Editor
                     "Update Miku Endfield Volume Profile");
             }
 
+            var colorAdjustments = Reconcile<ColorAdjustments>(profile);
+            Configure(colorAdjustments, component =>
+            {
+                Override(component.postExposure, 0.35f);
+                Override(component.contrast, 16f);
+                Override(component.saturation, 8f);
+                Override(component.hueShift, 0f);
+                Override(component.colorFilter, Color.white);
+            });
+            var colorCurves = Reconcile<ColorCurves>(profile);
+            Configure(colorCurves, ConfigureIdentityCurves);
             var tonemapping = Reconcile<Tonemapping>(profile);
             Configure(tonemapping, component =>
             {
@@ -72,6 +83,8 @@ namespace Miku.ShaderConverter.Editor
 
             var keep = new HashSet<VolumeComponent>
             {
+                colorAdjustments,
+                colorCurves,
                 tonemapping,
                 bloom,
                 vignette,
@@ -85,11 +98,12 @@ namespace Miku.ShaderConverter.Editor
                     Undo.DestroyObjectImmediate(component);
             }
             profile.components.Clear();
+            profile.components.Add(colorAdjustments);
+            profile.components.Add(colorCurves);
             profile.components.Add(tonemapping);
             profile.components.Add(bloom);
             profile.components.Add(vignette);
             EditorUtility.SetDirty(profile);
-            AssetDatabase.SaveAssetIfDirty(profile);
             return profile;
         }
 
@@ -130,6 +144,83 @@ namespace Miku.ShaderConverter.Editor
             component.name = typeof(T).Name;
             configure(component);
             EditorUtility.SetDirty(component);
+        }
+
+        static void ConfigureIdentityCurves(ColorCurves component)
+        {
+            SetCurve(component.master, LinearCurve());
+            SetCurve(component.red, LinearCurve());
+            SetCurve(component.green, LinearCurve());
+            SetCurve(component.blue, LinearCurve());
+            SetCurve(component.hueVsHue, FlatCurve(true));
+            SetCurve(component.hueVsSat, FlatCurve(true));
+            SetCurve(component.satVsSat, FlatCurve(false));
+            SetCurve(component.lumVsSat, FlatCurve(false));
+        }
+
+        static TextureCurve LinearCurve()
+        {
+            return Curve(
+                false,
+                0f,
+                new Vector2(0f, 0f),
+                new Vector2(1f, 1f));
+        }
+
+        static TextureCurve FlatCurve(bool loop)
+        {
+            return Curve(
+                loop,
+                0.5f,
+                new Vector2(0f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                new Vector2(1f, 0.5f));
+        }
+
+        static void SetCurve(
+            TextureCurveParameter parameter,
+            TextureCurve curve)
+        {
+            parameter.value = curve;
+            parameter.overrideState = true;
+        }
+
+        static TextureCurve Curve(
+            bool loop,
+            float zeroValue,
+            params Vector2[] points)
+        {
+            if (points == null || points.Length < 2)
+                throw new ArgumentException(
+                    "At least two curve points are required.",
+                    nameof(points));
+
+            var keys = new Keyframe[points.Length];
+            for (var index = 0; index < points.Length; index++)
+            {
+                var previous = points[Mathf.Max(0, index - 1)];
+                var next = points[Mathf.Min(points.Length - 1, index + 1)];
+                var tangent = index == 0
+                    ? (next.y - points[index].y) /
+                      Mathf.Max(next.x - points[index].x, Mathf.Epsilon)
+                    : index == points.Length - 1
+                        ? (points[index].y - previous.y) /
+                          Mathf.Max(
+                              points[index].x - previous.x,
+                              Mathf.Epsilon)
+                        : (next.y - previous.y) /
+                          Mathf.Max(next.x - previous.x, Mathf.Epsilon);
+                keys[index] = new Keyframe(
+                    points[index].x,
+                    points[index].y,
+                    tangent,
+                    tangent);
+            }
+            return new TextureCurve(
+                keys,
+                zeroValue,
+                loop,
+                new Vector2(0f, 1f));
         }
 
         static void Override<T>(VolumeParameter<T> parameter, T value)

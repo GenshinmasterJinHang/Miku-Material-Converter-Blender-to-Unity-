@@ -98,7 +98,11 @@ with tempfile.TemporaryDirectory(prefix="miku-fixed-workflow-") as temp:
         (
             "genshin",
             "genshin_toon",
-            (("BaseMap", "sRGB"), ("LightMap", "Non-Color")),
+            (
+                ("BaseMap", "sRGB"),
+                ("LightMap", "Non-Color"),
+                ("ShadowRampMap", "Non-Color"),
+            ),
         ),
         (
             "wuwa",

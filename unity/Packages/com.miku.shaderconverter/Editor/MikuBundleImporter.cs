@@ -281,8 +281,16 @@ namespace Miku.ShaderConverter.Editor
         const string LegacyKindV2 = "migr-bundle-2.0";
         const string LegacyKindV21 = "migr-bundle-2.1";
         const string LegacyKindV22 = "migr-bundle-2.2";
-        const string PackageVersion = "2.3.0";
-        const string ExpectedProfileHash = "68f1fa6246ebb9abd910784d825ba3f287e6121df01a990f4879434646bdbc6c";
+        const string PackageVersion = "3.0.0";
+        const string ExpectedProfileHash = "14bf3dc57d775b6980161a859567d2404fc8cd56e1f51cdbe9ded1ac407cdb44";
+        const string Package300PreSrpBatcherShadowFidelityProfileHash = "584b3b6a5fdefd96d27d94bbe06e52f935876921e718e92d52e5be99a78a0f29";
+        const string Package300PreShadowMetalFidelityProfileHash = "cd6ce427a527108457b3d95c4c024f82ef2afe90d23f036584e12e2f731c812e";
+        const string Package300PreShadowVariantFixProfileHash = "2f7892d34888d4bb79ee296841cb7c4ffded700316dd2861380bd594563140bd";
+        const string Package300PreGenshinEyeInspectorFixProfileHash = "aba717c335aec3d933079bd84df58d933f14600eb82fcf559bdc052b0e42566a";
+        const string Package300PreGenshinForwardPlusProfileHash = "cc442352a234f079499ad3d41147fbe58c9ff55115eeb071566a350de898e954";
+        const string Package300PreviousProfileHash = "443efd49c0fa398a70ba4b1331e4b73f4e532b4f4dc0e0db07c64ff846498601";
+        const string Package300PreGameToonIdentityProfileHash = "8b53d91957a6695c2b2b7d7d3eb182d63617b2fc0739e668b347c3e4b6ebb95b";
+        const string Package230ProfileHash = "68f1fa6246ebb9abd910784d825ba3f287e6121df01a990f4879434646bdbc6c";
         const string Package2212ProfileHash = "c112d0a2add487722a08b732b9be2339ecf54be0b53bcfcdbf462cc8ade7c460";
         const string Package2211ProfileHash = "e9e70a6e2e38205a4ecf7facedba8e55a8f1d8815316470affc7e5ad2c2bce50";
         const string Package2210ProfileHash = "ec88a8bee99c86fd3885f7e7a1596a22439632a648004a065e45ea1b4f1179d4";
@@ -346,6 +354,14 @@ namespace Miku.ShaderConverter.Editor
             new[]
             {
                 ExpectedProfileHash,
+                Package300PreSrpBatcherShadowFidelityProfileHash,
+                Package300PreShadowMetalFidelityProfileHash,
+                Package300PreShadowVariantFixProfileHash,
+                Package300PreGenshinEyeInspectorFixProfileHash,
+                Package300PreGenshinForwardPlusProfileHash,
+                Package300PreviousProfileHash,
+                Package300PreGameToonIdentityProfileHash,
+                Package230ProfileHash,
                 Package2212ProfileHash,
                 Package2211ProfileHash,
                 Package2210ProfileHash,
@@ -586,6 +602,17 @@ namespace Miku.ShaderConverter.Editor
                 var fixedWorkflow =
                     MikuFixedWorkflowTextureBindings.IsFixed(
                         workflowBackend.Kind);
+                if (string.Equals(
+                        bundleProfileHash,
+                        Package230ProfileHash,
+                        StringComparison.Ordinal) &&
+                    string.Equals(
+                        workflowBackend.Kind,
+                        "genshin_toon",
+                        StringComparison.Ordinal))
+                    AddDiagnosticOnce(
+                        result.diagnostics,
+                        "MIKU_GENSHIN_2_3_VISUAL_MIGRATION");
                 var createUserMaterialVariant =
                     request.createMaterialVariant ||
                     fixedWorkflow ||
@@ -913,6 +940,7 @@ namespace Miku.ShaderConverter.Editor
                 var importedTextures = ImportResources(
                     transactionRoot,
                     bundle["resources"] as JArray,
+                    workflowBackend.Kind,
                     location,
                     materialRoot,
                     persistentSourceId,
@@ -1034,6 +1062,16 @@ namespace Miku.ShaderConverter.Editor
                         AddDiagnosticOnce(
                             result.diagnostics,
                             "MIKU_TOON_SCREEN_RIM_RENDERER_FEATURE_REQUIRED");
+                        if (string.Equals(
+                                workflowBackend.Kind,
+                                "genshin_toon",
+                                StringComparison.Ordinal) &&
+                            !MikuToonRendererFeatureInstaller
+                                .AllActiveUniversalRenderersHaveGeometry())
+                            AddDiagnosticOnce(
+                                result.diagnostics,
+                                "MIKU_GENSHIN_GEOMETRY_RENDERER_FEATURE_REQUIRED:" +
+                                "RequiresProjectSetup");
                     }
                 }
                 var sourceMeshResource = (
@@ -1514,6 +1552,7 @@ namespace Miku.ShaderConverter.Editor
         static Dictionary<string, Texture2D> ImportResources(
             string transactionRoot,
             JArray resources,
+            string workflowKind,
             MaterialIdentityLocation location,
             string materialRoot,
             string sourceId,
@@ -1585,7 +1624,7 @@ namespace Miku.ShaderConverter.Editor
                     !existedBeforeTransaction);
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
                 AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
-                ConfigureTexture(assetPath, resource);
+                ConfigureTexture(assetPath, resource, workflowKind);
                 var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
                 if (texture == null || texture.width != width || texture.height != height)
                     throw new InvalidDataException("MIKU_TEXTURE_IMPORT_FAILED:" + semantic);
@@ -2176,7 +2215,10 @@ namespace Miku.ShaderConverter.Editor
             return (int)total;
         }
 
-        static void ConfigureTexture(string assetPath, JObject resource)
+        static void ConfigureTexture(
+            string assetPath,
+            JObject resource,
+            string workflowKind)
         {
             var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter
                 ?? throw new InvalidDataException("MIKU_TEXTURE_IMPORTER_MISSING:" + assetPath);
@@ -2188,6 +2230,49 @@ namespace Miku.ShaderConverter.Editor
                     resource["usage"]?.Value<string>(),
                     "Normal",
                     StringComparison.Ordinal);
+            var wuwaPackedNormal = string.Equals(
+                    workflowKind,
+                    "wuwa_toon",
+                    StringComparison.Ordinal) &&
+                (resource["materialBindings"] as JArray)?
+                    .OfType<JObject>()
+                    .Any(item => string.Equals(
+                        item["role"]?.Value<string>(),
+                        "WuwaPackedNormalRoughnessMetallic",
+                        StringComparison.Ordinal)) == true;
+            if (wuwaPackedNormal)
+            {
+                if (!linear)
+                    throw new InvalidDataException(
+                        "MIKU_WUWA_PACKED_NORMAL_REQUIRES_LINEAR");
+                normalUsage = false;
+            }
+            var genshinProfile = string.Equals(
+                    workflowKind,
+                    "genshin_toon",
+                    StringComparison.Ordinal)
+                ? GenshinImportProfile(resource)
+                : "";
+            if (!string.IsNullOrEmpty(genshinProfile))
+            {
+                var expectedLinear = genshinProfile.StartsWith(
+                    "Linear",
+                    StringComparison.Ordinal) ||
+                    string.Equals(
+                        genshinProfile,
+                        "Normal",
+                        StringComparison.Ordinal);
+                if (linear != expectedLinear)
+                    throw new InvalidDataException(
+                        "MIKU_GENSHIN_TEXTURE_COLOR_SPACE_MISMATCH:" +
+                        (resource["bindingKey"]?.Value<string>() ?? semantic) +
+                        ":" + (expectedLinear ? "Linear" : "sRGB") +
+                        ":" + (linear ? "Linear" : "sRGB"));
+                normalUsage = string.Equals(
+                    genshinProfile,
+                    "Normal",
+                    StringComparison.Ordinal);
+            }
             importer.textureType = normalUsage
                 ? TextureImporterType.NormalMap
                 : TextureImporterType.Default;
@@ -2201,7 +2286,9 @@ namespace Miku.ShaderConverter.Editor
                     StringComparison.Ordinal);
             importer.maxTextureSize = MaxTextureDimension;
             importer.npotScale = TextureImporterNPOTScale.None;
-            importer.mipmapEnabled = true;
+            importer.mipmapEnabled =
+                !string.Equals(genshinProfile, "ColorClampNoMips", StringComparison.Ordinal) &&
+                !string.Equals(genshinProfile, "LinearRepeatNoMips", StringComparison.Ordinal);
             importer.filterMode = string.Equals(
                 resource["interpolation"]?.Value<string>(),
                 "CLOSEST",
@@ -2209,19 +2296,58 @@ namespace Miku.ShaderConverter.Editor
                 ? FilterMode.Point
                 : FilterMode.Bilinear;
             importer.wrapMode = string.Equals(
-                resource["extension"]?.Value<string>(),
-                "EXTEND",
-                StringComparison.Ordinal)
+                genshinProfile,
+                "ColorClampNoMips",
+                StringComparison.Ordinal) || string.IsNullOrEmpty(genshinProfile) && string.Equals(
+                resource["extension"]?.Value<string>(), "EXTEND", StringComparison.Ordinal)
                 ? TextureWrapMode.Clamp
                 : TextureWrapMode.Repeat;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
             importer.crunchedCompression = false;
             importer.alphaSource = TextureImporterAlphaSource.FromInput;
-            importer.alphaIsTransparency = semantic == "BaseColor";
+            importer.alphaIsTransparency = string.Equals(
+                    workflowKind,
+                    "genshin_toon",
+                    StringComparison.Ordinal)
+                ? false
+                : semantic == "BaseColor";
             var standalone = importer.GetPlatformTextureSettings("Standalone");
             standalone.overridden = false;
             importer.SetPlatformTextureSettings(standalone);
             importer.SaveAndReimport();
+        }
+
+        static string GenshinImportProfile(JObject resource)
+        {
+            var roles = (resource["materialBindings"] as JArray ?? new JArray())
+                .OfType<JObject>()
+                .Select(item => item["role"]?.Value<string>() ?? "")
+                .Where(item => !string.IsNullOrEmpty(item))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(item => item, StringComparer.Ordinal)
+                .ToArray();
+            var profiles = roles.Select(role => role switch
+                {
+                    "BaseMap" => "ColorRepeat",
+                    "EmissionMap" => "ColorRepeat",
+                    "HairSpecMap" => "ColorRepeat",
+                    "LightMap" => "LinearRepeat",
+                    "MetalMap" => "LinearRepeat",
+                    "NormalMap" => "Normal",
+                    "ShadowRampMap" => "ColorClampNoMips",
+                    "HairRampMap" => "ColorClampNoMips",
+                    "FaceSDF" => "LinearRepeatNoMips",
+                    _ => "",
+                })
+                .Where(item => !string.IsNullOrEmpty(item))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            if (profiles.Length > 1)
+                throw new InvalidDataException(
+                    "MIKU_GENSHIN_TEXTURE_IMPORT_POLICY_CONFLICT:" +
+                    (resource["bindingKey"]?.Value<string>() ??
+                     resource["semantic"]?.Value<string>() ?? "unknown"));
+            return profiles.SingleOrDefault() ?? "";
         }
 
         static Material CreateOrUpdateMaterial(

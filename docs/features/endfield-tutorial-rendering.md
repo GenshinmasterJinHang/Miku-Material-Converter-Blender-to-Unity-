@@ -1,5 +1,10 @@
 # Endfield tutorial rendering in Miku 2.3.0
 
+> **3.0 supersession (2026-08-13):** the validation-only hair-shadow menu and
+> its dedicated diagnostic test recorded below were later removed from the
+> distributable package. The executed results remain historical evidence;
+> current validation uses the maintained EditMode suite and external fixtures.
+
 Miku 2.3.0 adds an opt-in Endfield character-lighting path, a project-owned
 full-screen LUT installation workflow, and a shared outline implementation for
 the four Game Toon families. The package contains no game model, material,
@@ -73,34 +78,77 @@ New material properties are additive: `_NoFPowStrength`,
 `_FaceRoughness`/`_FaceReflectivity`. Skin/Face `_NoFStrength` default is
 zero. Legacy materials keep their 2.2.x behavior.
 
-## Full-screen game LUT
+## Volume grading and optional screen LUT
 
-Open **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer**. Select
-the project's Universal Renderer Data and a project-owned 1024 by 32 Texture2D
-that represents a flattened 32 by 32 by 32 LUT. Preview before applying.
+Open **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer**. The
+default Volume-only mode needs no LUT or Renderer Data and creates a
+project-owned profile containing Color Adjustments (Exposure `+0.35`, Contrast
+`+16`, Saturation `+8`), identity Color Curves, Neutral Tonemapping, Bloom
+(`0.85 / 0.20 / 0.65 / clamp 4 / high-quality filtering`), and Vignette
+(`0.04`). If Renderer Data is selected, Volume-only mode also removes the old
+Miku Endfield screen-LUT feature while preserving unrelated features.
 
-The installer requires and configures:
+The cloth and female-skin 1024 by 32 LUT textures distributed with extracted
+character resources are material dark-color maps. Body/cloth samples the cloth
+LUT, while Face/Skin sample the female-skin LUT. They must not be installed as
+screen grading. The installer rejects a screen-LUT candidate when its name,
+an Endfield material `_ColorLutTex` reference, or a recipe `ColorLut` binding
+identifies material use.
 
-- Default Texture type, sRGB sampling, Bilinear filtering, Clamp on every axis;
-- no mipmaps, uncompressed import, and no incompatible Standalone override;
-- one active URP `FullScreenPassRendererFeature` at
-  `BeforeRenderingPostProcessing`, with color fetch enabled and no depth,
-  normal, or motion requirement; and
-- a project-owned profile containing only Neutral Tonemapping, Bloom
-  (`0.85 / 0.20 / 0.65 / clamp 4 / high-quality filtering`) and Vignette
-  (`0.04`).
+Advanced mode retains the explicit screen-LUT API for a genuine project-owned
+flattened 32 by 32 by 32 grading LUT. It configures Default Texture type, sRGB,
+Bilinear, Clamp, no mipmaps, no compression, and no incompatible Standalone
+override, then installs one pre-post-process full-screen renderer feature.
 
-Installation is idempotent and Undo-aware. A failed install restores importer
-state and removes assets/features created by that attempt. It does not add a
-URP `ColorLookup` Volume override. The shader grades normalized sRGB LUT
+Installation is idempotent and Undo-aware, including LUT importer settings. A
+failed install atomically restores the pre-existing Renderer Data, importer,
+material, and profile bytes and removes assets/features created by that
+attempt. It does not add a URP `ColorLookup` Volume override. The shader grades normalized sRGB LUT
 coordinates while restoring the original linear HDR peak, preserves alpha,
 and uses an exact color bypass when intensity is zero so Bloom still receives
 HDR highlights.
+
+Before writing, the installer rejects null, foreign, duplicate, or stale
+Renderer Feature/local-ID mappings. After target-only saves it force-reimports
+the Renderer Data and reports success only when exactly one active LUT Feature
+persists with the required pre-post-process configuration and pass material.
 
 The generated profile is not assigned to a scene automatically. Assign it to
 the intended global Volume explicitly, keep the target camera's HDR and post
 processing enabled, and select the project's desired antialiasing mode. The
 validated Endfield setup uses SMAA High and 1x MSAA.
+
+## Eye highlights and shadow/outline isolation
+
+Endfield eyes have two independent layers. The dynamic cornea reflection uses
+the authored MatCap; iris materials without one report
+`MIKU_ENDFIELD_EYE_MATCAP_REQUIRED`. `_MatCapUvScale` changes only MatCap UV
+displacement and defaults to `1`, preserving earlier materials. The fixed PMX
+`目HL` geometry samples the iris texture with opaque coverage, texture RGB,
+Cull Off, and Legacy Unlit; `face_01_hl_M` remains the Face shader's local
+highlight mask and is not the EyeHL texture.
+
+The ShadowCaster uses URP world-space normal bias and clamping for directional
+and punctual lights. The camera DepthOnly pass remains unbiased. The Outline
+pass is routed exclusively through `MikuToonOutline`, so toggling outline state
+does not alter shadow-map casting.
+
+Endfield Body, Skin, Face, and Hair expose `_UseOutline`, which defaults to
+enabled for compatibility. Use the public
+`MikuEndfieldMaterialState.SetOutlineEnabled(material, enabled)` API instead of
+using width or a texture-presence toggle as a material-level switch. The API
+synchronizes `_UseOutline` with the ShaderLab pass named `Outline`; the pass
+name is intentionally distinct from its `MikuToonOutline` LightMode tag.
+Legacy materials that already serialized a disabled `Outline` pass retain that
+state on first synchronization.
+
+All shared GameToon outlines now carry finite effective coverage from vertex to
+fragment. A disabled Endfield outline, non-finite or effectively zero width,
+zero vertex-width mask, or zero authored texture mask discards the fragment
+instead of drawing the inverted shell at the original surface. Dynamic width
+and local masks never persistently disable the whole pass, so animated values
+can recover without stale material state. No outline keyword or interchange
+schema field is introduced.
 
 ## Outline TangentSpaceV2
 

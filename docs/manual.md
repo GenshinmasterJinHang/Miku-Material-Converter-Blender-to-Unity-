@@ -1,4 +1,4 @@
-# Miku 2.3.0 Manual
+# Miku 3.0.0 Manual
 
 Miku is a production-oriented Blender 5.x to Unity 6 material converter. The
 public Blender front end exports Standard PBR semantics into target-neutral
@@ -18,10 +18,10 @@ project overview.
 | Component | Version | Status |
 | --- | --- | --- |
 | Blender | 5.0-5.2 (certified: 5.2.0) | Supported on Windows |
-| Unity Editor | 6000.0-6000.5 (certified: 6000.5.7f1) | Matching technical-line adapter |
-| Universal Render Pipeline | 17.5.4 | Required |
-| Shader Graph | 17.5.4 | Version-specific backend |
-| Miku | 2.3.0 | Experimental |
+| Unity Editor | 6000.0-6000.5 (validated: 6000.4.5f1) | Matching technical-line adapter |
+| Universal Render Pipeline | 17.4.0 validated; matching 17.0-17.5 admitted | Required |
+| Shader Graph | 17.4.0 validated; matching 17.0-17.5 admitted | Version-specific backend |
+| Miku | 3.0.0 | Experimental |
 
 Unity 6000.N requires URP 17.N and Shader Graph 17.N, where N is 0 through 5;
 URP and Shader Graph must have exactly the same package version. Stable `f`/`p`
@@ -33,11 +33,14 @@ writes. This release is formally validated on Windows only.
 ## 2. Install from a Release
 
 Download these files from the
-[v2.3.0 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v2.3.0):
+[v3.0.0 GitHub Release](https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v3.0.0):
 
-- `miku_shader_converter-2.3.0.zip` — Blender 5.0-5.2 extension.
-- `com.miku.shaderconverter-2.3.0.tgz` — single Unity 6000.0-6000.5 package.
+- `miku_shader_converter-3.0.0.zip` — Blender 5.0-5.2 extension.
+- `com.miku.shaderconverter-3.0.0.tgz` — single Unity 6000.0-6000.5 package.
 - `SHA256SUMS.txt` — release integrity manifest.
+
+Before installing, run `Get-FileHash -Algorithm SHA256` on the ZIP and TGZ and
+compare both values with `SHA256SUMS.txt`.
 
 In Blender, choose **Edit > Preferences > Extensions > Install from Disk** and
 select the ZIP. In Unity, choose **Window > Package Manager > + > Add package
@@ -105,7 +108,7 @@ Ownership is explicit:
   regeneration.
 
 MaterialIR 2.0, Bundle 1.0, conversion-plan, bake-result, and public Shader
-property/reference names remain stable in 2.3.0. Historical bundles, including
+property/reference names remain stable in 3.0.0. Historical bundles, including
 older runtime-time contracts, remain readable even though the current Blender
 front end creates no new time-dependent bundle.
 
@@ -126,30 +129,66 @@ These 22 valid material parts are **Experimental** compatibility presets. They
 do not promise pixel-exact parity with any game and do not include game models,
 textures, logos, extracted Shader source, or other game assets.
 
-The Genshin preset supports the published Genshin tutorial's `diffuse.a`
-cutout/emission modes, UV1 double-sided back faces, vertex-color A outline
-width, and lightmap.a region outline colors. These controls are opt-in
-material properties (`_DiffuseA`, `_DoubleSided`, `_BackUV1`,
-`_OutlineColorMode`, and friends); defaults preserve the legacy Miku look.
-Body and Hair also accept an optional `_NormalMap`/`_BumpScale` pair (the
-`NormalMap` texture role); when `_AREA_SKIN` is on, the legacy skin-tone
-curve is limited to LightMap-masked skin regions so cloth and capes keep
-their authored color.
+Miku 3.0.0 ships the independently implemented tutorial equations first
+developed for the unpublished 2.4.0 candidate as the default Genshin core:
+LightMap G AO, half-Lambert/ramp day-night sampling, LightMap
+A material rows, tutorial Blinn-Phong, view-normal MatCap metal, and optional
+Fresnel. Body and Hair use the imported Mikk tangent for optional `_NormalMap`
+shading; UV7 TangentSpaceV2 remains outline-only. `_DiffuseA` is the stable
+serialized alpha-mode field (`0` None, `1` Cutout, `2` Diffuse Alpha
+Emission), and every color/depth/shadow/mask pass uses the same cutout rule.
+The public `MikuGameToonGeometryRendererFeature` separately draws
+`MikuGenshinBackface` then `MikuToonOutline`; `_UseUv1Backface` is opt-in per
+material. See [the Genshin workflow guide](features/genshin-tutorial-rendering.md).
+
+The HSR Body and Hair presets interpret LightMap green with the tutorial's
+literal Shadow AO formula: `HL = 0.5 * NdotL + 0.5`, `shadowAO = 2 * G`, and
+`signal = saturate(dot(HL.xx, shadowAO.xx))`, which is
+`saturate(4 * HL * G)`. Their ramp U is fixed to
+`0.85 * signal + 0.15`. LightMap blue is inverted into a smooth threshold for
+one shared Blinn-Phong Toon-specular mask; metal and non-metal responses then
+apply their own color and strength. Legacy threshold-center,
+threshold-softness, and ramp-offset properties remain readable from old
+materials but no longer drive these corrected equations.
+
+HSR Face does not require a LightMap. It provides a parameterized,
+skin-gated Blinn-Phong Toon highlight from existing inputs. FaceMap blue keeps
+its nose-line meaning and is combined with surface `NdotV`, adjustable power,
+strength, and color controls so an authored line can remain view-dependent
+without becoming imperceptible. These are shader-level behavior/property
+changes only: no MaterialIR, Bundle, schema, or texture-role contract changes.
+
+The recommended HSR Face profile starts with `_FaceSpecularStrength = 0.12`,
+`_FaceSpecularExponent = 32`, `_NoseLinePower = 3`, and
+`_NoseLineStrength = 8`. Set **Face Debug** to `6` to preview only the computed
+nose-line mask. If the mask is present but the final line is still subtle,
+increase `_NoseLineStrength` or darken `_NoseLineColor`; if the mask disappears
+too quickly as the view changes, reduce `_NoseLinePower`.
 
 ### Documentation render gallery
 
-| Genshin — Hu Tao | Honkai: Star Rail — Bronya |
-| --- | --- |
-| ![Genshin preset render featuring Hu Tao](images/preset-genshin-hu-tao.png) | ![HSR preset render featuring Bronya](images/preset-hsr-bronya.png) |
-| Wuthering Waves — Phoebe | Arknights: Endfield — 洁尔佩塔 |
-| ![Wuwa preset render featuring Phoebe](images/preset-wuwa-phoebe.png) | ![Endfield preset render featuring 洁尔佩塔](images/preset-endfield-jierpeta.png) |
+<table>
+  <tr><th>Genshin — Hu Tao</th><th>Genshin — Furina</th></tr>
+  <tr>
+    <td><img src="images/preset-genshin-hu-tao.png" alt="Genshin preset render featuring Hu Tao"></td>
+    <td><img src="images/preset-genshin-furina.png" alt="Genshin preset render featuring Furina"></td>
+  </tr>
+  <tr><th>Honkai: Star Rail — Bronya</th><th>Wuthering Waves — Phoebe</th></tr>
+  <tr>
+    <td><img src="images/preset-hsr-bronya.png" alt="HSR preset render featuring Bronya"></td>
+    <td><img src="images/preset-wuwa-phoebe.png" alt="Wuwa preset render featuring Phoebe"></td>
+  </tr>
+  <tr><th colspan="2">Arknights: Endfield — 洁尔佩塔</th></tr>
+  <tr><td colspan="2" align="center"><img src="images/preset-endfield-jierpeta.png" alt="Endfield preset render featuring 洁尔佩塔"></td></tr>
+</table>
 
-> **Non-commercial image notice:** The four character renders above are
+> **Non-commercial image notice:** The five character renders above are
 > provided solely for non-commercial learning and documentation reference.
 > Commercial use is prohibited. All related characters, designs, and
 > intellectual property belong to their respective rights holders; Miku grants
-> no rights to game assets. These images are not part of the Blender or Unity
-> installable packages or the 2.3.0 release candidates.
+> no rights to game assets. These PNGs are tracked with the source
+> documentation and therefore appear in GitHub's automatic source archives,
+> but they are excluded from Miku's MIT license and from the installable ZIP/TGZ.
 
 ## 6. Unity Game Toon material creator
 
@@ -233,14 +272,15 @@ Texture/Mesh importer, and all Renderer references remain untouched, including
 for a non-CPU-readable imported Mesh. See the
 [migration note](migrations/outline-tangent-space-v2.md).
 
-### 7.5 Screen Rim Installer
+### 7.5 Game Toon Renderer Feature Installer
 
-Open **Miku > Game Toon > Rendering > Screen Rim Installer** and select exactly
-one Universal Renderer Data asset. **Preview** is read-only. **Apply** adds one
-`MikuToonScreenRimRendererFeature` only to that asset and supports Undo. Applying
-again is a no-op; if Preview reports multiple existing Miku features, remove
-unwanted duplicates manually. Ensure a URP asset is active before opening the
-tool.
+Open **Miku > Game Toon > Rendering > Game Toon Renderer Feature Installer**.
+Preview reports Geometry and Screen Rim state. Apply enumerates every active
+Universal Renderer Data asset, deduplicates it, and installs one
+`MikuGameToonGeometryRendererFeature` plus one
+`MikuToonScreenRimRendererFeature` as a single idempotent Undo transaction.
+Duplicate or invalid feature state fails before success is reported.
+The former **Screen Rim Installer** alias is no longer registered.
 
 ### 7.6 Rebuild Anime Global Volume Profile
 
@@ -254,15 +294,23 @@ selects it. It is destructive to edits made directly to that package asset and
 has no preview. Keep custom grades in a separate user-owned Volume Profile; if
 an immutable installed package rejects the rebuild, reinstall the package.
 
-### 7.7 Endfield LUT and tutorial lighting
+### 7.7 Endfield Volume grading, optional LUT, and tutorial lighting
 
-Open **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer** to
-install one project-owned flattened 32-cube LUT before URP post processing and
-create the strict Neutral/Bloom/Vignette profile. The tool validates and
-configures the LUT importer, supports Preview and Undo, updates an existing
-Miku feature without duplication, and rolls back a failed attempt. It does not
-use the URP ColorLookup Volume component and does not assign the generated
-profile to a scene automatically.
+Open **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer**. The
+default Volume-only path creates Color Adjustments (`+0.35` Exposure, `+16`
+Contrast, `+8` Saturation), identity Color Curves, Neutral Tonemapping, Bloom,
+and Vignette. It needs no LUT. With Renderer Data selected it removes an old
+Miku Endfield screen-LUT feature without touching unrelated features.
+
+The extracted cloth and female-skin LUTs are material dark-color maps, not
+screen grades. The advanced explicit screen-LUT path remains available for a
+genuine project-owned flattened 32-cube, but rejects material LUT evidence
+before writing. Both paths support Undo and rollback and do not assign the
+generated profile to a scene automatically.
+
+The installer fails closed on corrupt or duplicate Renderer Feature/local-ID state and only
+reports success after a forced reimport proves the Feature reference,
+configuration, and pass material persisted.
 
 Add exactly one `MikuEndfieldLightingController` to a scene to enable the 2.3.0
 Endfield tutorial contribution. Without it, old lit materials retain legacy
@@ -371,7 +419,7 @@ the [release process](release/process.md) before distributing a build.
 ## 11. License and documentation assets
 
 The repository's MIT-licensed code retains the MIT License; files with separate
-SPDX terms, including the Blender Bake Worker, retain those terms. The four
+SPDX terms, including the Blender Bake Worker, retain those terms. The five
 character renders in section 5 are separately restricted to non-commercial
 learning and documentation reference; commercial use is prohibited. Their
 hashes and scope

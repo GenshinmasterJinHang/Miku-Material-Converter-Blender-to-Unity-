@@ -18,7 +18,9 @@ namespace Miku.ShaderConverter.Editor
                     "EmissionMap", "HairRampMap", "HairSpecMap", "FaceSDF",
                     "NormalMap"),
                 ["wuwa_toon"] = Set(
-                    "BaseMap", "NormalMap", "IDMap", "MatCap", "EmissionMap",
+                    "BaseMap", "NormalMap",
+                    "WuwaPackedNormalRoughnessMetallic", "IDMap", "MatCap",
+                    "OutlineColorMap", "EmissionMap",
                     "HairHM", "FaceSDF", "FaceID", "FaceHET", "SkinRamp",
                     "EyeHET", "EyeHDMF", "EyeUpperHighlight",
                     "EyeLowerHighlight", "EyeEG", "StockingsMap"),
@@ -195,8 +197,10 @@ namespace Miku.ShaderConverter.Editor
                 "HairRampMap" => "_HairRampMap",
                 "HairSpecMap" => "_HairSpecMap",
                 "NormalMap" => "_NormalMap",
+                "WuwaPackedNormalRoughnessMetallic" => "_NormalMap",
                 "IDMap" => "_IDMap",
                 "MatCap" => "_MatCap",
+                "OutlineColorMap" => "_OutlineColorMap",
                 "FaceID" => "_FaceID",
                 "FaceHET" => "_FaceHET",
                 "SkinRamp" => "_SkinRamp",
@@ -228,10 +232,15 @@ namespace Miku.ShaderConverter.Editor
                 .Where(item => item != null)
                 .OrderBy(item => item.role ?? "", StringComparer.Ordinal)
                 .ToArray();
+            ValidateGenshinRequiredBindings(
+                material.shader,
+                workflow,
+                orderedBindings);
             ValidateEndfieldShadowBindings(
                 material.shader,
                 workflow,
                 orderedBindings);
+            ValidateWuwaNormalBindings(workflow, orderedBindings);
             ResetEyeUvTransforms(material, workflow);
             var stockingsBindingSupplied = false;
             var shaderName = material.shader != null
@@ -265,6 +274,23 @@ namespace Miku.ShaderConverter.Editor
                 if (!string.IsNullOrEmpty(property) && material.HasProperty(property))
                 {
                     material.SetTexture(property, binding.texture);
+                    if (string.Equals(
+                            workflow,
+                            "wuwa_toon",
+                            StringComparison.Ordinal) &&
+                        material.HasProperty("_NormalMapEncoding"))
+                    {
+                        if (string.Equals(
+                                role,
+                                "WuwaPackedNormalRoughnessMetallic",
+                                StringComparison.Ordinal))
+                            material.SetFloat("_NormalMapEncoding", 1f);
+                        else if (string.Equals(
+                                     role,
+                                     "NormalMap",
+                                     StringComparison.Ordinal))
+                            material.SetFloat("_NormalMapEncoding", 0f);
+                    }
                     ApplyEyeUvTransform(material, workflow, role, binding.uvTransform);
                 }
             }
@@ -286,7 +312,65 @@ namespace Miku.ShaderConverter.Editor
                 .Where(item => item != null)
                 .OrderBy(item => item.role ?? "", StringComparer.Ordinal)
                 .ToArray();
+            ValidateGenshinRequiredBindings(shader, workflow, orderedBindings);
             ValidateEndfieldShadowBindings(shader, workflow, orderedBindings);
+            ValidateWuwaNormalBindings(workflow, orderedBindings);
+        }
+
+        static void ValidateWuwaNormalBindings(
+            string workflow,
+            IReadOnlyList<MikuToonTextureBinding> bindings)
+        {
+            if (!string.Equals(
+                    workflow,
+                    "wuwa_toon",
+                    StringComparison.Ordinal))
+                return;
+            var count = bindings.Count(item =>
+                item.texture != null &&
+                (string.Equals(
+                     item.role,
+                     "NormalMap",
+                     StringComparison.Ordinal) ||
+                 string.Equals(
+                     item.role,
+                     "WuwaPackedNormalRoughnessMetallic",
+                     StringComparison.Ordinal)));
+            if (count > 1)
+                throw new InvalidOperationException(
+                    "MIKU_WUWA_NORMAL_ENCODING_CONFLICT");
+        }
+
+        static void ValidateGenshinRequiredBindings(
+            Shader shader,
+            string workflow,
+            IReadOnlyList<MikuToonTextureBinding> bindings)
+        {
+            if (!string.Equals(
+                    workflow,
+                    "genshin_toon",
+                    StringComparison.Ordinal))
+                return;
+            var part = (shader?.name ?? "").Split('/').LastOrDefault() ?? "";
+            var required = part switch
+            {
+                "Body" => new[] { "BaseMap", "LightMap", "ShadowRampMap" },
+                "Hair" => new[] { "BaseMap", "LightMap", "HairRampMap" },
+                "Face" => new[] { "BaseMap", "FaceSDF", "ShadowRampMap" },
+                "Eye" => new[] { "BaseMap" },
+                _ => throw new InvalidOperationException(
+                    "MIKU_GENSHIN_SHADER_PART_INVALID:" + part),
+            };
+            foreach (var role in required)
+            {
+                if (bindings.Any(item =>
+                        item.texture != null &&
+                        string.Equals(item.role, role, StringComparison.Ordinal)))
+                    continue;
+                throw new InvalidOperationException(
+                    "MIKU_GENSHIN_REQUIRED_TEXTURE_MISSING:" +
+                    part + ":" + role);
+            }
         }
 
         static void ValidateEndfieldShadowBindings(

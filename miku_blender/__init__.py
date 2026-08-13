@@ -48,7 +48,10 @@ try:
         FIXED_TEXTURE_ROLES,
         FIXED_WORKFLOWS,
         allowed_texture_role,
+        genshin_required_texture_roles,
         infer_filename_texture_role,
+        infer_wuwa_filename_texture_role,
+        normalize_genshin_filename_role,
         normalize_texture_role,
         texture_role_color_space,
     )
@@ -83,7 +86,10 @@ except (ImportError, ValueError):
         FIXED_TEXTURE_ROLES,
         FIXED_WORKFLOWS,
         allowed_texture_role,
+        genshin_required_texture_roles,
         infer_filename_texture_role,
+        infer_wuwa_filename_texture_role,
+        normalize_genshin_filename_role,
         normalize_texture_role,
         texture_role_color_space,
     )
@@ -107,7 +113,7 @@ except (ImportError, ValueError):
 bl_info = {
     "name": "Miku Semantic Material Converter",
     "author": "Miku contributors",
-    "version": (2, 2, 11),
+    "version": (2, 4, 0),
     "blender": (5, 0, 0),
     "location": "Shader Editor > Sidebar > Miku",
     "description": "Export Blender materials as target-neutral semantic regions and deterministic Unity bundles.",
@@ -2717,7 +2723,13 @@ def _fixed_node_role_candidate(
             _infer_wuwa_eye_filename_texture_role(value)
             if workflow_kind == "wuwa_toon" and workflow_part == "Eye"
             else ""
+        ) or (
+            infer_wuwa_filename_texture_role(value, workflow_part)
+            if workflow_kind == "wuwa_toon"
+            else ""
         ) or infer_filename_texture_role(value)
+        if workflow_kind == "genshin_toon":
+            role = normalize_genshin_filename_role(workflow_part, role)
         if role in {
             "EyeHET",
             "EyeHDMF",
@@ -3347,6 +3359,7 @@ def _collect_fixed_workflow_image_resources(
                         "message": reason,
                     }
                 )
+
                 continue
             binding_transforms[(resource_id, role)] = transform
         bindings[resource_id].add(role)
@@ -3375,6 +3388,32 @@ def _collect_fixed_workflow_image_resources(
                     }
                 )
 
+    if workflow_kind == "genshin_toon":
+        bound_roles = {
+            role
+            for resource_roles in bindings.values()
+            for role in resource_roles
+        }
+        for required_role in sorted(
+            genshin_required_texture_roles(workflow_part) - bound_roles
+        ):
+            diagnostics.append(
+                {
+                    "severity": "error",
+                    "code": (
+                        "MIKU_GENSHIN_REQUIRED_TEXTURE_MISSING:"
+                        f"{workflow_part}:{required_role}"
+                    ),
+                    "translationQuality": "Unsupported",
+                    "part": workflow_part,
+                    "role": required_role,
+                    "message": (
+                        f"Genshin {workflow_part} requires a "
+                        f"{required_role} texture."
+                    ),
+                }
+            )
+
     format_contracts = {
         "PNG": (".png", "image/png", 1),
         "JPEG": (".jpg", "image/jpeg", 1),
@@ -3392,7 +3431,11 @@ def _collect_fixed_workflow_image_resources(
             texture_role_color_space([role]) for role in roles
         }
         if len(color_spaces) > 1 or (
-            "NormalMap" in roles and len(roles) > 1
+            (
+                "NormalMap" in roles
+                or "WuwaPackedNormalRoughnessMetallic" in roles
+            )
+            and len(roles) > 1
         ):
             diagnostics.append(
                 {
@@ -3468,7 +3511,11 @@ def _collect_fixed_workflow_image_resources(
                 "usage": "Normal" if roles == ["NormalMap"] else (
                     "Scalar" if color_space == "Linear" else "Color"
                 ),
-                "channel": "RGB",
+                "channel": (
+                    "RGBA"
+                    if roles == ["WuwaPackedNormalRoughnessMetallic"]
+                    else "RGB"
+                ),
                 "colorSpace": color_space,
                 "width": int(size[0]) if len(size) > 0 else 0,
                 "height": int(size[1]) if len(size) > 1 else 0,
@@ -3477,7 +3524,11 @@ def _collect_fixed_workflow_image_resources(
                 "uvSet": "UV0",
                 "projection": "FLAT",
                 "interpolation": "LINEAR",
-                "extension": "REPEAT",
+                "extension": (
+                    "EXTEND"
+                    if set(roles) & {"ShadowRampMap", "HairRampMap"}
+                    else "REPEAT"
+                ),
                 **(
                     {"normalConvention": "TangentOpenGLPositiveY"}
                     if roles == ["NormalMap"]

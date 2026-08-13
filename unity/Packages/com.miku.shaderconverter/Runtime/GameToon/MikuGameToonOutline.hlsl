@@ -8,26 +8,36 @@
 #define MIKU_GAME_TOON_OUTLINE_V2_MARKER_TOLERANCE 1e-3
 #define MIKU_GAME_TOON_OUTLINE_MIN_DISTANCE_MULTIPLIER 0.25
 #define MIKU_GAME_TOON_OUTLINE_MAX_DISTANCE_MULTIPLIER 4.0
+#define MIKU_GAME_TOON_OUTLINE_FLOAT_EXPONENT_MASK 0x7f800000u
 
 bool MikuGameToonOutlineFinite1(float value)
 {
-    return value == value && abs(value) < 1e19;
+    return (asuint(value) & MIKU_GAME_TOON_OUTLINE_FLOAT_EXPONENT_MASK) !=
+        MIKU_GAME_TOON_OUTLINE_FLOAT_EXPONENT_MASK &&
+        abs(value) < 1e19;
 }
 
 bool MikuGameToonOutlineFinite2(float2 value)
 {
-    return all(value == value) && all(abs(value) < 1e19);
+    return all(
+        (asuint(value) & MIKU_GAME_TOON_OUTLINE_FLOAT_EXPONENT_MASK) !=
+        MIKU_GAME_TOON_OUTLINE_FLOAT_EXPONENT_MASK) &&
+        all(abs(value) < 1e19);
 }
 
 bool MikuGameToonOutlineFinite3(float3 value)
 {
-    return all(value == value) &&
+    return all(
+        (asuint(value) & MIKU_GAME_TOON_OUTLINE_FLOAT_EXPONENT_MASK) !=
+        MIKU_GAME_TOON_OUTLINE_FLOAT_EXPONENT_MASK) &&
         all(abs(value) < 1e19);
 }
 
 bool MikuGameToonOutlineFinite4(float4 value)
 {
-    return all(value == value) &&
+    return all(
+        (asuint(value) & MIKU_GAME_TOON_OUTLINE_FLOAT_EXPONENT_MASK) !=
+        MIKU_GAME_TOON_OUTLINE_FLOAT_EXPONENT_MASK) &&
         all(abs(value) < 1e19);
 }
 
@@ -151,6 +161,35 @@ float MikuGameToonOutlineVertexMask(float4 vertexColor)
     return saturate(vertexColor.g);
 }
 
+float MikuGameToonOutlineCoverageWithDistanceMultiplier(
+    float outlineEnabled,
+    float outlineWidth,
+    float distanceMultiplier,
+    float vertexMask,
+    float additionalWidthMask)
+{
+    if (!MikuGameToonOutlineFinite1(outlineEnabled) ||
+        !MikuGameToonOutlineFinite1(outlineWidth) ||
+        !MikuGameToonOutlineFinite1(distanceMultiplier) ||
+        !MikuGameToonOutlineFinite1(vertexMask) ||
+        !MikuGameToonOutlineFinite1(additionalWidthMask))
+        return 0.0;
+    float coverage = saturate(outlineEnabled) *
+        max(outlineWidth, 0.0) *
+        max(distanceMultiplier, 0.0) *
+        saturate(vertexMask) *
+        saturate(additionalWidthMask);
+    return MikuGameToonOutlineFinite1(coverage) ? coverage : 0.0;
+}
+
+void MikuGameToonOutlineClipCoverage(float coverage)
+{
+    clip(MikuGameToonOutlineFinite1(coverage) &&
+        coverage > MIKU_GAME_TOON_OUTLINE_EPSILON
+        ? 1.0
+        : -1.0);
+}
+
 float MikuGameToonOutlineDistanceMultiplier(
     float3 positionWS,
     float referenceDistance,
@@ -159,12 +198,13 @@ float MikuGameToonOutlineDistanceMultiplier(
 {
     if (!MikuGameToonOutlineFinite3(positionWS) ||
         !MikuGameToonOutlineFinite1(referenceDistance) ||
-        referenceDistance <= MIKU_GAME_TOON_OUTLINE_EPSILON ||
         !MikuGameToonOutlineFinite1(distanceScale))
+        return 0.0;
+    if (referenceDistance <= MIKU_GAME_TOON_OUTLINE_EPSILON)
         return 1.0;
     float cameraDistance = distance(_WorldSpaceCameraPos, positionWS);
     if (!MikuGameToonOutlineFinite1(cameraDistance))
-        return 1.0;
+        return 0.0;
     float legacyDistanceResponse = clamp(
         max(
             referenceDistance / max(cameraDistance, 1e-5),
@@ -196,15 +236,59 @@ float MikuGameToonOutlineScreenHeightWidth(
     float additionalWidthMask,
     float legacyConstantResponse)
 {
-    float width = max(outlineWidth, 0.0) *
+    return MikuGameToonOutlineCoverageWithDistanceMultiplier(
+        1.0,
+        outlineWidth,
         MikuGameToonOutlineDistanceMultiplier(
             positionWS,
             referenceDistance,
             distanceScale,
-            legacyConstantResponse) *
-        MikuGameToonOutlineVertexMask(vertexColor) *
-        saturate(additionalWidthMask);
-    return MikuGameToonOutlineFinite1(width) ? width : 0.0;
+            legacyConstantResponse),
+        MikuGameToonOutlineVertexMask(vertexColor),
+        additionalWidthMask);
+}
+
+float MikuGameToonOutlineCoverageWithLegacyMode(
+    float3 positionWS,
+    float outlineEnabled,
+    float outlineWidth,
+    float referenceDistance,
+    float distanceScale,
+    float4 vertexColor,
+    float additionalWidthMask,
+    float legacyConstantResponse)
+{
+    return MikuGameToonOutlineCoverageWithDistanceMultiplier(
+        outlineEnabled,
+        outlineWidth,
+        MikuGameToonOutlineDistanceMultiplier(
+            positionWS,
+            referenceDistance,
+            distanceScale,
+            legacyConstantResponse),
+        MikuGameToonOutlineVertexMask(vertexColor),
+        additionalWidthMask);
+}
+
+float MikuGameToonOutlineCoverageWithVertexMask(
+    float3 positionWS,
+    float outlineEnabled,
+    float outlineWidth,
+    float referenceDistance,
+    float distanceScale,
+    float vertexMask,
+    float additionalWidthMask)
+{
+    return MikuGameToonOutlineCoverageWithDistanceMultiplier(
+        outlineEnabled,
+        outlineWidth,
+        MikuGameToonOutlineDistanceMultiplier(
+            positionWS,
+            referenceDistance,
+            distanceScale,
+            0.0),
+        vertexMask,
+        additionalWidthMask);
 }
 
 float4 MikuGameToonOutlinePositionCSWithLegacyMode(
@@ -276,14 +360,12 @@ float4 MikuGameToonOutlinePositionCSWithDistanceMultiplier(
     float2 screenDirection = pixelDirection * float2(
         _ScreenParams.y / max(_ScreenParams.x, 1.0),
         1.0);
-    float safeMultiplier = MikuGameToonOutlineFinite1(distanceMultiplier)
-        ? max(distanceMultiplier, 0.0)
-        : 1.0;
-    float width = max(outlineWidth, 0.0) * safeMultiplier *
-        MikuGameToonOutlineVertexMask(vertexColor) *
-        saturate(additionalWidthMask);
-    if (!MikuGameToonOutlineFinite1(width))
-        width = 0.0;
+    float width = MikuGameToonOutlineCoverageWithDistanceMultiplier(
+        1.0,
+        outlineWidth,
+        distanceMultiplier,
+        MikuGameToonOutlineVertexMask(vertexColor),
+        additionalWidthMask);
     positionCS.xy += screenDirection *
         (2.0 * width * positionCS.w);
     return positionCS;
@@ -317,16 +399,14 @@ float4 MikuGameToonOutlinePositionCSWithVertexMask(
     float2 screenDirection = pixelDirection * float2(
         _ScreenParams.y / max(_ScreenParams.x, 1.0),
         1.0);
-    float width = max(outlineWidth, 0.0) *
-        MikuGameToonOutlineDistanceMultiplier(
-            positionWS,
-            referenceDistance,
-            distanceScale,
-            0.0) *
-        max(saturate(vertexMask), 0.0) *
-        saturate(additionalWidthMask);
-    if (!MikuGameToonOutlineFinite1(width))
-        width = 0.0;
+    float width = MikuGameToonOutlineCoverageWithVertexMask(
+        positionWS,
+        1.0,
+        outlineWidth,
+        referenceDistance,
+        distanceScale,
+        vertexMask,
+        additionalWidthMask);
     positionCS.xy += screenDirection *
         (2.0 * width * positionCS.w);
     return positionCS;

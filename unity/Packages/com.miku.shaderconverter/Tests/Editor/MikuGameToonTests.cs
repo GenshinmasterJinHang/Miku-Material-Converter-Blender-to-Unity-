@@ -258,7 +258,7 @@ namespace Miku.ShaderConverter.Tests.Editor
         {
             Assert.That(
                 MikuToonMaterialRecipe.CurrentShaderFamilyVersion,
-                Is.EqualTo("2.3.0"));
+                Is.EqualTo("2.4.0"));
             AssertMaterialProperties(
                 "MIKU/Endfield/Overlay",
                 "_AlphaSource",
@@ -858,18 +858,55 @@ namespace Miku.ShaderConverter.Tests.Editor
             Assert.That(shader, Is.Not.Null);
             Assert.That(typeof(MikuToonScreenRimRendererFeature).Namespace,
                 Is.EqualTo("Miku.ShaderConverter.Runtime.GameToon"));
+            Assert.That(typeof(MikuGameToonGeometryRendererFeature).Namespace,
+                Is.EqualTo("Miku.ShaderConverter.Runtime.GameToon"));
+        }
+
+        [Test]
+        public void VertexColorMappingCopiesAlphaToGreenWithoutTouchingSource()
+        {
+            var source = new Mesh();
+            source.vertices = new[] { Vector3.zero, Vector3.right, Vector3.up };
+            source.triangles = new[] { 0, 1, 2 };
+            source.colors32 = new[]
+            {
+                new Color32(12, 34, 56, 78),
+                new Color32(90, 91, 92, 93),
+                new Color32(1, 2, 3, 4),
+            };
+            var clone = UnityEngine.Object.Instantiate(source);
+            try
+            {
+                MikuToonMeshData.InitializeVertexColors(
+                    clone,
+                    MikuVertexColorChannelSource.One,
+                    MikuVertexColorChannelSource.Alpha,
+                    MikuVertexColorChannelSource.One,
+                    MikuVertexColorChannelSource.Zero);
+                Assert.That(clone.colors32[0],
+                    Is.EqualTo(new Color32(255, 78, 255, 0)));
+                Assert.That(source.colors32[0],
+                    Is.EqualTo(new Color32(12, 34, 56, 78)));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(clone);
+                UnityEngine.Object.DestroyImmediate(source);
+            }
         }
 
         [Test]
         public void GameMenusRemainAvailableAfterGenericRetirement()
         {
             var menu = new List<string>();
+            var allMenuItems = new List<string>();
             foreach (var item in TypeCache.GetMethodsWithAttribute<MenuItem>())
             {
                 foreach (var value in item.GetCustomAttributes(typeof(MenuItem), false))
                 {
                     var attribute = (MenuItem)value;
                     var path = attribute.menuItem;
+                    allMenuItems.Add(path);
                     if (path.StartsWith("Miku/Game Toon/", StringComparison.Ordinal))
                         menu.Add(path);
                 }
@@ -880,13 +917,22 @@ namespace Miku.ShaderConverter.Tests.Editor
                 "Miku/Game Toon/Mesh/Vertex Color Initializer"));
             Assert.That(menu, Does.Not.Contain(
                 "Miku/Game Toon/Mesh/Combined Mesh Data"));
-            Assert.That(menu, Does.Contain(
+            Assert.That(menu, Does.Not.Contain(
                 "Miku/Game Toon/Rendering/Screen Rim Installer"));
+            Assert.That(menu, Does.Contain(
+                "Miku/Game Toon/Rendering/Game Toon Renderer Feature Installer"));
+            Assert.That(menu.Count(path => path ==
+                "Miku/Game Toon/Rendering/Game Toon Renderer Feature Installer"),
+                Is.EqualTo(1));
             Assert.That(menu, Does.Contain(
                 "Miku/Game Toon/Materials/Create Material"));
             Assert.That(menu, Does.Not.Contain(
                 "Miku/Game Toon/Materials/Create Material Template"));
             Assert.That(menu, Has.None.Contains("Generic Toon"));
+            Assert.That(allMenuItems.Any(path => path.StartsWith(
+                "Miku/Game Toon/Validation/", StringComparison.Ordinal)), Is.False);
+            Assert.That(allMenuItems, Does.Not.Contain(
+                "Tools/Miku/Validate Selected Endfield Hair Shadow"));
         }
 
         static void AssertRoleMigration(

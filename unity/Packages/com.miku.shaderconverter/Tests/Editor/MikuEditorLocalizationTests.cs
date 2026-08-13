@@ -75,11 +75,20 @@ namespace Miku.ShaderConverter.Tests.Editor
         {
             MikuEditorLocalization.SetLanguage("zh_HANS");
             var text = MikuEditorLocalization.Format(
-                "Screen Rim Renderer Feature: {0}/{1} active Renderer Data assets installed. Use Miku > Game Toon > Rendering > Screen Rim Installer for explicit Preview/Apply.",
+                "Game Toon Geometry + Screen Rim Renderer Features: {0}/{1} active Renderer Data assets installed.",
                 1,
                 2);
             Assert.That(text, Does.Contain("1/2"));
             Assert.That(text, Does.Contain("Renderer Data"));
+            Assert.That(text, Does.Contain("游戏卡通"));
+            Assert.That(
+                MikuEditorLocalization.Tr(
+                    "Open Game Toon Renderer Feature Installer"),
+                Does.Contain("游戏卡通"));
+            Assert.That(
+                MikuEditorLocalization.Tr(
+                    "Miku Game Toon Renderer Features"),
+                Does.Contain("渲染功能"));
         }
 
         [Test]
@@ -92,6 +101,39 @@ namespace Miku.ShaderConverter.Tests.Editor
                 Assert.That(MikuEditorLocalization.Tr(messageId),
                     Is.Not.Null.And.Not.Empty);
             }
+        }
+
+        [Test]
+        public void MaterialDiagnosticHelpBoxesHaveChineseTranslations()
+        {
+            MikuEditorLocalization.SetLanguage("zh_HANS");
+            foreach (var diagnostic in new[]
+            {
+                MikuWuwaFaceMaterialDiagnostics.SdfRequired,
+                MikuWuwaFaceMaterialDiagnostics.SdfStrengthZero,
+                MikuWuwaFaceMaterialDiagnostics.BasisInvalid,
+                MikuWuwaFaceMaterialDiagnostics.ImportSettingsInvalid,
+                MikuWuwaFaceMaterialDiagnostics.ChannelsIdentical,
+                MikuWuwaFaceMaterialDiagnostics.TintContrastZero,
+                MikuWuwaFaceMaterialDiagnostics.DebugViewActive,
+                MikuWuwaFaceMaterialDiagnostics.TransitionTooWide,
+                MikuWuwaFaceMaterialDiagnostics.SssMayFlattenShadow,
+            })
+            {
+                var english = MikuWuwaFaceMaterialDiagnostics.Message(
+                    diagnostic);
+                Assert.That(
+                    MikuEditorLocalization.Tr(english),
+                    Is.Not.EqualTo(english),
+                    diagnostic);
+            }
+
+            const string endfieldMatCap =
+                "Endfield iris materials require an authored MatCap " +
+                "for the tutorial cornea highlight.";
+            Assert.That(
+                MikuEditorLocalization.Tr(endfieldMatCap),
+                Is.Not.EqualTo(endfieldMatCap));
         }
 
         [Test]

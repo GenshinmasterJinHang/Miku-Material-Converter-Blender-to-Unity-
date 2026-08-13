@@ -10,17 +10,13 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.TestTools;
 
 namespace Miku.ShaderConverter.Editor.Tests
 {
     public sealed class MikuEndfieldPostAndWorkflowTests
     {
         const string TestFolder = "Assets/MikuEndfieldPostAndWorkflowTests";
-
-        sealed class SaveIsolationProbe : ScriptableObject
-        {
-            public int value;
-        }
 
         [SetUp]
         public void SetUp()
@@ -242,7 +238,7 @@ namespace Miku.ShaderConverter.Editor.Tests
         }
 
         [Test]
-        public void EndfieldVolumeContainsOnlyNeutralBloomAndVignette()
+        public void EndfieldVolumeUsesStandardReferenceGradeWithoutScreenLut()
         {
             var path = TestFolder + "/EndfieldProfile.asset";
             var profile = MikuEndfieldPostVolumeProfileFactory.CreateOrUpdate(
@@ -251,11 +247,24 @@ namespace Miku.ShaderConverter.Editor.Tests
                 profile.components.Select(item => item.GetType()),
                 Is.EqualTo(new[]
                 {
+                    typeof(ColorAdjustments),
+                    typeof(ColorCurves),
                     typeof(Tonemapping),
                     typeof(Bloom),
                     typeof(Vignette),
                 }));
             Assert.That(profile.components.All(item => item.active), Is.True);
+            Assert.That(
+                profile.TryGet(out ColorAdjustments colorAdjustments),
+                Is.True);
+            AssertOverride(colorAdjustments.postExposure, 0.35f);
+            AssertOverride(colorAdjustments.contrast, 16f);
+            AssertOverride(colorAdjustments.saturation, 8f);
+            Assert.That(profile.TryGet(out ColorCurves colorCurves), Is.True);
+            Assert.That(colorCurves.master.overrideState, Is.True);
+            Assert.That(colorCurves.red.overrideState, Is.True);
+            Assert.That(colorCurves.green.overrideState, Is.True);
+            Assert.That(colorCurves.blue.overrideState, Is.True);
             Assert.That(profile.TryGet(out Tonemapping tonemapping), Is.True);
             AssertOverride(tonemapping.mode, TonemappingMode.Neutral);
             Assert.That(profile.TryGet(out Bloom bloom), Is.True);
@@ -271,7 +280,7 @@ namespace Miku.ShaderConverter.Editor.Tests
                 .Select(LocalId)
                 .ToArray();
             profile = MikuEndfieldPostVolumeProfileFactory.CreateOrUpdate(path);
-            Assert.That(profile.components.Count, Is.EqualTo(3));
+            Assert.That(profile.components.Count, Is.EqualTo(5));
             Assert.That(
                 profile.components.Select(
                     LocalId),
@@ -295,7 +304,7 @@ namespace Miku.ShaderConverter.Editor.Tests
                 Is.EqualTo(1));
             Assert.That(first.material.GetTexture("_LutTex"), Is.SameAs(first.lut));
             Assert.That(first.material.GetFloat("_Intensity"), Is.EqualTo(1f));
-            Assert.That(first.profile.components.Count, Is.EqualTo(3));
+            Assert.That(first.profile.components.Count, Is.EqualTo(5));
             AssertFeature(first.feature, first.material);
             AssertLutImporter(first.lut, expectedMipmaps: false);
 
@@ -311,18 +320,38 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(
                 MikuEndfieldPostProcessingInstaller.CountFeatures(renderer),
                 Is.EqualTo(1));
+
+            var rendererPath = AssetDatabase.GetAssetPath(renderer);
+            AssetDatabase.ImportAsset(
+                rendererPath,
+                ImportAssetOptions.ForceSynchronousImport);
+            var reloaded = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(
+                rendererPath);
+            Assert.That(reloaded, Is.Not.Null);
+            Assert.That(
+                MikuEndfieldPostProcessingInstaller.CountFeatures(reloaded),
+                Is.EqualTo(1));
+            var persistedFeature = reloaded.rendererFeatures
+                .OfType<FullScreenPassRendererFeature>()
+                .Single();
+            Assert.That(
+                AssetDatabase.GetAssetPath(persistedFeature),
+                Is.EqualTo(rendererPath));
+            AssertFeature(persistedFeature, second.material);
+            AssertRendererFeatureMap(reloaded, persistedFeature);
         }
 
         [Test]
         public void LutInstallerDoesNotSaveUnrelatedDirtyAssets()
         {
-            var probePath = TestFolder + "/Unrelated.asset";
-            var probe = ScriptableObject.CreateInstance<SaveIsolationProbe>();
-            probe.value = 1;
+            var probePath = TestFolder + "/Unrelated.mat";
+            var probe = new Material(Shader.Find(
+                MikuEndfieldPostProcessingInstaller.LutShaderName));
+            probe.SetFloat("_Intensity", 0.25f);
             AssetDatabase.CreateAsset(probe, probePath);
             AssetDatabase.SaveAssetIfDirty(probe);
             var bytesBefore = File.ReadAllBytes(probePath);
-            probe.value = 2;
+            probe.SetFloat("_Intensity", 0.75f);
             EditorUtility.SetDirty(probe);
             var renderer = CreateRendererData();
             var texture = CreateLut("IsolationLut.png");
@@ -336,8 +365,46 @@ namespace Miku.ShaderConverter.Editor.Tests
             CollectionAssert.AreEqual(
                 bytesBefore,
                 File.ReadAllBytes(probePath));
-            Assert.That(probe.value, Is.EqualTo(2));
+            Assert.That(probe.GetFloat("_Intensity"), Is.EqualTo(0.75f));
             Assert.That(EditorUtility.IsDirty(probe), Is.True);
+        }
+
+        [Test]
+        public void LutInstallerRejectsDirtyTargetAssetWithoutSavingIt()
+        {
+            var renderer = CreateRendererData();
+            var texture = CreateLut("DirtyTargetLut.png");
+            var output = TestFolder + "/DirtyTargetOutput";
+            AssetDatabase.CreateFolder(TestFolder, "DirtyTargetOutput");
+            var materialPath = output + "/" +
+                MikuEndfieldPostProcessingInstaller.MaterialFileName;
+            var material = new Material(Shader.Find(
+                MikuEndfieldPostProcessingInstaller.LutShaderName));
+            material.SetFloat("_Intensity", 0.25f);
+            AssetDatabase.CreateAsset(material, materialPath);
+            AssetDatabase.SaveAssetIfDirty(material);
+            var before = File.ReadAllBytes(AbsoluteProjectPath(materialPath));
+            material.SetFloat("_Intensity", 0.75f);
+            EditorUtility.SetDirty(material);
+
+            var error = Assert.Throws<InvalidOperationException>(() =>
+                MikuEndfieldPostProcessingInstaller.Install(
+                    renderer,
+                    texture,
+                    output,
+                    null));
+
+            StringAssert.StartsWith(
+                "MIKU_ENDFIELD_POST_DIRTY_ASSET:" + materialPath + ":",
+                error.Message);
+            CollectionAssert.AreEqual(
+                before,
+                File.ReadAllBytes(AbsoluteProjectPath(materialPath)));
+            Assert.That(material.GetFloat("_Intensity"), Is.EqualTo(0.75f));
+            Assert.That(EditorUtility.IsDirty(material), Is.True);
+            Assert.That(
+                MikuEndfieldPostProcessingInstaller.CountFeatures(renderer),
+                Is.Zero);
         }
 
         [Test]
@@ -385,6 +452,124 @@ namespace Miku.ShaderConverter.Editor.Tests
         }
 
         [Test]
+        public void LutInstallerLateFailureRestoresExistingAssetsByteForByte()
+        {
+            var renderer = CreateRendererData();
+            var rendererPath = AssetDatabase.GetAssetPath(renderer);
+            var texture = CreateLut("LateRollbackLut.png");
+            var texturePath = AssetDatabase.GetAssetPath(texture);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(texturePath);
+            importer.sRGBTexture = false;
+            importer.mipmapEnabled = true;
+            importer.wrapMode = TextureWrapMode.Repeat;
+            importer.filterMode = FilterMode.Point;
+            importer.textureCompression = TextureImporterCompression.Compressed;
+            importer.SaveAndReimport();
+            texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
+
+            var output = TestFolder + "/ExistingOutput";
+            AssetDatabase.CreateFolder(TestFolder, "ExistingOutput");
+            var materialPath = output + "/" +
+                MikuEndfieldPostProcessingInstaller.MaterialFileName;
+            var profilePath = output + "/" +
+                MikuEndfieldPostProcessingInstaller.ProfileFileName;
+            var material = new Material(Shader.Find(
+                MikuEndfieldPostProcessingInstaller.LutShaderName));
+            material.SetFloat("_Intensity", 0.37f);
+            AssetDatabase.CreateAsset(material, materialPath);
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            AssetDatabase.CreateAsset(profile, profilePath);
+            var color = profile.Add<ColorAdjustments>(false);
+            color.postExposure.Override(1.25f);
+            AssetDatabase.AddObjectToAsset(color, profile);
+            EditorUtility.SetDirty(color);
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssetIfDirty(material);
+            AssetDatabase.SaveAssetIfDirty(profile);
+            AssetDatabase.SaveAssetIfDirty(renderer);
+
+            var paths = new[]
+            {
+                rendererPath,
+                materialPath,
+                profilePath,
+                texturePath + ".meta",
+            };
+            var before = paths.ToDictionary(
+                path => path,
+                path => File.ReadAllBytes(AbsoluteProjectPath(path)));
+
+            Assert.Throws<IOException>(() =>
+                MikuEndfieldPostProcessingInstaller.Install(
+                    renderer,
+                    texture,
+                    output,
+                    null,
+                    () => throw new IOException("late synthetic failure")));
+
+            foreach (var path in paths)
+                CollectionAssert.AreEqual(
+                    before[path],
+                    File.ReadAllBytes(AbsoluteProjectPath(path)),
+                    path);
+            Assert.That(
+                MikuEndfieldPostProcessingInstaller.CountFeatures(
+                    AssetDatabase.LoadAssetAtPath<UniversalRendererData>(
+                        rendererPath)),
+                Is.Zero);
+            material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+            Assert.That(material.GetFloat("_Intensity"), Is.EqualTo(0.37f));
+            profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(profilePath);
+            Assert.That(profile.components.Count, Is.EqualTo(1));
+            Assert.That(profile.components[0], Is.TypeOf<ColorAdjustments>());
+            importer = (TextureImporter)AssetImporter.GetAtPath(texturePath);
+            Assert.That(importer.sRGBTexture, Is.False);
+            Assert.That(importer.mipmapEnabled, Is.True);
+            Assert.That(importer.wrapMode, Is.EqualTo(TextureWrapMode.Repeat));
+            Assert.That(importer.filterMode, Is.EqualTo(FilterMode.Point));
+            Assert.That(
+                importer.textureCompression,
+                Is.EqualTo(TextureImporterCompression.Compressed));
+        }
+
+        [Test]
+        public void LutInstallerUndoRestoresImporterSettings()
+        {
+            var renderer = CreateRendererData();
+            var texture = CreateLut("UndoLut.png");
+            var texturePath = AssetDatabase.GetAssetPath(texture);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(texturePath);
+            importer.sRGBTexture = false;
+            importer.mipmapEnabled = true;
+            importer.wrapMode = TextureWrapMode.Repeat;
+            importer.filterMode = FilterMode.Point;
+            importer.textureCompression = TextureImporterCompression.Compressed;
+            importer.SaveAndReimport();
+            texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
+
+            MikuEndfieldPostProcessingInstaller.Install(
+                renderer,
+                texture,
+                TestFolder + "/UndoOutput",
+                null);
+            AssertLutImporter(texture, expectedMipmaps: false);
+
+            Undo.PerformUndo();
+            AssetDatabase.WriteImportSettingsIfDirty(texturePath);
+            AssetDatabase.ImportAsset(
+                texturePath,
+                ImportAssetOptions.ForceSynchronousImport);
+            importer = (TextureImporter)AssetImporter.GetAtPath(texturePath);
+            Assert.That(importer.sRGBTexture, Is.False);
+            Assert.That(importer.mipmapEnabled, Is.True);
+            Assert.That(importer.wrapMode, Is.EqualTo(TextureWrapMode.Repeat));
+            Assert.That(importer.filterMode, Is.EqualTo(FilterMode.Point));
+            Assert.That(
+                importer.textureCompression,
+                Is.EqualTo(TextureImporterCompression.Compressed));
+        }
+
+        [Test]
         public void LutInstallerRejectsWrongLayoutAndNonProjectTextures()
         {
             var wrong = new Texture2D(32, 32);
@@ -412,6 +597,203 @@ namespace Miku.ShaderConverter.Editor.Tests
                 UnityEngine.Object.DestroyImmediate(wrong);
                 UnityEngine.Object.DestroyImmediate(transient);
             }
+        }
+
+        [Test]
+        public void VolumeOnlyInstallerNeedsNeitherRendererNorLut()
+        {
+            var output = TestFolder + "/VolumeOnly";
+
+            var profile = MikuEndfieldPostProcessingInstaller.InstallVolumeOnly(
+                output,
+                null);
+
+            Assert.That(profile, Is.Not.Null);
+            Assert.That(profile.components.Count, Is.EqualTo(5));
+            Assert.That(
+                AssetDatabase.LoadAssetAtPath<Material>(
+                    output + "/" +
+                    MikuEndfieldPostProcessingInstaller.MaterialFileName),
+                Is.Null);
+        }
+
+        [Test]
+        public void ScreenLutInstallerRejectsMaterialLutEvidenceBeforeWriting()
+        {
+            var named = CreateLut("T_actor_common_cloth_lut_01_D.png");
+            var namedError = Assert.Throws<InvalidOperationException>(() =>
+                MikuEndfieldPostProcessingInstaller.ValidateScreenLutPurpose(
+                    named));
+            StringAssert.StartsWith(
+                "MIKU_ENDFIELD_SCREEN_LUT_MATERIAL_ASSET_REJECTED:",
+                namedError.Message);
+            StringAssert.EndsWith(":name", namedError.Message);
+
+            var referenced = CreateLut("NeutralCandidate.png");
+            var body = new Material(Shader.Find("MIKU/Endfield/Body"));
+            body.SetTexture("_ColorLutTex", referenced);
+            var bodyPath = TestFolder + "/BodyWithMaterialLut.mat";
+            AssetDatabase.CreateAsset(body, bodyPath);
+            AssetDatabase.SaveAssetIfDirty(body);
+
+            var referenceError = Assert.Throws<InvalidOperationException>(() =>
+                MikuEndfieldPostProcessingInstaller.ValidateScreenLutPurpose(
+                    referenced));
+            StringAssert.StartsWith(
+                "MIKU_ENDFIELD_SCREEN_LUT_MATERIAL_ASSET_REJECTED:",
+                referenceError.Message);
+            StringAssert.Contains(":material=" + bodyPath, referenceError.Message);
+        }
+
+        [Test]
+        public void PmxEyeHighlightGoldenUsesIrisRgbWithOpaqueCoverage()
+        {
+            var overlay = new Material(Shader.Find("MIKU/Endfield/Overlay"));
+            var iris = new Texture2D(2, 2);
+            try
+            {
+                overlay.SetFloat("_AlphaSource", 1f);
+                overlay.SetFloat("_AlphaClip", 0.5f);
+                overlay.SetFloat("_OverlayUseTintOnly", 1f);
+
+                Assert.That(
+                    MikuGameToonMaterialProfiles.ApplyEndfieldEyeHighlight(
+                        overlay,
+                        iris),
+                    Is.True);
+
+                Assert.That(overlay.GetTexture("_BaseMap"), Is.SameAs(iris));
+                Assert.That(overlay.GetFloat("_AlphaSource"), Is.EqualTo(4f));
+                Assert.That(overlay.GetFloat("_AlphaClip"), Is.Zero);
+                Assert.That(overlay.GetFloat("_Cull"), Is.Zero);
+                Assert.That(overlay.GetFloat("_OverlayUseTintOnly"), Is.Zero);
+                Assert.That(overlay.GetFloat("_LightingMode"), Is.Zero);
+                Assert.That(overlay.GetColor("_BaseColorTint"), Is.EqualTo(Color.white));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(iris);
+                UnityEngine.Object.DestroyImmediate(overlay);
+            }
+        }
+
+        [Test]
+        public void EndfieldEyeMatCapDiagnosticAppliesOnlyToIris()
+        {
+            var eye = new Material(Shader.Find("MIKU/Endfield/Eye"));
+            var matcap = new Texture2D(1, 1);
+            try
+            {
+                eye.SetFloat("_EyeMode", 0f);
+                eye.SetFloat("_UseMatCap", 0f);
+                Assert.That(
+                    MikuEndfieldEyeMaterialDiagnostics.Validate(eye),
+                    Is.EqualTo(
+                        MikuEndfieldEyeMaterialDiagnostics.MatCapRequired));
+
+                eye.SetTexture("_MatCap", matcap);
+                eye.SetFloat("_UseMatCap", 1f);
+                Assert.That(
+                    MikuEndfieldEyeMaterialDiagnostics.Validate(eye),
+                    Is.Empty);
+
+                eye.SetTexture("_MatCap", null);
+                eye.SetFloat("_UseMatCap", 0f);
+                eye.SetFloat("_EyeMode", 1f);
+                Assert.That(
+                    MikuEndfieldEyeMaterialDiagnostics.Validate(eye),
+                    Is.Empty);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(matcap);
+                UnityEngine.Object.DestroyImmediate(eye);
+            }
+        }
+
+        [Test]
+        public void LutInstallerRejectsCorruptRendererFeatureStateBeforeWriting()
+        {
+            var renderer = CreateRendererData();
+            var serialized = new SerializedObject(renderer);
+            serialized.Update();
+            var features = serialized.FindProperty("m_RendererFeatures");
+            var featureMap = serialized.FindProperty("m_RendererFeatureMap");
+            features.arraySize = 1;
+            features.GetArrayElementAtIndex(0).objectReferenceValue = null;
+            featureMap.arraySize = 1;
+            featureMap.GetArrayElementAtIndex(0).longValue = 123;
+            LogAssert.Expect(
+                LogType.Error,
+                "Renderer is missing RendererFeatures\n" +
+                "This could be due to missing scripts or compile error.");
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            var texture = CreateLut("CorruptRendererLut.png");
+            var output = TestFolder + "/CorruptRendererOutput";
+
+            var error = Assert.Throws<InvalidOperationException>(() =>
+                MikuEndfieldPostProcessingInstaller.Install(
+                    renderer,
+                    texture,
+                    output,
+                    null));
+
+            StringAssert.StartsWith(
+                "MIKU_RENDERER_FEATURE_STATE_INVALID:null:0:",
+                error.Message);
+            Assert.That(AssetDatabase.IsValidFolder(output), Is.False);
+            Assert.That(
+                AssetDatabase.LoadAllAssetsAtPath(
+                        AssetDatabase.GetAssetPath(renderer))
+                    .OfType<FullScreenPassRendererFeature>(),
+                Is.Empty);
+        }
+
+        [Test]
+        public void LutInstallerRejectsDuplicateLutFeaturesBeforeImporterWrites()
+        {
+            var renderer = CreateRendererData();
+            var texture = CreateLut("DuplicateFeatureLut.png");
+            var output = TestFolder + "/DuplicateFeatureOutput";
+            MikuEndfieldPostProcessingInstaller.Install(
+                renderer,
+                texture,
+                output,
+                null);
+            var duplicate = ScriptableObject.CreateInstance<
+                FullScreenPassRendererFeature>();
+            duplicate.name = MikuEndfieldPostProcessingInstaller.FeatureName;
+            AssetDatabase.AddObjectToAsset(duplicate, renderer);
+            var serialized = new SerializedObject(renderer);
+            serialized.Update();
+            var features = serialized.FindProperty("m_RendererFeatures");
+            var featureMap = serialized.FindProperty("m_RendererFeatureMap");
+            var index = features.arraySize;
+            features.arraySize++;
+            features.GetArrayElementAtIndex(index).objectReferenceValue =
+                duplicate;
+            featureMap.arraySize++;
+            featureMap.GetArrayElementAtIndex(index).longValue =
+                LocalId(duplicate);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            var texturePath = AssetDatabase.GetAssetPath(texture);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(texturePath);
+            importer.sRGBTexture = false;
+            importer.SaveAndReimport();
+            texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
+            var error = Assert.Throws<InvalidOperationException>(() =>
+                MikuEndfieldPostProcessingInstaller.Install(
+                    renderer,
+                    texture,
+                    output,
+                    null));
+
+            StringAssert.StartsWith(
+                "MIKU_ENDFIELD_LUT_FEATURE_REFERENCE_DUPLICATE:",
+                error.Message);
+            importer = (TextureImporter)AssetImporter.GetAtPath(texturePath);
+            Assert.That(importer.sRGBTexture, Is.False);
         }
 
         [Test]
@@ -465,6 +847,14 @@ namespace Miku.ShaderConverter.Editor.Tests
                 renderer,
                 TestFolder + "/Renderer.asset");
             return renderer;
+        }
+
+        static string AbsoluteProjectPath(string projectPath)
+        {
+            return Path.GetFullPath(Path.Combine(
+                Application.dataPath,
+                "..",
+                projectPath));
         }
 
         static Texture2D CreateLut(string fileName)
@@ -540,6 +930,24 @@ namespace Miku.ShaderConverter.Editor.Tests
             Assert.That(
                 importer.GetPlatformTextureSettings("Standalone").overridden,
                 Is.False);
+        }
+
+        static void AssertRendererFeatureMap(
+            ScriptableRendererData renderer,
+            ScriptableRendererFeature feature)
+        {
+            var serialized = new SerializedObject(renderer);
+            var features = serialized.FindProperty("m_RendererFeatures");
+            var featureMap = serialized.FindProperty("m_RendererFeatureMap");
+            Assert.That(features, Is.Not.Null);
+            Assert.That(featureMap, Is.Not.Null);
+            Assert.That(featureMap.arraySize, Is.EqualTo(features.arraySize));
+            var index = Enumerable.Range(0, features.arraySize)
+                .Single(candidate => features.GetArrayElementAtIndex(candidate)
+                    .objectReferenceValue == feature);
+            Assert.That(
+                featureMap.GetArrayElementAtIndex(index).longValue,
+                Is.EqualTo(LocalId(feature)));
         }
 
         static void AssertOverride(FloatParameter parameter, float expected)

@@ -1,5 +1,8 @@
 # ADR 0016: TangentSpaceV2 outline normals
 
+> WuWa's vertex-color-mask clause is superseded by ADR 0019. The UV7
+> TangentSpaceV2 encoding decision remains in force.
+
 - Status: Accepted
 - Date: 2026-08-09
 

@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using Miku.ShaderConverter.Runtime.GameToon;
 using Miku.ShaderConverter.Runtime.Wuwa;
 using UnityEditor;
 using UnityEngine;
@@ -116,13 +117,67 @@ namespace Miku.ShaderConverter.Editor
             public InstallResult(
                 MikuWuwaHairShadowRendererFeature feature,
                 bool created)
+                : this(
+                    feature,
+                    created,
+                    null,
+                    false,
+                    null,
+                    false,
+                    MikuToonScreenRimRendererFeature.RimAlgorithm.LegacyFourTap,
+                    false)
+            {
+            }
+
+            public InstallResult(
+                MikuWuwaHairShadowRendererFeature feature,
+                bool created,
+                MikuToonScreenRimRendererFeature screenRimFeature,
+                bool screenRimCreated)
+                : this(
+                    feature,
+                    created,
+                    screenRimFeature,
+                    screenRimCreated,
+                    null,
+                    false,
+                    MikuToonScreenRimRendererFeature.RimAlgorithm.LegacyFourTap,
+                    false)
+            {
+            }
+
+            internal InstallResult(
+                MikuWuwaHairShadowRendererFeature feature,
+                bool created,
+                MikuToonScreenRimRendererFeature screenRimFeature,
+                bool screenRimCreated,
+                MikuGameToonGeometryRendererFeature geometryFeature,
+                bool geometryCreated,
+                MikuToonScreenRimRendererFeature.RimAlgorithm
+                    previousScreenRimAlgorithm,
+                bool screenRimAlgorithmChanged)
             {
                 this.feature = feature;
                 this.created = created;
+                this.screenRimFeature = screenRimFeature;
+                this.screenRimCreated = screenRimCreated;
+                this.geometryFeature = geometryFeature;
+                this.geometryCreated = geometryCreated;
+                this.previousScreenRimAlgorithm =
+                    previousScreenRimAlgorithm;
+                this.screenRimAlgorithmChanged =
+                    screenRimAlgorithmChanged;
             }
 
             public readonly MikuWuwaHairShadowRendererFeature feature;
             public readonly bool created;
+            public readonly MikuToonScreenRimRendererFeature screenRimFeature;
+            public readonly bool screenRimCreated;
+            public readonly MikuGameToonGeometryRendererFeature geometryFeature;
+            public readonly bool geometryCreated;
+            internal readonly MikuToonScreenRimRendererFeature.RimAlgorithm
+                previousScreenRimAlgorithm;
+            internal readonly bool screenRimAlgorithmChanged;
         }
 
         /// <summary>
@@ -149,34 +204,58 @@ namespace Miku.ShaderConverter.Editor
             var existing = target.rendererFeatures
                 .OfType<MikuWuwaHairShadowRendererFeature>()
                 .FirstOrDefault();
-            if (existing != null)
-                return new InstallResult(existing, false);
-
-            MikuWuwaHairShadowRendererFeature feature = null;
+            var feature = existing;
+            var created = false;
             var appended = false;
+            MikuToonRendererFeatureInstaller.GeometryInstallResult geometry =
+                default;
+            MikuToonRendererFeatureInstaller.InstallResult screenRim = default;
+            var screenRimConfigured = false;
+            var previousRimAlgorithm =
+                MikuToonScreenRimRendererFeature.RimAlgorithm.LegacyFourTap;
             try
             {
-                Undo.RegisterCompleteObjectUndo(
-                    target,
-                    MikuEditorLocalization.Tr(
-                        "Install Wuwa Hair Shadow"));
-                feature = CreateInstance<MikuWuwaHairShadowRendererFeature>();
-                feature.name = nameof(MikuWuwaHairShadowRendererFeature);
-                Undo.RegisterCreatedObjectUndo(
-                    feature,
-                    MikuEditorLocalization.Tr(
-                        "Install Wuwa Hair Shadow"));
-                AssetDatabase.AddObjectToAsset(feature, target);
-                if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
+                if (feature == null)
+                {
+                    Undo.RegisterCompleteObjectUndo(
+                        target,
+                        MikuEditorLocalization.Tr(
+                            "Install Wuwa Hair Shadow"));
+                    feature = CreateInstance<
+                        MikuWuwaHairShadowRendererFeature>();
+                    feature.name = nameof(
+                        MikuWuwaHairShadowRendererFeature);
+                    Undo.RegisterCreatedObjectUndo(
                         feature,
-                        out _,
-                        out long localId))
-                    throw new InvalidOperationException(
-                        "MIKU_RENDERER_FEATURE_LOCAL_ID_FAILED");
+                        MikuEditorLocalization.Tr(
+                            "Install Wuwa Hair Shadow"));
+                    AssetDatabase.AddObjectToAsset(feature, target);
+                    if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
+                            feature,
+                            out _,
+                            out long localId))
+                        throw new InvalidOperationException(
+                            "MIKU_RENDERER_FEATURE_LOCAL_ID_FAILED");
 
-                AppendFeature(target, feature, localId);
-                appended = true;
-                feature.Create();
+                    AppendFeature(target, feature, localId);
+                    appended = true;
+                    created = true;
+                    feature.Create();
+                }
+                else if (!feature.isActive)
+                {
+                    Undo.RecordObject(feature, "Activate Wuwa Hair Shadow");
+                    feature.SetActive(true);
+                    EditorUtility.SetDirty(feature);
+                }
+
+                geometry = MikuToonRendererFeatureInstaller.InstallGeometry(
+                    target);
+                screenRim = MikuToonRendererFeatureInstaller.Install(target);
+                previousRimAlgorithm = screenRim.feature.settings.algorithm;
+                SetTutorialScreenRim(screenRim.feature);
+                screenRimConfigured = previousRimAlgorithm !=
+                    MikuToonScreenRimRendererFeature.RimAlgorithm.WuwaTutorial;
                 beforeCommit?.Invoke();
                 EditorUtility.SetDirty(target);
                 EditorUtility.SetDirty(feature);
@@ -184,18 +263,90 @@ namespace Miku.ShaderConverter.Editor
                 AssetDatabase.ImportAsset(
                     AssetDatabase.GetAssetPath(target),
                     ImportAssetOptions.ForceSynchronousImport);
-                return new InstallResult(feature, true);
+                return new InstallResult(
+                    feature,
+                    created,
+                    screenRim.feature,
+                    screenRim.created,
+                    geometry.feature,
+                    geometry.created,
+                    previousRimAlgorithm,
+                    screenRimConfigured);
             }
             catch
             {
+                if (screenRimConfigured && screenRim.feature != null)
+                {
+                    if (screenRim.created)
+                        MikuToonRendererFeatureInstaller.RemoveInstalledFeature(
+                            target,
+                            screenRim.feature);
+                    else
+                    {
+                        screenRim.feature.settings.algorithm =
+                            previousRimAlgorithm;
+                        screenRim.feature.Create();
+                        EditorUtility.SetDirty(screenRim.feature);
+                    }
+                }
+                if (geometry.created && geometry.feature != null)
+                    MikuToonRendererFeatureInstaller
+                        .RemoveInstalledGeometryFeature(
+                            target,
+                            geometry.feature);
                 if (appended && feature != null)
                     RemoveFeatureReference(target, feature);
-                if (feature != null)
+                if (created && feature != null)
                     DestroyImmediate(feature, true);
                 EditorUtility.SetDirty(target);
                 AssetDatabase.SaveAssets();
                 throw;
             }
+        }
+
+        internal static void RollbackInstall(
+            ScriptableRendererData target,
+            InstallResult result)
+        {
+            if (target == null)
+                return;
+            if (result.screenRimFeature != null)
+            {
+                if (result.screenRimCreated)
+                    MikuToonRendererFeatureInstaller.RemoveInstalledFeature(
+                        target,
+                        result.screenRimFeature);
+                else if (result.screenRimAlgorithmChanged)
+                {
+                    result.screenRimFeature.settings.algorithm =
+                        result.previousScreenRimAlgorithm;
+                    result.screenRimFeature.Create();
+                    EditorUtility.SetDirty(result.screenRimFeature);
+                }
+            }
+            if (result.geometryCreated && result.geometryFeature != null)
+                MikuToonRendererFeatureInstaller
+                    .RemoveInstalledGeometryFeature(
+                        target,
+                        result.geometryFeature);
+            if (result.created && result.feature != null)
+            {
+                RemoveFeatureReference(target, result.feature);
+                DestroyImmediate(result.feature, true);
+            }
+            EditorUtility.SetDirty(target);
+            AssetDatabase.SaveAssets();
+        }
+
+        static void SetTutorialScreenRim(
+            MikuToonScreenRimRendererFeature feature)
+        {
+            if (feature == null)
+                throw new InvalidOperationException(
+                    "MIKU_WUWA_SCREEN_RIM_INSTALL_FAILED");
+            feature.settings.algorithm =
+                MikuToonScreenRimRendererFeature.RimAlgorithm.WuwaTutorial;
+            feature.Create();
         }
 
         static void AppendFeature(

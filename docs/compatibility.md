@@ -2,13 +2,15 @@
 
 | Blender | Unity Editor | URP | Shader Graph | Miku | OS | Status |
 | --- | --- | --- | --- | --- | --- | --- |
+| 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 3.0.0 | Windows Direct3D 12 | Supported; exact final TGZ full EditMode passed 335/347 with 0 failures and 12 documented GPU/optional skips; the same TGZ passed all 10 required D3D12 tests with 0 failures, skips, or inconclusive results under `-force-d3d12` without `-nographics` |
+| 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.4.0 | Windows Direct3D 12 | Unpublished candidate; superseded by 3.0.0 |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.3.0 | Windows D3D11 | Experimental; source-linked isolated Unity 53/53 and deterministic TGZ passed; final-TGZ port-8080 suite/scene/visual acceptance pending |
 | 5.0.1 | 6000.0.81f1 | 17.0.4 | 17.0.4 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
 | 5.1.2 | 6000.1.17f1 | 17.1.0 | 17.1.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
 | 5.2.0 | 6000.2.15f1 | 17.2.0 | 17.2.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
 | 5.2.0 | 6000.3.21f1 | 17.3.0 | 17.3.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
 | 5.2.0 | 6000.4.12f1 | 17.4.0 | 17.4.0 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
-| 5.2.0 | 6000.5.7f1 | 17.5.4 | 17.5.4 | 2.2.12 | Windows | Certified profile; official-document adapter, exact Unity lane not executed |
+| 5.2.0 | 6000.5.7f1 | 17.5.4 | 17.5.4 | 2.2.12 | Windows | Experimental; official-document adapter, exact Unity lane not executed |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.12 | Windows D3D11 | Supported; final TGZ, 215 EditMode tests, 213 passed, 0 failed, 2 skipped |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.8 | Windows D3D11/D3D12 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.7 | Windows D3D11/D3D12 | Experimental |
@@ -21,11 +23,11 @@
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.2.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.1.0 | Windows D3D11 | Experimental |
 | 5.2.0 | 6000.4.5f1 (`cc83ebd631f8`) | 17.4.0 | 17.4.0 | 2.0.0 | Windows D3D11 | Experimental |
-| Blender <5.0 or >=5.3; Unity outside 6000.0-6000.5; URP/SG outside 17.0-17.5; prerelease | Any | Any | Any | 2.2.12 and 2.3.0 | Any | Unsupported (hard fail before asset writes) |
-| Mismatched Unity/URP/Shader Graph technical lines or unequal URP/SG package versions | Any | Any | Any | 2.2.12 and 2.3.0 | Any | Unsupported via `MIKU_UNITY_PACKAGE_VERSION_MISMATCH` before asset writes |
+| Blender <5.0 or >=5.3; Unity outside 6000.0-6000.5; URP/SG outside 17.0-17.5; prerelease | Any | Any | Any | 2.2.12 through 3.0.0 | Any | Unsupported (hard fail before asset writes) |
+| Mismatched Unity/URP/Shader Graph technical lines or unequal URP/SG package versions | Any | Any | Any | 2.2.12 through 3.0.0 | Any | Unsupported via `MIKU_UNITY_PACKAGE_VERSION_MISMATCH` before asset writes |
 | Any other tuple | Any | Any | Any | 2.2.8 and earlier | Any | Unsupported |
 
-## Miku 2.2.12 and 2.3.0 technical-line adapters
+## Miku 2.2.12 through 3.0.0 technical-line adapters
 
 | Unity Editor | URP / Shader Graph | Adapter |
 | --- | --- | --- |
@@ -106,6 +108,17 @@ texture roles. It is validated only against the exact Unity/URP/Shader Graph
 tuple above. The shared anime Volume Profile is a scene-authoring asset, not a
 runtime installer, and uses only URP 17.4 public Volume components.
 
+The current HSR tutorial-alignment work remains Experimental on Unity
+6000.4.5f1 with URP/Shader Graph 17.4.0. Body/Hair LightMap green now follows
+the literal `saturate(4 * HL * G)` Shadow AO signal and the fixed
+`0.85 * signal + 0.15` ramp coordinate. LightMap blue is an inverted smooth
+threshold shared by metal and non-metal Blinn-Phong masks. Face adds a
+skin-gated parametric Toon highlight without a LightMap, while FaceMap blue
+continues to author the `pow(NdotV, power)` nose line with independent strength
+and color. Retained Body/Hair threshold and ramp-offset properties deserialize
+but no longer drive the corrected equations. No MaterialIR, Bundle, schema,
+shader-name, material-part, or fixed texture-role contract changes.
+
 Miku 2.2.6 repairs Wuwa material fidelity. Eye uses one linear RGB `EyeHET`
 mask sampled twice with independent upper/lower UV transforms and separate
 base/highlight emission controls. Face exposes object-space Right/Up/Forward
@@ -136,6 +149,31 @@ sampling; Eye adds a main-light response between `_EyeShadowTint` and
 mask and UV0 respectively. These properties are additive public surface;
 existing materials keep their authored values unless the explicit
 recommended-profile action is applied.
+
+Miku 3.0.0 repairs the Genshin and WuWa Forward+ main-light paths. Unity
+6000.0 / URP 17.0 selects `_FORWARD_PLUS`; Unity 6000.1+ selects
+`_CLUSTER_LIGHT_LOOP` using the official `UNITY_VERSION >= 60010000` boundary.
+WuWa Body, Hair, Face, and Eye pass normalized screen UV to the Forward+-safe
+reflection-probe overload. Genshin Body and Hair Forward/backface plus Face
+Forward compile the matching main-light variant, so a zero per-object
+attenuation no longer suppresses their direct light or Face SDF. Genshin Eye
+remains intentionally unlit. Realtime shadows continue to select the authored
+WuWa shadow tint instead of erasing the complete direct-light contribution.
+
+WuWa Face SDF diagnostics are read-only and never rewrite authored material or
+texture-import settings. Identical main/soft channels remain valid and produce
+an informational diagnostic. These changes affect diagnostics, shader variants,
+tests, and rendering behavior. `_FaceSdfMirrorBlendWidth` is an additive
+material property; no existing property is renamed, and no interchange schema,
+shader name, or texture-role contract changes. Exact GPU validation
+remains limited to Unity 6000.4.5f1 with URP/Shader Graph 17.4.0 on Direct3D 12;
+the other technical lines remain Experimental.
+
+Genshin and WuWa main-shadow coordinates use URP `GetShadowCoord`, including
+the screen-space shadow variant, and declare generic plus Low/Medium/High
+soft-shadow quality variants. This is shader-variant correctness only; the
+automated light-yaw probes disable cast shadows and therefore do not claim a
+GPU occluder/penumbra image comparison.
 
 Miku 2.3.0 also adds Genshin tutorial-conformance controls without schema
 changes. Body, Hair, and Face accept the tutorial's `diffuse.a` cutout and

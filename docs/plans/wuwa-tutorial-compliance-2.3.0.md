@@ -1,5 +1,9 @@
 # Miku 2.3.0 Wuwa tutorial-compliance repair (Unity side)
 
+> Historical 2.3.0 plan. ADR 0020 and the Miku 3.0 Face/Eye continuity plan
+> supersede the A-step/B-soft Face behavior described below; 3.0 evaluates both
+> channels continuously and crossfades completed mirrored masks.
+
 ## Purpose and outcome
 
 Align the existing `MIKU/Wuwa/*` ShaderLab backends with the user-supplied

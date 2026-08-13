@@ -11,6 +11,8 @@ namespace Miku.ShaderConverter.Runtime.Wuwa
 {
     public sealed class MikuWuwaHairShadowRendererFeature : ScriptableRendererFeature
     {
+        public const string HairShadowTextureName =
+            "_WuwaHairShadowTexture";
         static readonly int HairShadowAvailableId = Shader.PropertyToID("_WuwaHairShadowAvailable");
 
         [System.Serializable]
@@ -18,7 +20,8 @@ namespace Miku.ShaderConverter.Runtime.Wuwa
         {
             public RenderPassEvent passEvent = RenderPassEvent.BeforeRenderingOpaques;
             public LayerMask layerMask = -1;
-            public string textureName = "_WuwaHairShadowTexture";
+            [HideInInspector]
+            public string textureName = HairShadowTextureName;
             public FilterMode filterMode = FilterMode.Bilinear;
             public TextureWrapMode wrapMode = TextureWrapMode.Clamp;
         }
@@ -29,6 +32,7 @@ namespace Miku.ShaderConverter.Runtime.Wuwa
         public override void Create()
         {
             Shader.SetGlobalFloat(HairShadowAvailableId, 0f);
+            settings.textureName = HairShadowTextureName;
             pass = new WuwaHairShadowPass(settings);
         }
 
@@ -74,7 +78,7 @@ namespace Miku.ShaderConverter.Runtime.Wuwa
                 this.settings = settings;
                 renderPassEvent = settings.passEvent;
                 filteringSettings = new FilteringSettings(RenderQueueRange.opaque, settings.layerMask);
-                textureId = Shader.PropertyToID(settings.textureName);
+                textureId = Shader.PropertyToID(HairShadowTextureName);
             }
 
             public void Setup(RenderTextureDescriptor cameraDescriptor)
@@ -106,8 +110,8 @@ namespace Miku.ShaderConverter.Runtime.Wuwa
                 UniversalRenderingData renderingData = frameData.Get<UniversalRenderingData>();
                 UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
                 UniversalLightData lightData = frameData.Get<UniversalLightData>();
-                RenderingUtils.ReAllocateHandleIfNeeded(ref shadowTexture, descriptor, settings.filterMode, settings.wrapMode, name: settings.textureName);
-                RenderingUtils.ReAllocateHandleIfNeeded(ref shadowDepthTexture, depthDescriptor, FilterMode.Point, TextureWrapMode.Clamp, name: settings.textureName + "Depth");
+                RenderingUtils.ReAllocateHandleIfNeeded(ref shadowTexture, descriptor, settings.filterMode, settings.wrapMode, name: HairShadowTextureName);
+                RenderingUtils.ReAllocateHandleIfNeeded(ref shadowDepthTexture, depthDescriptor, FilterMode.Point, TextureWrapMode.Clamp, name: HairShadowTextureName + "Depth");
                 TextureHandle shadowTextureHandle = renderGraph.ImportTexture(shadowTexture);
                 TextureHandle shadowDepthTextureHandle = renderGraph.ImportTexture(shadowDepthTexture);
                 if (!shadowTextureHandle.IsValid() || !shadowDepthTextureHandle.IsValid())

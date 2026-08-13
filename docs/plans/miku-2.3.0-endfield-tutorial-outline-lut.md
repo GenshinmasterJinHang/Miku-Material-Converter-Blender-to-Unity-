@@ -1,5 +1,15 @@
 # Miku 2.3.0 Endfield tutorial lighting, outline, and LUT delivery
 
+> **2026-08-13 supersession:** the validation-only hair-shadow menu and its
+> dedicated diagnostic test recorded in this historical plan were removed from
+> the distributable 3.0 package. The completed execution record is preserved.
+
+> **2026-08-12 correction:** the selected cloth texture discussed in this plan
+> is a Body/Cloth dark-color material LUT, not a screen-grading LUT. Installing
+> it full-screen was an invalid validation setup. The replacement implementation
+> and PMX EyeHL evidence are recorded in
+> `docs/plans/miku-3.0.0-endfield-reference-fidelity.md`.
+
 This ExecPlan is a living implementation record and follows `PLANS.md`.
 
 ## Purpose and outcome
@@ -43,6 +53,11 @@ visual result. Fur shells and fire remain out of scope.
   Body, Skin, Face, Eye, Hair, Overlay, and auxiliary-shadow behavior.
 - [x] 2026-08-09: Implement full-screen LUT, Endfield volume setup, nine-part workflow
   invariants, and structured diagnostics.
+- [x] 2026-08-12: Repair the port-8080 Endfield Renderer so the game LUT is
+  actually referenced before post processing; add fail-closed preflight and
+  post-import persistence validation, exact late-failure rollback, and LUT
+  importer Undo and dirty-target protection (15/15 focused EditMode tests
+  passed on D3D11).
 - [x] 2026-08-09: Coordinate version 2.3.0, identities, documentation, ADRs,
   changelog, and the tutorial-completeness audit.
 - [ ] Run Python, Blender, Unity, shader, visual, determinism, and package
@@ -80,6 +95,9 @@ visual result. Fur shells and fire remain out of scope.
 
 ## Decision log
 
+- 2026-08-12: A same-named Renderer subasset is not installation evidence.
+  Validate the live Feature/local-ID map before writes and the force-reloaded
+  Renderer reference, configuration, and material before reporting success.
 - 2026-08-09: Release the expanded public runtime and shader behavior as Unity
   package 2.3.0. Keep interchange schema versions unchanged because the changes
   are additive fixed-workflow/runtime contracts.

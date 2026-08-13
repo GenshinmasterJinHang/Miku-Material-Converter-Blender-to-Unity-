@@ -50,7 +50,7 @@ Shader "Hidden/MIKU/Endfield/PassLibrary"
         Pass
         {
             Name "Outline"
-            Tags { "LightMode"="SRPDefaultUnlit" }
+            Tags { "LightMode"="MikuToonOutline" }
             Cull Front
             ZWrite Off
             ZTest LEqual
@@ -70,8 +70,9 @@ Shader "Hidden/MIKU/Endfield/PassLibrary"
             ZWrite On
             HLSLPROGRAM
             #pragma target 3.5
-            #pragma vertex EndfieldDepthVertex
+            #pragma vertex EndfieldShadowVertex
             #pragma fragment EndfieldDepthFragment
+            #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
             #include "EndfieldCommon.hlsl"
             ENDHLSL
         }

@@ -49,7 +49,7 @@ jobs:
           -UnityVersion '${{ matrix.unity }}'
           -UrpVersion '${{ matrix.package }}'
           -ShaderGraphVersion '${{ matrix.package }}'
-          -PackagePath 'dist\com.miku.shaderconverter-2.3.0.tgz'
+          -PackagePath 'dist\com.miku.shaderconverter-3.0.0.tgz'
           -EvidencePath 'artifacts\unity-${{ matrix.unity }}.json'
       - name: Upload exact-version evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
