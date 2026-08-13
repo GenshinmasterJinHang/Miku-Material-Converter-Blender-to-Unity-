@@ -29,6 +29,60 @@ float3 Wuwa_SampleSH_Indirect(float3 normalWS, float flattenNormal)
     return SampleSH(shNormal);
 }
 
+// WuWa character normal textures may either be ordinary Unity normal maps or
+// the source game's linear RGBA packing.  Packed mode keeps the DirectX normal
+// in RG, metallic in B, and perceptual roughness in A.
+void Wuwa_DecodeNormalRoughnessMetallic(
+    float4 sampleValue,
+    float encoding,
+    float normalScale,
+    float fallbackMetallic,
+    float fallbackRoughness,
+    float packedMetallicScale,
+    float packedRoughnessScale,
+    out float3 normalTS,
+    out float metallic,
+    out float roughness)
+{
+    if (encoding > 0.5)
+    {
+        float2 normalXY = sampleValue.rg * 2.0 - 1.0;
+        // Source textures use DirectX tangent-space Y. Unity's tangent basis
+        // expects positive-Y/OpenGL convention for a raw sampled texture.
+        normalXY.y = -normalXY.y;
+        normalXY *= max(normalScale, 0.0);
+        float normalZ = sqrt(saturate(1.0 - dot(normalXY, normalXY)));
+        normalTS = normalize(float3(normalXY, normalZ));
+        metallic = saturate(sampleValue.b * max(packedMetallicScale, 0.0));
+        roughness = saturate(sampleValue.a * max(packedRoughnessScale, 0.0));
+    }
+    else
+    {
+        normalTS = UnpackNormalScale(sampleValue, max(normalScale, 0.0));
+        metallic = saturate(fallbackMetallic);
+        roughness = saturate(fallbackRoughness);
+    }
+}
+
+BRDFData Wuwa_InitializeBRDFData(
+    float3 albedo,
+    float metallic,
+    float roughness,
+    float alpha)
+{
+    BRDFData brdfData;
+    half safeAlpha = saturate(alpha);
+    half smoothness = 1.0h - saturate(roughness);
+    InitializeBRDFData(
+        max(albedo, 0.0.xxx),
+        saturate(metallic),
+        half3(0.0h, 0.0h, 0.0h),
+        smoothness,
+        safeAlpha,
+        brdfData);
+    return brdfData;
+}
+
 float Wuwa_BodyToonLight(
     float3 normalWS,
     float3 lightDirWS,
@@ -55,6 +109,29 @@ float Wuwa_SelectChannel(float4 value, float channel)
     return value.r;
 }
 
+float Wuwa_FaceSDFSideMask(
+    float4 faceSdfSample,
+    float mainChannel,
+    float softChannel,
+    float faceShadowOffset,
+    float sdfThreshold,
+    float softness,
+    float softChannelStrength)
+{
+    float mainValue = Wuwa_SelectChannel(faceSdfSample, mainChannel) + faceShadowOffset;
+    float softValue = Wuwa_SelectChannel(faceSdfSample, softChannel) + faceShadowOffset;
+    float mainMask = smoothstep(
+        sdfThreshold - softness,
+        sdfThreshold + softness,
+        mainValue);
+    float softMask = smoothstep(
+        sdfThreshold - softness,
+        sdfThreshold + softness,
+        softValue);
+    return saturate(
+        mainMask * lerp(1.0, softMask, saturate(softChannelStrength)));
+}
+
 float Wuwa_FaceSDFLight(
     float2 uv,
     float4 faceSdfSample,
@@ -68,7 +145,8 @@ float Wuwa_FaceSDFLight(
     float faceShadowOffset,
     float faceShadowSoftness,
     float faceThresholdBias,
-    float softChannelStrength)
+    float softChannelStrength,
+    float mirrorBlendWidth)
 {
     headForwardWS = normalize(headForwardWS);
     headRightWS = normalize(headRightWS);
@@ -99,27 +177,44 @@ float Wuwa_FaceSDFLight(
     float3 fixedLightDirectionWS = dot(projectedLightWS, projectedLightWS) > 1e-5
         ? normalize(projectedLightWS)
         : headForwardWS;
-    float2 sdfUV = uv;
-    // The source Blender graph samples -U on the positive-right light side.
-    if (dot(fixedLightDirectionWS, headRightWS) > 0.0)
-        sdfUV.x = 1.0 - sdfUV.x;
-
-    float4 mirroredSdfSample = SAMPLE_TEXTURE2D(faceSdfTex, sampler_faceSdfTex, sdfUV);
-    float sdfValue = Wuwa_SelectChannel(mirroredSdfSample, mainChannel) + faceShadowOffset;
-    float softValue = Wuwa_SelectChannel(mirroredSdfSample, softChannel) + faceShadowOffset;
+    // Evaluate the two authored halves independently. Blending UVs or raw SDF
+    // values would collapse their shapes toward the texture center.
+    float4 mirroredSdfSample = SAMPLE_TEXTURE2D(
+        faceSdfTex,
+        sampler_faceSdfTex,
+        float2(1.0 - uv.x, uv.y));
     float sdfThreshold = 1.0 - (dot(fixedLightDirectionWS, headForwardWS) * 0.5 + 0.5) + faceThresholdBias;
     float softness = max(faceShadowSoftness, 1e-5);
-    float sourceMap = saturate((sdfValue - (sdfThreshold - softness)) / (softness * 2.0));
-    float mainMask = saturate(lerp(-1.3, 1.0, sourceMap));
-    float softMask = smoothstep(sdfThreshold - softness * 2.0, sdfThreshold + softness, softValue);
-    return saturate(lerp(mainMask, mainMask * softMask, saturate(softChannelStrength)));
+    float unmirroredMask = Wuwa_FaceSDFSideMask(
+        faceSdfSample,
+        mainChannel,
+        softChannel,
+        faceShadowOffset,
+        sdfThreshold,
+        softness,
+        softChannelStrength);
+    float mirroredMask = Wuwa_FaceSDFSideMask(
+        mirroredSdfSample,
+        mainChannel,
+        softChannel,
+        faceShadowOffset,
+        sdfThreshold,
+        softness,
+        softChannelStrength);
+    float sideDot = dot(fixedLightDirectionWS, headRightWS);
+    float safeMirrorBlendWidth = max(mirrorBlendWidth, 0.0);
+    // Zero width preserves the legacy selector, including choosing the
+    // unmirrored half when the light lies exactly on the forward axis.
+    float mirrorWeight = safeMirrorBlendWidth <= 1e-5
+        ? (dot(fixedLightDirectionWS, headRightWS) > 0.0 ? 1.0 : 0.0)
+        : smoothstep(-safeMirrorBlendWidth, safeMirrorBlendWidth, sideDot);
+    return saturate(lerp(unmirroredMask, mirroredMask, mirrorWeight));
 }
 
 float Wuwa_HairShadowMask(
     TEXTURE2D_PARAM(hairShadowTex, sampler_hairShadowTex),
     float4 positionCS,
-    float3 lightDirWS,
-    float screenOffset,
+    float2 screenOffset,
     float depthBias,
     float softness,
     float strength,
@@ -129,68 +224,119 @@ float Wuwa_HairShadowMask(
     #if UNITY_UV_STARTS_AT_TOP
         screenUV.y = 1.0 - screenUV.y;
     #endif
-    float2 lightOffset = normalize(lightDirWS.xy + 1e-5.xx) * screenOffset;
-    float sampledDepth01 = SAMPLE_TEXTURE2D(hairShadowTex, sampler_hairShadowTex, saturate(screenUV + lightOffset)).r;
+    float sampledDepth01 = SAMPLE_TEXTURE2D(
+        hairShadowTex,
+        sampler_hairShadowTex,
+        saturate(screenUV + screenOffset)).r;
     float faceDepth01 = LinearEyeDepth(positionCS.z, _ZBufferParams) / max(_ProjectionParams.z, 1e-5);
     float shadow = saturate((faceDepth01 - sampledDepth01 - depthBias) / max(softness, 1e-5));
     return saturate(shadow * strength * step(0.5, available));
 }
 
-// Tutorial 3.1.1: minimal CookTorrance direct specular from the IcePaper Wuwa
-// tutorial. roughness2MinusOne and normalizationTerm follow URP BRDFData so
-// the same formulas can be validated by CPU math mirrors in EditMode tests.
+// Tutorial 3.1.1: use URP's BRDFData-derived minimalist Cook-Torrance term.
+// This deliberately delegates normalization and roughness conversion to the
+// supported URP 17 BRDF implementation instead of mirroring private constants.
 float Wuwa_DirectBRDFSpecular(
+    BRDFData brdfData,
+    float3 normalWS,
+    float3 lightDirWS,
+    float3 viewDirWS)
+{
+    return DirectBRDFSpecular(
+        brdfData,
+        normalize(normalWS),
+        normalize(lightDirWS),
+        normalize(viewDirWS));
+}
+
+float3 Wuwa_DirectPBR(
+    BRDFData brdfData,
     float3 normalWS,
     float3 lightDirWS,
     float3 viewDirWS,
-    float roughness)
+    float3 lightColor,
+    float distanceAttenuation,
+    float shadowAttenuation,
+    float toonVisibility,
+    float3 shadowTint,
+    float3 litTint,
+    float3 specularTint,
+    float specularStrength)
 {
     float3 safeNormalWS = normalize(normalWS);
     float3 safeLightDirWS = normalize(lightDirWS);
-    float3 safeViewDirWS = normalize(viewDirWS);
-    float3 halfDir = normalize(safeLightDirWS + safeViewDirWS);
-
-    float NoH = saturate(dot(safeNormalWS, halfDir));
-    float LoH = saturate(dot(safeLightDirWS, halfDir));
     float NoL = saturate(dot(safeNormalWS, safeLightDirWS));
-    float NoV = saturate(dot(safeNormalWS, safeViewDirWS));
-    float safeRoughness = clamp(roughness, 1e-3, 1.0);
-    float roughness2 = safeRoughness * safeRoughness;
-    float roughness2MinusOne = roughness2 - 1.0;
-    float normalizationTerm = max(4.0 * LoH * NoH, 1e-3);
-
-    float d = NoH * NoH * roughness2MinusOne + 1.00001;
-    float LoH2 = LoH * LoH;
-    float specularTerm = roughness2 /
-        ((d * d) * max(0.1, LoH2) * normalizationTerm);
-    // Guard against invalid inputs while keeping the tutorial's response.
-    return (specularTerm == specularTerm) &&
-        abs(specularTerm) < 1e19 &&
-        NoL > 0.0 && NoV > 0.0
-        ? saturate(specularTerm)
-        : 0.0;
+    float distance = saturate(distanceAttenuation);
+    float shadow = saturate(shadowAttenuation);
+    float3 diffuse = brdfData.diffuse * lerp(
+        max(shadowTint, 0.0.xxx),
+        max(litTint, 0.0.xxx),
+        saturate(toonVisibility) * shadow);
+    float specularTerm = Wuwa_DirectBRDFSpecular(
+        brdfData,
+        safeNormalWS,
+        safeLightDirWS,
+        viewDirWS);
+    float3 specular = brdfData.specular *
+        max(specularTint, 0.0.xxx) *
+        max(specularStrength, 0.0) * specularTerm * NoL * shadow;
+    return (diffuse + specular) * max(lightColor, 0.0.xxx) * distance;
 }
 
 // Tutorial 3.1.2: reflection-probe indirect specular without the Fresnel term
 // (the tutorial removes fresnelTerm because a separate rim effect follows).
 float3 Wuwa_IndirectSpecular(
+    BRDFData brdfData,
     float3 normalWS,
     float3 viewDirWS,
-    float roughness)
+    float3 positionWS,
+    float2 normalizedScreenSpaceUV,
+    float occlusion)
 {
     float3 safeNormalWS = normalize(normalWS);
     float3 safeViewDirWS = normalize(viewDirWS);
     float3 reflectVector = reflect(-safeViewDirWS, safeNormalWS);
-    float perceptualRoughness = clamp(roughness, 0.0, 1.0);
     float3 reflected = GlossyEnvironmentReflection(
         reflectVector,
-        perceptualRoughness,
-        1.0);
+        positionWS,
+        brdfData.perceptualRoughness,
+        saturate(occlusion),
+        normalizedScreenSpaceUV);
     float reflectedEnergy = dot(reflected, reflected);
     return (reflectedEnergy == reflectedEnergy) &&
         abs(reflectedEnergy) < 1e19
         ? reflected
         : 0.0.xxx;
+}
+
+float3 Wuwa_IndirectPBR(
+    BRDFData brdfData,
+    float3 bakedGI,
+    float3 normalWS,
+    float3 viewDirWS,
+    float3 positionWS,
+    float2 normalizedScreenSpaceUV,
+    float occlusion,
+    float diffuseStrength,
+    float reflectionStrength)
+{
+    float safeOcclusion = saturate(occlusion);
+    float3 indirectDiffuse = max(bakedGI, 0.0.xxx) *
+        safeOcclusion * max(diffuseStrength, 0.0);
+    float3 indirectSpecular = Wuwa_IndirectSpecular(
+        brdfData,
+        normalWS,
+        viewDirWS,
+        positionWS,
+        normalizedScreenSpaceUV,
+        safeOcclusion) * max(reflectionStrength, 0.0);
+    // The tutorial intentionally removes EnvironmentBRDF's Fresnel term
+    // because WuWa applies its authored Fresnel/rim layer separately.
+    return EnvironmentBRDF(
+        brdfData,
+        indirectDiffuse,
+        indirectSpecular,
+        0.0h);
 }
 
 // Tutorial 3.2: MatCap is desaturated before it is added onto the albedo so
@@ -217,6 +363,18 @@ float3 Wuwa_VerticalGradient(
     return lerp(color * max(lowColor, 0.0.xxx), color, amount);
 }
 
+float3 Wuwa_ApplyVerticalGradient(
+    float3 color,
+    float3 lowColor,
+    float gradingValue,
+    float strength)
+{
+    return lerp(
+        color,
+        Wuwa_VerticalGradient(color, lowColor, gradingValue),
+        saturate(strength));
+}
+
 // Tutorial 3.5.1: Fresnel edge light with a hard step.
 float3 Wuwa_FresnelStepRim(
     float3 normalWS,
@@ -241,6 +399,7 @@ float3 Wuwa_FresnelStepRim(
 float Wuwa_GradientValue(
     float2 uv0,
     float2 uv1,
+    float2 uv2,
     float2 uv3,
     float channel,
     float invert)
@@ -249,6 +408,8 @@ float Wuwa_GradientValue(
     float2 selected = uv0;
     if (index == 1)
         selected = uv1;
+    else if (index == 2)
+        selected = uv2;
     else if (index == 3)
         selected = uv3;
     float value = selected.y;

@@ -21,12 +21,13 @@ Shader "MIKU/HSR/Body"
         _IndirectLightOcclusionUsage ("Indirect Light AO Usage", Range(0,1)) = 0.7
         _IndirectLightMixBaseColor ("Indirect Mix Base Color", Range(0,1)) = 1
         _IndirectLightFlattenNormal ("Indirect Flatten Normal", Range(0,1)) = 0.8
-        _ShadowThresholdCenter ("Shadow Threshold Center", Range(-1,1)) = 0
-        _ShadowThresholdSoftness ("Shadow Threshold Softness", Range(0.001,1)) = 0.035
-        _ShadowRampOffset ("Shadow Ramp Offset", Range(0,1)) = 0.75
+        [HideInInspector] _ShadowThresholdCenter ("Legacy Shadow Threshold Center", Range(-1,1)) = 0
+        [HideInInspector] _ShadowThresholdSoftness ("Legacy Shadow Threshold Softness", Range(0.001,1)) = 0.035
+        [HideInInspector] _ShadowRampOffset ("Legacy Shadow Ramp Offset", Range(0,1)) = 0.15
         _BodyRampRowCount ("Body Ramp Row Count", Float) = 8
         _MainLightColorUsage ("Main Light Color Usage", Range(0,1)) = 0.35
         _SpecularExponent ("Specular Exponent", Range(1,512)) = 48
+        _SpecularSoftness ("Specular Smooth Cut Width", Range(0.001,1)) = 0.1
         _SpecularKsNonMetal ("Specular Ks NonMetal", Range(0,1)) = 0.035
         _SpecularKsMetal ("Specular Ks Metal", Range(0,4)) = 1.1
         _SpecularBrightness ("Specular Brightness", Range(0,4)) = 1
@@ -96,7 +97,7 @@ Shader "MIKU/HSR/Body"
                 float _Cull; float _BackUV1;
                 float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal;
                 float _ShadowThresholdCenter; float _ShadowThresholdSoftness; float _ShadowRampOffset; float _BodyRampRowCount; float _MainLightColorUsage;
-                float _SpecularExponent; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness; float _MetallicLightMapTarget; float _MetallicLightMapWidth;
+                float _SpecularExponent; float _SpecularSoftness; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness; float _MetallicLightMapTarget; float _MetallicLightMapWidth;
                 float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float _StockingsTransitionPower; float _StockingsTransitionHardness; float _StockingsTextureUsage; float _StockingsDetailStrength; float _StockingsDetailMin; float4 _StockingsDarkColor; float4 _StockingsTransitionColor; float4 _StockingsLightColor; float _StockingsTransitionThreshold; float _StockingsDebugMode;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
@@ -140,8 +141,8 @@ Shader "MIKU/HSR/Body"
                     baseColor *= stockingsEffect;
                 #endif
                 baseColor = MikuGameToonApplySkinTone(baseColor, skinMask, _SkinToneBrightness, _SkinToneWhitening, _SkinToneTarget.rgb);
-                float mainLightShadow = HSR_BodyMainShadow(normalWS, lightDirWS, lightMap, _ShadowThresholdCenter, _ShadowThresholdSoftness) * mainLight.shadowAttenuation;
-                float3 rampColor = HSR_SampleRamp(mainLightShadow, lightMap.a, lightDirWS, TEXTURE2D_ARGS(_BodyCoolRamp, sampler_BodyCoolRamp), TEXTURE2D_ARGS(_BodyWarmRamp, sampler_BodyWarmRamp), _BodyRampRowCount, _ShadowRampOffset);
+                float mainLightShadow = HSR_TutorialShadowAoHalfLambert(normalWS, lightDirWS, lightMap.g) * mainLight.shadowAttenuation;
+                float3 rampColor = HSR_SampleRamp(mainLightShadow, lightMap.a, lightDirWS, TEXTURE2D_ARGS(_BodyCoolRamp, sampler_BodyCoolRamp), TEXTURE2D_ARGS(_BodyWarmRamp, sampler_BodyWarmRamp), _BodyRampRowCount, 0.15);
                 float3 indirect = HSR_SampleSH_Indirect(normalWS, _IndirectLightFlattenNormal) * _IndirectLightUsage;
                 indirect *= lerp(1.0, lightMap.r, _IndirectLightOcclusionUsage);
                 indirect *= lerp(1.0.xxx, baseColor, _IndirectLightMixBaseColor);
@@ -149,7 +150,7 @@ Shader "MIKU/HSR/Body"
                 #if defined(_AREA_UPPER_BODY) || defined(_AREA_LOWER_BODY)
                     metallic = HSR_ExtractMetallicFromLightMap(lightMap.a, _MetallicLightMapTarget, _MetallicLightMapWidth);
                 #endif
-                float3 specular = HSR_ComputeSpecular(baseColor, lightMap, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, _SpecularExponent, _SpecularKsNonMetal, _SpecularKsMetal, _SpecularBrightness, metallic);
+                float3 specular = HSR_ComputeSpecular(baseColor, lightMap, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, _SpecularExponent, _SpecularSoftness, _SpecularKsNonMetal, _SpecularKsMetal, _SpecularBrightness, metallic);
                 float3 mainLightColor = lerp(HSR_Desaturate(mainLight.color.rgb), mainLight.color.rgb, _MainLightColorUsage);
                 float3 direct = mainLightColor * baseColor * rampColor;
                 float3 sss = MikuGameToonSkinSSS(baseColor, skinMask, normalWS, viewDirWS, lightDirWS, mainLight.color.rgb, mainLightShadow, _SkinSSSIntensity, _SSSArea, _SSSColor.rgb);
@@ -175,7 +176,7 @@ Shader "MIKU/HSR/Body"
                 float4 _BaseMap_ST; float4 _StockingsMap_ST; float4 _BaseColorTint;
                 float _IndirectLightUsage; float _IndirectLightOcclusionUsage; float _IndirectLightMixBaseColor; float _IndirectLightFlattenNormal;
                 float _ShadowThresholdCenter; float _ShadowThresholdSoftness; float _ShadowRampOffset; float _BodyRampRowCount; float _MainLightColorUsage;
-                float _SpecularExponent; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness; float _MetallicLightMapTarget; float _MetallicLightMapWidth;
+                float _SpecularExponent; float _SpecularSoftness; float _SpecularKsNonMetal; float _SpecularKsMetal; float _SpecularBrightness; float _MetallicLightMapTarget; float _MetallicLightMapWidth;
                 float _SkinSSSIntensity; float4 _SSSColor; float _SSSArea; float _SkinToneBrightness; float _SkinToneWhitening; float4 _SkinToneTarget; float _SkinMaskDebugMode;
                 float _StockingsTransitionPower; float _StockingsTransitionHardness; float _StockingsTextureUsage; float _StockingsDetailStrength; float _StockingsDetailMin; float4 _StockingsDarkColor; float4 _StockingsTransitionColor; float4 _StockingsLightColor; float _StockingsTransitionThreshold; float _StockingsDebugMode;
                 float _RimLightBrightness; float4 _RimLightTintColor; float _RimLightWidth; float _RimLightThreshold; float _RimLightFadeout; float _FresnelPower; float _FresnelClamp;
@@ -207,7 +208,7 @@ Shader "MIKU/HSR/Body"
                 float _OutlineWidth; float _OutlineReferenceDistance; float _OutlineDistanceScale; float _OutlineGamma; float4 _OutlineColorTint;
             CBUFFER_END
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float4 smoothNormalData : TEXCOORD7; };
-            struct Varyings { float4 positionCS : SV_POSITION; };
+            struct Varyings { float4 positionCS : SV_POSITION; float outlineCoverage : TEXCOORD0; };
             Varyings OutlineVert(Attributes input)
             {
                 Varyings output;
@@ -224,10 +225,20 @@ Shader "MIKU/HSR/Body"
                     float4(1.0, 1.0, 1.0, 1.0),
                     1.0,
                     1.0);
+                output.outlineCoverage = MikuGameToonOutlineCoverageWithLegacyMode(
+                    pos.positionWS,
+                    1.0,
+                    _OutlineWidth,
+                    _OutlineReferenceDistance,
+                    _OutlineDistanceScale,
+                    float4(1.0, 1.0, 1.0, 1.0),
+                    1.0,
+                    1.0);
                 return output;
             }
             half4 OutlineFrag(Varyings input) : SV_Target
             {
+                MikuGameToonOutlineClipCoverage(input.outlineCoverage);
                 float3 outlineColor = HSR_BodyOutlineColor(TEXTURE2D_ARGS(_BodyCoolRamp, sampler_BodyCoolRamp), TEXTURE2D_ARGS(_BodyWarmRamp, sampler_BodyWarmRamp), _OutlineGamma) * _OutlineColorTint.rgb;
                 return half4(outlineColor, 1.0);
             }

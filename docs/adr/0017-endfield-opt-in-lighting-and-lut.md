@@ -3,6 +3,21 @@
 - Status: Accepted
 - Date: 2026-08-09
 
+## 2026-08-12 correction
+
+The original full-screen grading decision below assumed the selected 1024x32
+texture was a game screen LUT. Source-material and PMX auditing disproved that
+assumption for the supplied character assets: the cloth and female-skin LUTs
+are material dark-color maps for Body/Cloth and Face/Skin. Applying the cloth
+map to the whole frame is invalid and compresses neutral luminance before Bloom.
+
+The current decision therefore defaults to a standard URP Volume-only grade:
+Color Adjustments, identity Color Curves, Neutral Tonemapping, Bloom, and
+Vignette. The explicit screen-LUT API remains for genuine screen-grading assets,
+but material-LUT evidence is rejected. This correction supersedes the
+full-screen assumption in the historical text while preserving it as the
+record of the earlier decision.
+
 ## Decision
 
 Endfield's tutorial-complete lighting is activated by one execute-always scene
@@ -32,5 +47,11 @@ inputs and are excluded from Miku release archives.
 - Renderer-feature, profile, material, and scene setup is idempotent,
   Undo-aware, and rollback-safe. The target project keeps baseline scene,
   material, and mesh assets.
+- Corrupt pre-existing Renderer Feature/local-ID state fails before writes;
+  success requires forced reimport and persisted subasset, map, configuration,
+  and material verification.
+- A late validation failure restores exact pre-install bytes for existing
+  Renderer Data, LUT importer metadata, material, and profile assets. Importer
+  changes participate in the successful installation's Unity Undo group.
 - The package may ship shaders, runtime/editor setup code, tests, and profile
   factories, but never the selected game LUT itself.

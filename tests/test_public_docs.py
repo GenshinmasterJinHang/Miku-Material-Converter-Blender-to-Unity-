@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import struct
 import unittest
 from pathlib import Path
 
@@ -22,13 +23,15 @@ UI_IMAGES = (
 )
 CHARACTER_IMAGE_HASHES = {
     "preset-genshin-hu-tao.png":
-        "a8534a28eafa8a65aefef727d6d5b48fcbfce2dafbcca93d6fe4966ff83961eb",
+        "95a7812d501d27557cafd0ab7a15052ad67eec29d3422996d85b86e448e7e022",
+    "preset-genshin-furina.png":
+        "1abfde9f6bf844de2503c8694df5c423e6650366d2d8e2bac0af6dca6b36f5d9",
     "preset-hsr-bronya.png":
-        "67689b87c6c87348f1b4d7a4650196f782bc1fb751712da45c7ce0dd05261e89",
+        "85464c9fdce286b3c51bcf341901642019e95248cbdf66c7b786eef74ed6fcfe",
     "preset-wuwa-phoebe.png":
-        "1da7a8af11a1240086dd3b95d19655f84d4bbb5ddac383b16a0cc5526de40823",
+        "f178220fddc059886db4cb3bd4af67b633590b4ad48144fe664fc47b0c74de3e",
     "preset-endfield-jierpeta.png":
-        "2252af935e59f00c8ed13871989ab0a5662b96d9d3e96022144c56ed292fe530",
+        "7200e0f50d905370d977db3981d166f09bb51fcf4d29483973e3f8c922ee185f",
 }
 UI_IMAGE_HASHES = {
     "blender-standard-pbr-en.png":
@@ -42,7 +45,7 @@ UNITY_MENU_PATHS = (
     "Miku > Game Toon > Materials > Apply Recommended Skin & Highlight Profile",
     "Miku > Game Toon > Textures > Import Audit",
     "Miku > Game Toon > Mesh > Smooth Normal Generator",
-    "Miku > Game Toon > Rendering > Screen Rim Installer",
+    "Miku > Game Toon > Rendering > Game Toon Renderer Feature Installer",
     "Miku > Game Toon > Rendering > Rebuild Anime Global Volume Profile",
     "Miku > Migration > Dry Run Selected MiGR Assets",
     "Miku > Migration > Upgrade Selected MiGR Assets",
@@ -57,6 +60,13 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _png_size(path: Path) -> tuple[int, int]:
+    data = path.read_bytes()[:24]
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise AssertionError(f"not a PNG: {path}")
+    return struct.unpack(">II", data[16:24])
+
+
 def _normalized(text: str) -> str:
     return " ".join(text.split())
 
@@ -65,7 +75,7 @@ class PublicDocumentationTests(unittest.TestCase):
     def test_bilingual_entry_points_version_and_active_branding(self) -> None:
         readme, chinese, manual, chinese_manual = map(_read, PUBLIC_DOCUMENTS)
         for document in (readme, chinese, manual, chinese_manual):
-            self.assertIn("2.3.0", document)
+            self.assertIn("3.0.0", document)
             self.assertNotIn("0.11.0", document)
             self.assertNotIn("B2U", document)
         self.assertIn("docs/zh-CN/README.md", readme)
@@ -78,8 +88,16 @@ class PublicDocumentationTests(unittest.TestCase):
 
     def test_relative_links_and_images_exist_in_every_public_document(self) -> None:
         link_pattern = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+        html_target_pattern = re.compile(
+            r'<(?:a|img)\b[^>]*\b(?:href|src)="([^"]+)"'
+        )
         for document_path in PUBLIC_DOCUMENTS:
-            for raw_target in link_pattern.findall(_read(document_path)):
+            document = _read(document_path)
+            targets = (
+                link_pattern.findall(document)
+                + html_target_pattern.findall(document)
+            )
+            for raw_target in targets:
                 target = raw_target.strip()
                 if target.startswith(("http://", "https://", "mailto:", "#")):
                     continue
@@ -118,6 +136,14 @@ class PublicDocumentationTests(unittest.TestCase):
                 filename,
             )
 
+    def test_character_renders_are_exact_1080p_pngs(self) -> None:
+        for filename in CHARACTER_IMAGE_HASHES:
+            self.assertEqual(
+                (1920, 1080),
+                _png_size(ROOT / "docs/images" / filename),
+                filename,
+            )
+
     def test_four_shader_families_and_22_parts_are_documented(self) -> None:
         readme, chinese, manual, chinese_manual = map(_read, PUBLIC_DOCUMENTS)
         for document in (readme, chinese, manual, chinese_manual):
@@ -128,9 +154,9 @@ class PublicDocumentationTests(unittest.TestCase):
         self.assertIn("22 valid material parts", manual)
         self.assertIn("22 个有效材质部位", chinese)
         self.assertIn("22 个有效材质部位", chinese_manual)
-        for character in ("Hu Tao", "Bronya", "Phoebe", "洁尔佩塔"):
+        for character in ("Hu Tao", "Furina", "Bronya", "Phoebe", "洁尔佩塔"):
             self.assertIn(character, manual)
-        for character in ("胡桃", "布洛妮娅", "菲比", "洁尔佩塔"):
+        for character in ("胡桃", "芙宁娜", "布洛妮娅", "菲比", "洁尔佩塔"):
             self.assertIn(character, chinese_manual)
 
     def test_public_unity_tools_are_in_both_manuals(self) -> None:

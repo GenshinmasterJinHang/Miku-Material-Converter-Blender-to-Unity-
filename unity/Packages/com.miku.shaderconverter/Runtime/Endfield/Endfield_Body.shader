@@ -24,7 +24,9 @@ Shader "MIKU/Endfield/Body"
         [Toggle] _UseColorLut ("Use Dark Color LUT", Float) = 0
         [HideInInspector] _UseShadowLut ("Use Legacy LUT", Float) = 0
         [Toggle] _UseEmissionMap ("Use Emission", Float) = 0
+        [Toggle] _UseOutline ("Use Outline", Float) = 1
         [Toggle] _UseOutlineMask ("Use Outline Mask", Float) = 0
+        [HideInInspector] _MikuEndfieldMaterialStateVersion ("Miku Endfield Material State Version", Float) = 0
         _NormalStrength ("Normal Strength", Range(0,1)) = 1
         _ShadowSmoothness ("Shadow Smoothness", Range(0.001,0.5)) = 0.08
         _ShadowCenter ("Character Shadow Center", Range(0,1)) = 0.5

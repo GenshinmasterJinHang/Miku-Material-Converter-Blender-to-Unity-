@@ -20,6 +20,7 @@ Shader "Hidden/Miku/GameToon/ScreenRimComposite"
 
             TEXTURE2D_X(_MIKU_ToonCharacterMaskTexture);
             TEXTURE2D_X(_MIKU_ToonCharacterRimParamsTexture);
+            float _MIKU_ScreenRimAlgorithm;
 
             float MikuLinearEyeDepth(float2 uv)
             {
@@ -44,8 +45,34 @@ Shader "Hidden/Miku/GameToon/ScreenRimComposite"
                 if (mask.a <= 0.0)
                     return source;
                 float radius = max(mask.a * 16.0, 1.0);
-                float2 texel = _BlitTexture_TexelSize.xy * radius;
                 float centerDepth = MikuLinearEyeDepth(uv);
+                if (_MIKU_ScreenRimAlgorithm > 0.5)
+                {
+                    float distanceAlpha = saturate(1.0 - centerDepth / 80.0);
+                    float2 tutorialTexel = _BlitTexture_TexelSize.xy *
+                        max(radius * distanceAlpha, 1.0);
+                    float upperLeft = MikuLinearEyeDepth(
+                        uv + float2(-tutorialTexel.x, tutorialTexel.y));
+                    float upperRight = MikuLinearEyeDepth(
+                        uv + float2(tutorialTexel.x, tutorialTexel.y));
+                    float lowerCenter = MikuLinearEyeDepth(
+                        uv + float2(0.0, -tutorialTexel.y));
+                    float sobelDepth = max(
+                        max(upperLeft - centerDepth, upperRight - centerDepth),
+                        lowerCenter - centerDepth);
+                    float threshold = rimParams.r * max(centerDepth, 1e-4);
+                    float softness = max(
+                        rimParams.g * max(centerDepth, 1.0),
+                        1e-5);
+                    half tutorialEdge = smoothstep(
+                        threshold,
+                        threshold + softness,
+                        max(sobelDepth, 0.0)) * distanceAlpha;
+                    return half4(
+                        source.rgb + mask.rgb * tutorialEdge,
+                        source.a);
+                }
+                float2 texel = _BlitTexture_TexelSize.xy * radius;
                 float depthDelta = 0.0;
                 depthDelta = max(
                     depthDelta,

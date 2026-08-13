@@ -83,6 +83,23 @@ implementations of the described behaviors using URP public APIs. The
 character textures and environment HDR remain local validation inputs and are
 not distributed.
 
+The Miku 3.0 WuWa completion re-evaluated those behaviors against the supplied
+tutorial description, URP 17.4 public shader helpers, and privately supplied
+Phoebe FBX/TGA/HDR validation inputs. BRDF initialization, packed DirectX
+normal decoding, baked/probe GI, screen-space hair shadow, screen rim, and
+clone-only migration are independently authored Miku code. No tutorial prose,
+third-party reverse-engineered Shader code, extracted material graph, model,
+texture, scene, screenshot, or generated derivative is copied into the public
+repository, Blender ZIP, Unity TGZ, fixture set, or documentation.
+
+The 2026-08-12 HSR lighting and face-detail alignment was specified from a
+user-supplied explanatory tutorial and observable local validation textures.
+The literal Shadow AO scalar expansion, inverted-blue smooth Toon threshold,
+texture-neutral Face highlight, and view-dependent FaceMap-blue nose-line
+controls are independent Miku implementations using URP public APIs. No
+tutorial prose, extracted game Shader, serialized material, model, texture,
+rendered comparison, or scene is copied into the repository or package.
+
 Locally supplied Endfield model and texture assets are validation inputs and are
 not distributed in the package.
 
@@ -98,9 +115,21 @@ Streamline is MIT-licensed and its attribution is recorded in
 published Kulla--Conty design at an algorithmic level. Miku does not bundle
 Streamline source or binaries.
 
-The four character-render examples added to the GitHub manuals after the
-v2.2.8 package release are documentation images outside the installable
+The five character-render examples refreshed for the Miku 3.0.0 GitHub manuals
+are source-controlled documentation images outside the installable
 packages. They carry separate non-commercial documentation-reference terms and
 do not change the MIT provenance of these independently implemented Shader/HLSL
 backends. Their exact identities are recorded in
 `docs/provenance/documentation-images.md`.
+
+The Miku 2.4.0 Genshin correction used the user-supplied tutorial and the
+local checkout of `PTSXDWD/URP_GenshinImpact` at commit
+`a258a9ef6e18bf45afbbf390a1dacf87f512f231` only as observable behavior and a
+local visual-validation fixture. That checkout declares no license. No source
+Shader, C# script, FBX, PNG, serialized material, Renderer Data, scene,
+metadata, screenshot, or derived Mesh is copied into Miku or its release
+artifacts. The tutorial equations, URP integration, renderer scheduling,
+texture policy, diagnostics, and tools are independently implemented Miku
+code. The public package contains no Furina creator or private validation
+fixture; all third-party validation inputs and generated evidence remain
+external to the repository and release artifacts.

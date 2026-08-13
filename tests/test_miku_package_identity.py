@@ -17,7 +17,7 @@ class MikuPackageIdentityTests(unittest.TestCase):
     def test_package_is_mit_and_versioned(self):
         package = json.loads((PACKAGE / "package.json").read_text(encoding="utf8"))
         self.assertEqual(package["name"], "com.miku.shaderconverter")
-        self.assertEqual(package["version"], "2.3.0")
+        self.assertEqual(package["version"], "3.0.0")
         self.assertEqual(package["license"], "MIT")
         self.assertEqual(package["unity"], "6000.0")
         self.assertEqual(
@@ -114,7 +114,7 @@ class MikuPackageIdentityTests(unittest.TestCase):
         from tools.build_miku_unity_package import build
 
         artifact = build()
-        self.assertEqual("com.miku.shaderconverter-2.3.0.tgz", artifact.name)
+        self.assertEqual("com.miku.shaderconverter-3.0.0.tgz", artifact.name)
         first = artifact.read_bytes()
         second = build().read_bytes()
         self.assertEqual(first, second)
@@ -186,6 +186,21 @@ class MikuPackageIdentityTests(unittest.TestCase):
         self.assertEqual(
             family.hexdigest(),
             hashes["gameToonScreenRim"],
+        )
+        genshin_root = PACKAGE / "Runtime" / "Genshin"
+        family = hashlib.sha256()
+        for path in sorted(
+            genshin_root.iterdir(), key=lambda item: item.name
+        ):
+            if path.suffix == ".meta":
+                continue
+            relative = "Runtime/Genshin/" + path.name
+            family.update(relative.encode("utf-8"))
+            family.update(b"\0")
+            family.update(path.read_bytes())
+        self.assertEqual(
+            family.hexdigest(),
+            hashes["genshinToonBackend"],
         )
         self.assertEqual(hashlib.sha256(subgraph.read_bytes()).hexdigest(), hashes["generatedSubGraph"])
         runtime = PACKAGE / "Editor" / "MikuShaderGraph17RuntimeBackend.cs"

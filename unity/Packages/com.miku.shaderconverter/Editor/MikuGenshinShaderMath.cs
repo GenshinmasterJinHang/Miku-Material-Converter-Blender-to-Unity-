@@ -43,10 +43,108 @@ namespace Miku.ShaderConverter.Editor
 
         public static float OutlineVertexMask(Color vertexColor)
         {
-            var alphaMask = Mathf.Clamp01(vertexColor.a);
-            return alphaMask > 1e-4f
-                ? alphaMask
-                : Mathf.Clamp01(vertexColor.g);
+            return Mathf.Clamp01(vertexColor.g);
+        }
+
+        public static float TutorialAo(float lightMapGreen) =>
+            SmoothStep(0.2f, 0.3f, Mathf.Clamp01(lightMapGreen));
+
+        public static float TutorialLightingSignal(
+            float ndotL,
+            float lightMapGreen,
+            float dark,
+            float grey)
+        {
+            var halfLambert = SmoothStep(
+                0f,
+                Mathf.Max(grey, 1e-4f),
+                ndotL + dark);
+            return Mathf.Clamp01(
+                halfLambert * TutorialAo(lightMapGreen));
+        }
+
+        // Kept for source compatibility with 2.4/early-3.0 validation tools.
+        // Realtime visibility is deliberately ignored by the toon coordinate
+        // and is applied through MainShadowVisibility/ApplyMainShadow instead.
+        public static float TutorialLightingSignal(
+            float ndotL,
+            float lightMapGreen,
+            float dark,
+            float grey,
+            float visibility) => TutorialLightingSignal(
+                ndotL,
+                lightMapGreen,
+                dark,
+                grey);
+
+        public static float MainShadowVisibility(
+            float shadowAttenuation,
+            float distanceAttenuation,
+            float influence)
+        {
+            return Mathf.Clamp01(distanceAttenuation) * Mathf.Lerp(
+                1f,
+                Mathf.Clamp01(shadowAttenuation),
+                Mathf.Clamp01(influence));
+        }
+
+        public static Color ApplyMainShadow(
+            Color toonColor,
+            Color darkestRampColor,
+            float shadowAttenuation,
+            float influence)
+        {
+            var weight = (1f - Mathf.Clamp01(shadowAttenuation)) *
+                         Mathf.Clamp01(influence);
+            return Color.LerpUnclamped(toonColor, darkestRampColor, weight);
+        }
+
+        public static float ToonTransition(float lightingSignal, float softness)
+        {
+            var width = Mathf.Max(0.001f, softness);
+            return SmoothStep(
+                0.998f - width,
+                0.998f,
+                Mathf.Clamp01(lightingSignal));
+        }
+
+        public static float TutorialMetalMask(float lightMapRed) =>
+            1f - Step(lightMapRed, 0.9f);
+
+        public static Color TutorialMetal(
+            Color baseColor,
+            float lightMapRed,
+            float metalSample,
+            Color metalMapColor,
+            float metalIntensity)
+        {
+            var matcap = Color.Lerp(
+                Positive(metalMapColor),
+                Positive(baseColor),
+                Mathf.Clamp01(metalSample));
+            return matcap * TutorialMetalMask(lightMapRed) *
+                   Mathf.Max(0f, metalIntensity);
+        }
+
+        public static Color TutorialSpecular(
+            Color baseColor,
+            float lightMapRed,
+            float lightMapBlue,
+            float ndotH,
+            float gloss,
+            float strength,
+            float brightMask,
+            float visibility)
+        {
+            var factor = Mathf.Pow(
+                    Mathf.Clamp01(ndotH),
+                    Mathf.Max(gloss, 1f)) *
+                Mathf.Clamp01(lightMapRed) *
+                Mathf.Clamp01(lightMapBlue) *
+                Mathf.Max(strength, 0f) *
+                Mathf.Clamp01(brightMask) *
+                Mathf.Clamp01(visibility);
+            return baseColor * factor;
         }
 
         public static Color OutlineRegionColor(
@@ -126,6 +224,12 @@ namespace Miku.ShaderConverter.Editor
             var t = Mathf.Clamp01((value - edge0) / (edge1 - edge0));
             return t * t * (3f - 2f * t);
         }
+
+        static Color Positive(Color value) => new Color(
+            Mathf.Max(0f, value.r),
+            Mathf.Max(0f, value.g),
+            Mathf.Max(0f, value.b),
+            Mathf.Max(0f, value.a));
 
         public static Vector2 BackFaceUv(
             Vector2 uv0,

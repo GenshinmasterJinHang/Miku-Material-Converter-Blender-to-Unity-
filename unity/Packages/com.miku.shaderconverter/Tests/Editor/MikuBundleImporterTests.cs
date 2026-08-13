@@ -21,6 +21,14 @@ namespace Miku.ShaderConverter.Editor.Tests
     {
         const string OutputRoot = "Assets/MikuTests/BundleImporter";
         const string TestPipelinePath = "Assets/MikuTests/TestUrpPipeline.asset";
+        const string Current300ProfileHash = "14bf3dc57d775b6980161a859567d2404fc8cd56e1f51cdbe9ded1ac407cdb44";
+        const string PreSrpBatcherShadowFidelity300ProfileHash = "584b3b6a5fdefd96d27d94bbe06e52f935876921e718e92d52e5be99a78a0f29";
+        const string PreShadowMetalFidelity300ProfileHash = "cd6ce427a527108457b3d95c4c024f82ef2afe90d23f036584e12e2f731c812e";
+        const string PreShadowVariantFix300ProfileHash = "2f7892d34888d4bb79ee296841cb7c4ffded700316dd2861380bd594563140bd";
+        const string PreGenshinEyeInspectorFix300ProfileHash = "aba717c335aec3d933079bd84df58d933f14600eb82fcf559bdc052b0e42566a";
+        const string PreGenshinForwardPlus300ProfileHash = "cc442352a234f079499ad3d41147fbe58c9ff55115eeb071566a350de898e954";
+        const string Previous300ProfileHash = "443efd49c0fa398a70ba4b1331e4b73f4e532b4f4dc0e0db07c64ff846498601";
+        const string PreGameToon300ProfileHash = "8b53d91957a6695c2b2b7d7d3eb182d63617b2fc0739e668b347c3e4b6ebb95b";
         const string CurrentProfileHash = "b08ac3e4506bf127709cef9b42679dbca836615e62eaf2df9b4ca79ff6393f16";
         const string CurrentProfileHashV2 = "4970ecd6266173f8c60341e10fd26eafe1cbd6d918428aacea5b3e40eef46ff6";
         const string CurrentProfileHashV22 = "50bb9fb048707256b3882a757253a3fc685e791395b5bc9872fb7daf98129848";
@@ -2108,8 +2116,8 @@ namespace Miku.ShaderConverter.Editor.Tests
         [Category("Miku.Graphics")]
         public void LayerWeightPreviewIsLitAndViewDependent()
         {
-            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
-                Assert.Ignore("Requires a real D3D11 graphics device.");
+            if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.Direct3D12)
+                Assert.Ignore("MIKU_D3D12_REQUIRED: requires a real Direct3D 12 graphics device.");
 
             var expressions = new JArray
             {
@@ -2443,6 +2451,41 @@ namespace Miku.ShaderConverter.Editor.Tests
                 imported.success,
                 Is.True,
                 string.Join(" | ", imported.diagnostics));
+        }
+
+        [TestCase(Current300ProfileHash)]
+        [TestCase(PreSrpBatcherShadowFidelity300ProfileHash)]
+        [TestCase(PreShadowMetalFidelity300ProfileHash)]
+        [TestCase(PreShadowVariantFix300ProfileHash)]
+        [TestCase(PreGenshinEyeInspectorFix300ProfileHash)]
+        [TestCase(PreGenshinForwardPlus300ProfileHash)]
+        [TestCase(Previous300ProfileHash)]
+        [TestCase(PreGameToon300ProfileHash)]
+        public void CurrentAndPrevious300ProfilesRemainAccepted(
+            string profileHash)
+        {
+            var suffix = profileHash.Substring(0, 8);
+            var imported = MikuBundleImporter.Import(new MikuImportRequest
+            {
+                bundlePath = WriteValidBundle(
+                    sourceId: "package-300-profile-source-" + suffix,
+                    materialId: "package-300-profile-material-" + suffix,
+                    sourceName: "Package300Profile" + suffix,
+                    targetProfileHash: profileHash),
+                outputRoot = OutputRoot,
+                fullRegeneration = true,
+                createMaterialVariant = false,
+            });
+
+            Assert.That(
+                imported.success,
+                Is.True,
+                string.Join(" | ", imported.diagnostics));
+            var receipt = JObject.Parse(
+                File.ReadAllText(ToAbsolute(imported.receiptPath), Encoding.UTF8));
+            Assert.That(
+                receipt["importerProfileHash"]?.Value<string>(),
+                Is.EqualTo(Current300ProfileHash));
         }
 
         [Test]

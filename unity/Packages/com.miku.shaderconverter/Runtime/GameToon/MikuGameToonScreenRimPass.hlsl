@@ -9,11 +9,17 @@
 struct MikuGameScreenRimAttributes
 {
     float4 positionOS : POSITION;
+#if defined(MIKU_GAME_TOON_ALPHA_COVERAGE)
+    float2 uv : TEXCOORD0;
+#endif
 };
 
 struct MikuGameScreenRimVaryings
 {
     float4 positionCS : SV_POSITION;
+#if defined(MIKU_GAME_TOON_ALPHA_COVERAGE)
+    float2 uv : TEXCOORD0;
+#endif
 };
 
 MikuGameScreenRimVaryings MikuGameScreenRimVertex(
@@ -21,12 +27,21 @@ MikuGameScreenRimVaryings MikuGameScreenRimVertex(
 {
     MikuGameScreenRimVaryings output;
     output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+#if defined(MIKU_GAME_TOON_ALPHA_COVERAGE)
+    output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
+#endif
     return output;
 }
 
 MikuToonScreenRimMaskOutput MikuGameScreenRimFragment(
     MikuGameScreenRimVaryings input)
 {
+#if defined(MIKU_GAME_TOON_ALPHA_COVERAGE)
+    float baseAlpha =
+        SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).a *
+        _BaseColorTint.a;
+    Genshin_ApplyBaseAlphaCoverage(baseAlpha, _DiffuseA, _Cutoff);
+#endif
     return MikuBuildScreenRimMask(
         _RimLightTintColor.rgb,
         _RimLightBrightness,

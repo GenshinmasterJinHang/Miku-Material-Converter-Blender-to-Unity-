@@ -586,6 +586,14 @@ namespace Miku.ShaderConverter.Tests.Editor
                     "MikuGameToonOutlinePositionCS",
                     outlinePass,
                     relativePath);
+                StringAssert.Contains(
+                    "float outlineCoverage",
+                    outlinePass,
+                    relativePath);
+                StringAssert.Contains(
+                    "MikuGameToonOutlineClipCoverage(input.outlineCoverage)",
+                    outlinePass,
+                    relativePath);
                 StringAssert.Contains("tangentOS : TANGENT", outlinePass, relativePath);
                 if (relativePath.StartsWith("Genshin/", StringComparison.Ordinal))
                 {
@@ -595,6 +603,23 @@ namespace Miku.ShaderConverter.Tests.Editor
                         relativePath);
                     StringAssert.Contains(
                         "input.vertexColor",
+                        outlinePass,
+                        relativePath);
+                }
+                else if (relativePath.StartsWith(
+                             "Wuwa/",
+                             StringComparison.Ordinal))
+                {
+                    StringAssert.Contains(
+                        "float4 color : COLOR",
+                        outlinePass,
+                        relativePath);
+                    StringAssert.Contains(
+                        "input.color",
+                        outlinePass,
+                        relativePath);
+                    StringAssert.Contains(
+                        "float4(1.0, 1.0, 1.0, 1.0)",
                         outlinePass,
                         relativePath);
                 }
@@ -634,6 +659,10 @@ namespace Miku.ShaderConverter.Tests.Editor
             StringAssert.DoesNotContain("ZWrite On", passLibrary);
             StringAssert.Contains("Cull Front", passLibrary);
             StringAssert.Contains("ZTest LEqual", passLibrary);
+            StringAssert.Contains(
+                "\"LightMode\"=\"MikuToonOutline\"",
+                passLibrary);
+            StringAssert.DoesNotContain("SRPDefaultUnlit", passLibrary);
             var endfieldCommon = RuntimeSource("Endfield/EndfieldCommon.hlsl");
             StringAssert.Contains(
                 "float4 smoothNormalData : TEXCOORD7",
@@ -649,12 +678,26 @@ namespace Miku.ShaderConverter.Tests.Editor
                 endfieldOutline);
             StringAssert.Contains("MikuGameToonOutlinePositionCS", endfieldOutline);
             StringAssert.DoesNotContain("input.color.a", endfieldOutline);
+            StringAssert.Contains(
+                "float outlineCoverage : TEXCOORD1",
+                endfieldCommon);
+            StringAssert.Contains(
+                "MikuGameToonOutlineClipCoverage(input.outlineCoverage)",
+                endfieldCommon);
+            StringAssert.Contains(
+                "MikuGameToonOutlineCoverageWithVertexMask",
+                endfieldCommon);
 
             foreach (var relativePath in EndfieldOutlineConsumers)
             {
+                var source = RuntimeSource(relativePath);
                 StringAssert.Contains(
                     "UsePass \"Hidden/MIKU/Endfield/PassLibrary/Outline\"",
-                    RuntimeSource(relativePath),
+                    source,
+                    relativePath);
+                StringAssert.Contains(
+                    "_UseOutline (\"Use Outline\", Float) = 1",
+                    source,
                     relativePath);
                 consumerCount++;
             }
@@ -662,6 +705,24 @@ namespace Miku.ShaderConverter.Tests.Editor
             var shared = RuntimeSource("GameToon/MikuGameToonOutline.hlsl");
             StringAssert.Contains("return saturate(vertexColor.g);", shared);
             StringAssert.Contains("A=face correction", shared);
+            StringAssert.Contains(
+                "MikuGameToonOutlineCoverageWithDistanceMultiplier",
+                shared);
+            StringAssert.Contains(
+                "MikuGameToonOutlineCoverageWithLegacyMode",
+                shared);
+            StringAssert.Contains(
+                "MikuGameToonOutlineCoverageWithVertexMask",
+                shared);
+            StringAssert.Contains(
+                "void MikuGameToonOutlineClipCoverage(float coverage)",
+                shared);
+            StringAssert.Contains(
+                "coverage > MIKU_GAME_TOON_OUTLINE_EPSILON",
+                shared);
+            StringAssert.Contains(
+                "!MikuGameToonOutlineFinite1(outlineWidth)",
+                shared);
             StringAssert.Contains(
                 "MIKU_GAME_TOON_OUTLINE_V2_MARKER 2.0",
                 shared);
@@ -886,7 +947,15 @@ namespace Miku.ShaderConverter.Tests.Editor
 
         static string ExtractOutlineSection(string source)
         {
-            var start = source.IndexOf("Name \"Outline\"", StringComparison.Ordinal);
+            var start = source.IndexOf(
+                "Name \"MikuToonOutline\"",
+                StringComparison.Ordinal);
+            if (start < 0)
+            {
+                start = source.IndexOf(
+                    "Name \"Outline\"",
+                    StringComparison.Ordinal);
+            }
             Assert.That(start, Is.GreaterThanOrEqualTo(0));
             var end = source.IndexOf("ENDHLSL", start, StringComparison.Ordinal);
             Assert.That(end, Is.GreaterThan(start));

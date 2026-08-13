@@ -14,6 +14,24 @@ param(
 
 $ErrorActionPreference = "Stop"
 $unityExecutable = (Resolve-Path -LiteralPath $UnityPath).Path
+$unityProductVersion = [string](
+    (Get-Item -LiteralPath $unityExecutable).VersionInfo.ProductVersion)
+$unityProductMatch = [regex]::Match(
+    $unityProductVersion.Trim(),
+    '^(?<version>[^_]+)_(?<revision>[0-9A-Fa-f]+)$')
+if (-not $unityProductMatch.Success) {
+    throw (
+        "MIKU_UNITY_EXECUTABLE_VERSION_INVALID:" +
+        "${unityProductVersion}:$unityExecutable")
+}
+$actualUnityVersion = $unityProductMatch.Groups['version'].Value
+$actualUnityRevision = $unityProductMatch.Groups['revision'].Value.ToLowerInvariant()
+if ($actualUnityVersion -ne $UnityVersion) {
+    throw (
+        "MIKU_UNITY_EDITOR_VERSION_MISMATCH:" +
+        "actual=$actualUnityVersion;expected=$UnityVersion;" +
+        "revision=$actualUnityRevision;executable=$unityExecutable")
+}
 $packageArchive = (Resolve-Path -LiteralPath $PackagePath).Path
 if ([System.IO.Path]::GetExtension($packageArchive) -ne ".tgz") {
     throw "MIKU_UNITY_PACKAGE_ARCHIVE_REQUIRED:$packageArchive"
@@ -25,6 +43,35 @@ $scratchPackage = Join-Path $projectRoot "com.miku.shaderconverter.tgz"
 $resultFullPath = Join-Path $runRoot "TestResults-EditMode.xml"
 $logPath = Join-Path $runRoot "TestResults-EditMode.log"
 $preserveRunArtifacts = $false
+
+$evidenceFullPath = $null
+$evidenceXmlPath = $null
+$evidenceLogPath = $null
+if ($EvidencePath) {
+    $evidenceFullPath = [System.IO.Path]::GetFullPath($EvidencePath)
+    if ([System.IO.Path]::GetExtension($evidenceFullPath) -ne ".json") {
+        throw "MIKU_UNITY_EDITMODE_EVIDENCE_JSON_REQUIRED:$evidenceFullPath"
+    }
+    $evidenceXmlPath = [System.IO.Path]::ChangeExtension(
+        $evidenceFullPath, ".xml")
+    $evidenceLogPath = [System.IO.Path]::ChangeExtension(
+        $evidenceFullPath, ".log")
+    $resolvedScratchPrefix = [System.IO.Path]::GetFullPath(
+        $scratchRoot).TrimEnd('\') + '\'
+    if ($evidenceFullPath.StartsWith(
+        $resolvedScratchPrefix,
+        [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "MIKU_UNITY_EDITMODE_EVIDENCE_PATH_UNSAFE:$evidenceFullPath"
+    }
+    New-Item -ItemType Directory -Path (
+        Split-Path -Parent $evidenceFullPath) -Force | Out-Null
+    foreach ($staleEvidence in @(
+        $evidenceFullPath, $evidenceXmlPath, $evidenceLogPath)) {
+        if (Test-Path -LiteralPath $staleEvidence) {
+            Remove-Item -LiteralPath $staleEvidence -Force
+        }
+    }
+}
 
 try {
     New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
@@ -67,7 +114,7 @@ try {
     Push-Location -LiteralPath $runRoot
     try {
         $arguments = @(
-            "-batchmode", "-nographics", "-force-d3d11",
+            "-batchmode", "-nographics",
             "-projectPath", $projectRoot, "-runTests",
             "-testPlatform", "EditMode", "-testResults", $resultFullPath,
             "-logFile", $logPath
@@ -120,12 +167,10 @@ try {
     }
     $passedCount = [int]$testResults.'test-run'.passed
     $skippedCount = [int]$testResults.'test-run'.skipped
-    if ($EvidencePath) {
-        $evidenceFullPath = [System.IO.Path]::GetFullPath($EvidencePath)
-        $evidenceDirectory = Split-Path -Parent $evidenceFullPath
-        New-Item -ItemType Directory -Path $evidenceDirectory -Force | Out-Null
+    if ($evidenceFullPath) {
         $evidence = [ordered]@{
-            unity = $UnityVersion
+            unity = $actualUnityVersion
+            unityRevision = $actualUnityRevision
             urp = $resolvedUrp
             shaderGraph = $resolvedShaderGraph
             packageSha256 = (Get-FileHash -LiteralPath $packageArchive -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -140,15 +185,12 @@ try {
             (($evidence | ConvertTo-Json) + "`n"),
             [System.Text.UTF8Encoding]::new($false)
         )
-        Copy-Item -LiteralPath $resultFullPath -Destination (
-            [System.IO.Path]::ChangeExtension($evidenceFullPath, ".xml")
-        )
-        Copy-Item -LiteralPath $logPath -Destination (
-            [System.IO.Path]::ChangeExtension($evidenceFullPath, ".log")
-        )
+        Copy-Item -LiteralPath $resultFullPath -Destination $evidenceXmlPath
+        Copy-Item -LiteralPath $logPath -Destination $evidenceLogPath
     }
     Write-Output (
-        "Unity EditMode tests passed: unity=$UnityVersion urp=$resolvedUrp " +
+        "Unity EditMode tests passed: unity=$actualUnityVersion " +
+        "revision=$actualUnityRevision urp=$resolvedUrp " +
         "shaderGraph=$resolvedShaderGraph total=$testCount passed=$passedCount " +
         "failed=$failedCount skipped=$skippedCount"
     )

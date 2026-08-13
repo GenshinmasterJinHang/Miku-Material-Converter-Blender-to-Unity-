@@ -25,7 +25,9 @@ Shader "MIKU/Endfield/Face"
         [HideInInspector] _UseSDFMask ("Use Legacy Face Area", Float) = 0
         [Toggle] _UseEmotionMap ("Use Emotion", Float) = 0
         [Toggle] _UseHighlightMap ("Use Highlight", Float) = 0
+        [Toggle] _UseOutline ("Use Outline", Float) = 1
         [Toggle] _UseOutlineMask ("Use Outline Mask", Float) = 0
+        [HideInInspector] _MikuEndfieldMaterialStateVersion ("Miku Endfield Material State Version", Float) = 0
         _FaceShadowOffset ("Face Shadow Offset", Range(-1,1)) = 0
         _FaceShadowSoftness ("Face Shadow Softness", Range(0.001,0.5)) = 0.035
         [Toggle] _UseManualFaceBasis ("Use Manual Face Basis", Float) = 0

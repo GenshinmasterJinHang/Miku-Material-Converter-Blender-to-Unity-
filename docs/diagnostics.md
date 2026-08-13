@@ -45,18 +45,22 @@ and may be expanded as code is normalized.
 | `MIKU_TOON_OUTPUT_FOLDER_INVALID` / `MIKU_TOON_OUTPUT_PATH_INVALID` | Error | The generated Mesh destination is outside `Assets/`, has unsafe path segments, or is not an `.asset` path. Choose a safe project folder. |
 | `MIKU_TOON_OUTPUT_FOLDER_CREATE_FAILED:<path>` / `MIKU_TOON_ASSET_CREATE_FAILED:<path>` | Error | Transactional folder or Mesh asset creation failed. The operation rolls back assets/folders it created; fix the path or project write condition and retry. |
 | `MIKU_ENDFIELD_LIGHTING_CONTROLLER_DUPLICATE` | Warning | More than one enabled Endfield lighting controller exists. The lowest Unity instance ID is the deterministic owner; remove the duplicate controller. |
-| `MIKU_ENDFIELD_LUT_MISSING` / `MIKU_ENDFIELD_LUT_PROJECT_ASSET_REQUIRED` / `MIKU_ENDFIELD_LUT_LAYOUT_INVALID:<details>` | Error | The full-screen game LUT is absent, is not a project-owned Texture2D, or is not the required 1024x32 flattened 32-cube. Select the original game LUT asset. |
+| `MIKU_ENDFIELD_LUT_MISSING` / `MIKU_ENDFIELD_LUT_PROJECT_ASSET_REQUIRED` / `MIKU_ENDFIELD_LUT_LAYOUT_INVALID:<details>` | Error | The optional screen LUT is absent, is not a project-owned Texture2D, or is not the required 1024x32 flattened 32-cube. Select a genuine screen-grading LUT or use the default Volume-only path. |
+| `MIKU_ENDFIELD_SCREEN_LUT_MATERIAL_ASSET_REJECTED:<path>:<evidence>` | Error | The selected screen-LUT candidate is identified as a cloth/skin material dark-color LUT by name, `_ColorLutTex` use, or recipe `ColorLut` binding. Keep it on the material and use Volume-only grading. |
+| `MIKU_ENDFIELD_EYE_MATCAP_REQUIRED` | Warning | An Endfield iris material has no authored MatCap for the tutorial cornea highlight. Bind the eye MatCap and synchronize material keywords; sclera materials are exempt. |
+| `MIKU_ENDFIELD_EYE_HIGHLIGHT_OVERLAY_REQUIRED` / `MIKU_ENDFIELD_EYE_HIGHLIGHT_IRIS_REQUIRED` | Error | The fixed PMX EyeHL preset requires an Endfield Overlay material and the source iris texture. Do not substitute the Face highlight mask. |
 | `MIKU_ENDFIELD_LUT_IMPORTER_REQUIRED:<path>` / `MIKU_ENDFIELD_LUT_IMPORT_INVALID:<path>` / `MIKU_ENDFIELD_LUT_REIMPORT_FAILED:<path>` | Error | The LUT importer cannot be configured or verified as Default, sRGB, Bilinear, Clamp, no mipmaps, and Uncompressed. Fix the importer or reimport failure before installation. |
 | `MIKU_ENDFIELD_LUT_SHADER_MISSING:<shader>` | Error | The deterministic 2.3.0 package does not contain or cannot import the Endfield full-screen LUT Shader; reinstall a verified package. |
 | `MIKU_ENDFIELD_POST_OUTPUT_PATH_INVALID:<path>` / `MIKU_ENDFIELD_POST_OUTPUT_CREATE_FAILED:<path>` / `MIKU_ENDFIELD_POST_ASSET_CONFLICT:<path>` | Error | The project-owned LUT material/profile output is unsafe, cannot be created, or is occupied by another asset type. Choose an empty folder under `Assets/`. |
+| `MIKU_ENDFIELD_POST_DIRTY_ASSET:<path>:<name>` | Error | A target Renderer, Feature, LUT/importer, material, profile, or profile component has unsaved editor changes. Save or revert that target asset before installing; Miku refuses to overwrite or roll back unknown in-memory state. |
 | `MIKU_FULLSCREEN_PASS_SCHEMA_UNSUPPORTED:<field>` / `MIKU_FULLSCREEN_PASS_ENUM_UNSUPPORTED:<value>` | Error | The installed URP Full Screen Pass serialized schema differs from the validated URP 17.4 contract; no renderer mutation is committed. |
 | `MIKU_RENDERER_DATA_SELECTION_REQUIRED` / `MIKU_RENDERER_FEATURE_LOCAL_ID_FAILED` / `MIKU_RENDERER_FEATURE_SCHEMA_UNSUPPORTED:<version>` | Error | Renderer Data is missing or cannot safely own a serialized renderer feature. Select the authoritative Universal Renderer Data for a supported URP version. |
+| `MIKU_RENDERER_FEATURE_STATE_INVALID:<details>` | Error | The selected Renderer Data has mismatched Feature/map counts, a null or foreign Feature reference, a stale local-ID mapping, or a duplicate local ID. Repair or recreate the Renderer Data; the LUT installer refuses to mutate a corrupt asset. |
+| `MIKU_ENDFIELD_LUT_RENDERER_RELOAD_FAILED:<path>` / `MIKU_ENDFIELD_LUT_FEATURE_PERSISTENCE_INVALID:<details>` / `MIKU_ENDFIELD_LUT_FEATURE_ASSET_MISMATCH:<path>` / `MIKU_ENDFIELD_LUT_FEATURE_REFERENCE_DUPLICATE:<path>` / `MIKU_ENDFIELD_LUT_FEATURE_MAP_INVALID:<path>` / `MIKU_ENDFIELD_LUT_FEATURE_CONFIGURATION_INVALID:<path>` / `MIKU_ENDFIELD_LUT_FEATURE_MATERIAL_INVALID:<path>` | Error | The LUT Feature did not survive Renderer import with exactly one valid reference, matching local-ID map entry, pre-post-process configuration, and the intended pass material. The installation is rolled back; repair the Renderer asset and retry. |
+| `MIKU_ENDFIELD_POST_ROLLBACK_FAILED` | Error | Installation failed and exact disk-state restoration also encountered an I/O or import failure. Preserve the original nested installation and rollback errors, stop editing the affected assets, and restore them from source control or backup. |
 | `MIKU_ENDFIELD_SHADER_PART_INVALID:<part>` / `MIKU_WORKFLOW_PART_INVALID:<part>` | Error | A fixed workflow requested an unknown Endfield part. Choose one of Body, Skin, Hair, Face, Eye, Mouth, Overlay, Effect, or HairShadow; Miku no longer silently falls back to Body. |
 | `MIKU_ENDFIELD_SHADOW_BASEMAP_ROLE_CONFLICT` / `MIKU_ENDFIELD_SHADOW_BASEMAP_ROLE_DUPLICATE` | Error | HairShadow/EyeShadow BaseMap role selection is conflicting or ambiguous. Bind one role appropriate to the selected part. |
 | `MIKU_ENDFIELD_HAIR_SHADOW_TEXTURE_REQUIRED` | Error | HairShadow has no deterministic BaseMap texture binding. Supply the authored hair-shadow texture. |
-| `MIKU_ENDFIELD_HAIR_SHADOW_OFFSET_MESH_MISSING` | Warning / RequiresProjectSetup | The selected character has no dedicated renderer with a valid authored offset hair-shadow mesh. Miku diagnoses this resource gap but does not fabricate geometry. |
-| `MIKU_ENDFIELD_HAIR_SHADOW_STENCIL_MISMATCH` | Warning / RequiresProjectSetup | HairShadow stencil Ref/ReadMask does not match a Face material that writes the same bits with Replace. Align the material stencil contract. |
-| `MIKU_ENDFIELD_HAIR_SHADOW_VALID` | Info | The selected hierarchy contains a dedicated HairShadow renderer/mesh and a matching Face/HairShadow stencil contract. This structural result does not prove the authored vertex offset visually. |
 | `MIKU_STANDARD_PBR_SEMANTIC_EXTRACTION_FAILED` | Error | Standard PBR semantic extraction failed; closure-derived slots are retained, but texture binding may be incomplete and the material should be re-exported after fixing the source graph |
 | `MIKU_SOCKET_AMBIGUOUS` | Error | More than one active Blender socket still matches after exact-identifier and value-type resolution; update the node mapping instead of relying on socket order |
 | `MIKU_REQUIRED_CHANNEL_UNSUPPORTED` | Error | NativeOnly cannot preserve a required channel |
@@ -193,6 +197,23 @@ and may be expanded as code is normalized.
 | `MIKU_FIXED_TEXTURE_UV_TRANSFORM_INVALID` | Error | A fixed-workflow material binding contains a malformed UV transform object |
 | `MIKU_FIXED_TEXTURE_UV_TRANSFORM_UNSUPPORTED` | Error | A fixed-workflow UV transform is not the supported UV0 Affine2D contract |
 | `MIKU_FIXED_TEXTURE_UV_MATRIX_INVALID` | Error | An Affine2D binding does not contain exactly six finite numeric coefficients |
+
+| `MIKU_D3D12_REQUIRED` | Error | A Windows GPU acceptance test is not running on `GraphicsDeviceType.Direct3D12`; restart with `-force-d3d12` and do not use `-nographics` |
+| `MIKU_GENSHIN_GEOMETRY_RENDERER_FEATURE_REQUIRED` | RequiresProjectSetup | One or more active Universal Renderer Data assets lacks the Geometry Renderer Feature; run the Game Toon Renderer Feature Installer |
+| `MIKU_GENSHIN_REQUIRED_TEXTURE_MISSING` | Error | A Genshin part lacks one of its required Base/Light/SDF/Ramp roles; Bundle creation or binding stops |
+| `MIKU_GENSHIN_2_3_VISUAL_MIGRATION` | Warning | A supported 2.3.0 Genshin Bundle is imported into the 2.4.0 default tutorial lighting path |
+| `MIKU_GENSHIN_LEGACY_UV0_DOUBLE_SIDED_UPDATED` | Warning | A legacy double-sided Genshin material did not opt into UV1; 2.4.0 disables the ambiguous UV0 backface path and requires explicit UV1 review |
+| `MIKU_GENSHIN_TEXTURE_COLOR_SPACE_MISMATCH` | Error | A Genshin resource declaration conflicts with the role's required color/data interpretation |
+| `MIKU_GENSHIN_TEXTURE_IMPORT_POLICY_CONFLICT` | Error | The same texture is assigned roles with incompatible import policies; no importer change is committed |
+| `MIKU_WUWA_FACE_SDF_REQUIRED` | Warning | A WuWa Face material has no authored Face SDF asset; the built-in white fallback cannot reproduce directional facial shadows |
+| `MIKU_WUWA_FACE_SDF_STRENGTH_ZERO` | Warning | Face SDF Shadow Strength is zero, so the computed mask cannot affect final direct lighting |
+| `MIKU_WUWA_FACE_SDF_BASIS_INVALID` | Warning | The enabled material face basis contains zero, non-finite, or collinear vectors |
+| `MIKU_WUWA_FACE_SDF_IMPORT_SETTINGS_INVALID` | Warning | The Face SDF asset is not imported as Linear with mipmaps disabled; Clamp and Repeat are both supported |
+| `MIKU_WUWA_FACE_SDF_CHANNELS_IDENTICAL` | Info | Main and soft SDF channels are identical; this is allowed but disables two-channel refinement |
+| `MIKU_WUWA_FACE_SDF_TINT_CONTRAST_ZERO` | Warning | Lit Tint and Shadow Tint are identical, so the SDF mask has no visible diffuse contrast |
+| `MIKU_WUWA_FACE_SDF_DEBUG_VIEW_ACTIVE` | Info | A Face SDF debug view is active; set Debug Mode to zero when inspecting final shading |
+| `MIKU_WUWA_FACE_SDF_TRANSITION_TOO_WIDE` | Warning | Face SDF softness exceeds `0.25` and may flatten authored light/shadow regions |
+| `MIKU_WUWA_FACE_SDF_SSS_MAY_FLATTEN_SHADOW` | Warning | Face skin SSS exceeds `0.3` while SDF shadowing is enabled and may fill the shadow region |
 
 Diagnostics should include severity, material, source node/socket and group path,
 translation quality, and remediation where available. Do not parse localized log

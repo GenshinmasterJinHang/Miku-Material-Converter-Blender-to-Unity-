@@ -30,7 +30,9 @@ Shader "MIKU/Endfield/Hair"
         [Toggle] _UseHairRefineMap ("Use Hair Refine", Float) = 0
         [HideInInspector] _UseLineMap ("Use Legacy Hair Line", Float) = 0
         [HideInInspector] _UseStrokeMap ("Use Legacy Hair Shift", Float) = 0
+        [Toggle] _UseOutline ("Use Outline", Float) = 1
         [Toggle] _UseOutlineMask ("Use Outline Mask", Float) = 0
+        [HideInInspector] _MikuEndfieldMaterialStateVersion ("Miku Endfield Material State Version", Float) = 0
         [Toggle] _UseHeadSphereNormal ("Use Head Sphere Normal", Float) = 1
         _HeadCenterOS ("Head Center (Object Space)", Vector) = (0,0,0,1)
         _NormalStrength ("Split Normal Strength", Range(0,1)) = 1

@@ -1,7 +1,7 @@
-# Miku Shader Converter 2.3.0
+# Miku Shader Converter 3.0.0
 
 This package imports deterministic `.mikubundle` artifacts produced by the
-Miku Blender 2.3.0 exporter for Unity 6000.0-6000.5 and the matching URP /
+Miku Blender 3.0.0 exporter for Unity 6000.0-6000.5 and the matching URP /
 Shader Graph 17.0-17.5 technical lines. URP and Shader Graph must have the same
 exact version. Unrecorded stable patches run capability preflight with explicit
 unvalidated diagnostics; prereleases and future technical lines are rejected.
@@ -21,7 +21,7 @@ assets, shader properties, diagnostics, JSON, and static menu paths remain
 stable in English.
 
 The importer continues to accept historical MiGR and time-dependent Bundles,
-including the runtime Time Shader Graph contract. The 2.3.0 Blender exporter
+including the runtime Time Shader Graph contract. The 3.0.0 Blender exporter
 does not create new Bundles with effective time dependencies.
 
 MaterialIR 2.0 is the current export format. MaterialIR 1.0 remains a frozen
@@ -29,12 +29,12 @@ compatibility input for the four supported workflows. A Generic Toon bundle or
 legacy Generic Toon shader is rejected before any asset transaction begins with
 `MIKU_WORKFLOW_RETIRED:generic_toon`.
 
-Installing 2.3.0 does not remove materials, recipes, or wrapper assets under a
+Installing 3.0.0 does not remove materials, recipes, or wrapper assets under a
 user project's `Assets/`. Existing Generic Toon materials can therefore show
 Missing Shader and require the manual migration described in
 `docs/migrations/retire-generic-toon-2.0.md`.
 
-Miku 2.3.0 adds an opt-in Endfield tutorial-lighting controller, a strict
+Miku 3.0.0 retains the opt-in Endfield tutorial-lighting controller, a strict
 project-owned game-LUT/Volume installer, and TangentSpaceV2 UV7 outlines for
 skinned meshes. Without a controller, Endfield uses the previous lighting
 path. Overlay separately defaults to `_LightingMode=0` (Legacy Unlit) and must
@@ -42,11 +42,21 @@ use `_LightingMode=1` to enter Toon Lit Transparent; the controller does not
 change this material property. Open
 **Miku > Game Toon > Rendering > Endfield LUT & Volume Installer**
 to configure a project-owned 1024x32 flattened 32-cube before post processing;
-the package contains no game LUT. New smooth-outline meshes store
+the package contains no game LUT. The installer rejects corrupt or duplicate
+Renderer Feature/local-ID state, verifies the persisted Feature configuration
+after forced import, and atomically restores existing target assets on failure
+before reporting success. New smooth-outline meshes store
 `float4(normalTS.xyz, 2.0)` in UV7 while unmarked legacy object-space UV7
 remains readable. See the repository's
 `docs/features/endfield-tutorial-rendering.md` and
 `docs/migrations/outline-tangent-space-v2.md` for the full contract.
+
+Endfield Body, Skin, Face, and Hair expose a compatible `_UseOutline` toggle.
+For runtime or editor code, call
+`MikuEndfieldMaterialState.SetOutlineEnabled(material, enabled)` so the property
+and serialized ShaderLab `Outline` pass stay synchronized. Setting outline
+width or a local mask to zero now produces no outline fragments, but it does
+not persistently disable the pass; animated values can therefore recover.
 
 Endfield 2.2 evaluates face and hair directions from each renderer's complete
 object-to-world matrix. `_HeadCenterOS` is an object-space material value; no
@@ -81,11 +91,13 @@ bounded to the Face shader. Genshin Body, Face, and Hair also share a final
 hue-preserving highlight shoulder; set `_HighlightCompression` to `0` to use
 the legacy hard-clipped response.
 
-Miku 2.3.0 adds the published Genshin tutorial's `diffuse.a` cutout/emission
-modes, per-material ramp rows, UV1 double-sided back faces, vertex-color A
-outline width, and lightmap.a region outline colors to the Genshin Body,
-Hair, and Face shaders. All controls are additive material properties; the
-legacy path remains the default.
+Miku 3.0.0 retains the Genshin core introduced in 2.4.0 and adds the WuWa
+tutorial PBR/GI upgrade described below. The Genshin core remains the independently implemented
+tutorial equations, adds real-tangent NormalMap shading, and schedules UV1
+backfaces and UV7 outlines through separate Renderer Lists. `_DiffuseA`
+remains the serialized alpha-mode field, while `_UseUv1Backface` controls the
+new backface pass. Install Geometry + Screen Rim from the Game Toon Renderer
+Feature Installer before relying on backfaces or outlines.
 
 Use **Miku > Game Toon > Materials > Apply Recommended Skin & Highlight
 Profile** to opt in existing ordinary material assets. Imported

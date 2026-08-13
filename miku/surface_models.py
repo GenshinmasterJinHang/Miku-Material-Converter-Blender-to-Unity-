@@ -824,7 +824,7 @@ def _requirements(
                 SurfaceModelKind.REFRACTIVE_GLASS,
             } else ["ShadowCaster", "DepthOnly"]),
         ],
-        "validatedGraphicsApis": ["D3D11"],
+        "validatedGraphicsApis": ["D3D12"],
     }
 
 

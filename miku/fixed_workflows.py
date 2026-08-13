@@ -25,8 +25,10 @@ FIXED_TEXTURE_ROLES = (
     "HairRampMap",
     "HairSpecMap",
     "NormalMap",
+    "WuwaPackedNormalRoughnessMetallic",
     "IDMap",
     "MatCap",
+    "OutlineColorMap",
     "FaceID",
     "FaceHET",
     "SkinRamp",
@@ -85,8 +87,10 @@ WORKFLOW_TEXTURE_ROLES = {
         {
             "BaseMap",
             "NormalMap",
+            "WuwaPackedNormalRoughnessMetallic",
             "IDMap",
             "MatCap",
+            "OutlineColorMap",
             "EmissionMap",
             "FaceSDF",
             "FaceID",
@@ -156,6 +160,10 @@ _ALIASES = {
     "emissive": "EmissionMap",
     "normal": "NormalMap",
     "facesdfmap": "FaceSDF",
+    "facelightmap": "FaceSDF",
+    "bodyshadowramp": "ShadowRampMap",
+    "shadowramp": "ShadowRampMap",
+    "hairshadowramp": "HairRampMap",
 }
 _ALIASES.update(
     {
@@ -170,7 +178,9 @@ LINEAR_TEXTURE_ROLES = frozenset(
         "MetalMap",
         "FaceSDF",
         "NormalMap",
+        "WuwaPackedNormalRoughnessMetallic",
         "IDMap",
+        "OutlineColorMap",
         "FaceID",
         "FaceHET",
         "HairHM",
@@ -236,6 +246,25 @@ def infer_filename_texture_role(value: str) -> str:
     return ""
 
 
+def infer_wuwa_filename_texture_role(value: str, part: str) -> str:
+    """Infer source-game roles only inside an explicit WuWa workflow part."""
+
+    stem = os.path.splitext(os.path.basename(value or ""))[0]
+    normalized = re.sub(r"[\s.-]+", "_", stem.casefold()).strip("_")
+    normalized_part = (part or "Body").strip().title()
+    if normalized.endswith("_switch_d"):
+        return ""
+    if normalized_part == "Body" and normalized.endswith("_ld"):
+        return "OutlineColorMap"
+    if normalized_part == "Body" and normalized.endswith("_n"):
+        return "WuwaPackedNormalRoughnessMetallic"
+    if normalized_part == "Face" and normalized.endswith("face_het"):
+        return "FaceHET"
+    if normalized_part == "Eye" and normalized.endswith("eye_het"):
+        return "EyeHET"
+    return ""
+
+
 def _infer_endfield_filename_texture_role(stem: str) -> str:
     """Recognize only complete Endfield-style resource filename patterns."""
 
@@ -291,6 +320,32 @@ def _infer_endfield_filename_texture_role(stem: str) -> str:
 
 def allowed_texture_role(workflow: str, role: str) -> bool:
     return role in WORKFLOW_TEXTURE_ROLES.get(workflow, frozenset())
+
+
+GENSHIN_REQUIRED_TEXTURE_ROLES = {
+    "Body": frozenset({"BaseMap", "LightMap", "ShadowRampMap"}),
+    "Hair": frozenset({"BaseMap", "LightMap", "HairRampMap"}),
+    "Face": frozenset({"BaseMap", "FaceSDF", "ShadowRampMap"}),
+    "Eye": frozenset({"BaseMap"}),
+}
+
+
+def normalize_genshin_filename_role(part: str, role: str) -> str:
+    """Resolve ambiguous Genshin ramp filenames using the material part."""
+
+    normalized_part = (part or "Body").strip().title()
+    if role in {"ShadowRampMap", "HairRampMap"}:
+        return "HairRampMap" if normalized_part == "Hair" else "ShadowRampMap"
+    return role
+
+
+def genshin_required_texture_roles(part: str) -> frozenset[str]:
+    """Return the blocking texture contract for one Genshin material part."""
+
+    return GENSHIN_REQUIRED_TEXTURE_ROLES.get(
+        (part or "Body").strip().title(),
+        frozenset(),
+    )
 
 
 def texture_role_color_space(roles: Iterable[str]) -> str:

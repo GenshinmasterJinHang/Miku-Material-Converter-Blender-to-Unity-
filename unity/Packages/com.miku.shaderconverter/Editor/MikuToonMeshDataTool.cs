@@ -25,6 +25,17 @@ namespace Miku.ShaderConverter.Editor
         Replace,
     }
 
+    /// <summary>Source selected for one output vertex-color channel.</summary>
+    public enum MikuVertexColorChannelSource
+    {
+        Red,
+        Green,
+        Blue,
+        Alpha,
+        Zero,
+        One,
+    }
+
     public abstract class MikuToonMeshToolWindow : EditorWindow
     {
         [SerializeField] Mesh sourceMesh;
@@ -373,6 +384,72 @@ namespace Miku.ShaderConverter.Editor
             }
         }
 
+        /// <summary>
+        /// Creates a non-destructive toon Mesh clone with UV7 smooth normals
+        /// and an explicit per-channel vertex-color mapping.
+        /// </summary>
+        public static Mesh CreateAsset(
+            Mesh sourceMesh,
+            string outputFolder,
+            string outputName,
+            MikuVertexColorChannelSource red,
+            MikuVertexColorChannelSource green,
+            MikuVertexColorChannelSource blue,
+            MikuVertexColorChannelSource alpha,
+            float positionTolerance = MikuToonMeshData.DefaultPositionTolerance,
+            float smoothingAngle = 60f,
+            bool includeBoneWeightSignature = true)
+        {
+            if (sourceMesh == null)
+                throw new InvalidOperationException(
+                    "MIKU_TOON_SOURCE_MESH_MISSING");
+            var folder = NormalizeFolder(outputFolder);
+            var name = string.IsNullOrWhiteSpace(outputName)
+                ? sourceMesh.name + "_MikuToon"
+                : outputName.Trim();
+            var clone = CloneForEditing(sourceMesh);
+            clone.name = Sanitize(name);
+            var createdFolders = new List<string>();
+            string path = null;
+            var assetCreated = false;
+            try
+            {
+                MikuToonMeshData.GenerateSmoothNormalsFromSource(
+                    sourceMesh,
+                    clone,
+                    positionTolerance,
+                    smoothingAngle,
+                    includeBoneWeightSignature,
+                    true);
+                MikuToonMeshData.InitializeVertexColors(
+                    clone,
+                    red,
+                    green,
+                    blue,
+                    alpha);
+                EnsureFolder(folder, createdFolders);
+                path = AssetDatabase.GenerateUniqueAssetPath(
+                    folder + "/" + Sanitize(name) + ".asset");
+                clone.name = Path.GetFileNameWithoutExtension(path);
+                AssetDatabase.CreateAsset(clone, path);
+                assetCreated = true;
+                AssetDatabase.SaveAssetIfDirty(clone);
+                return clone;
+            }
+            catch
+            {
+                if (assetCreated && !string.IsNullOrEmpty(path))
+                {
+                    AssetDatabase.DeleteAsset(path);
+                    clone = null;
+                }
+                if (clone != null)
+                    UnityEngine.Object.DestroyImmediate(clone);
+                RollbackFolders(createdFolders);
+                throw;
+            }
+        }
+
         public static Mesh CreateOrUpdateSmoothNormalAsset(
             Mesh sourceMesh,
             string assetPath,
@@ -387,6 +464,102 @@ namespace Miku.ShaderConverter.Editor
                 smoothingAngle,
                 includeBoneWeightSignature,
                 null);
+        }
+
+        /// <summary>
+        /// Atomically creates or updates a generated Mesh asset while keeping
+        /// the imported source Mesh unchanged.
+        /// </summary>
+        public static Mesh CreateOrUpdateAsset(
+            Mesh sourceMesh,
+            string assetPath,
+            MikuVertexColorChannelSource red,
+            MikuVertexColorChannelSource green,
+            MikuVertexColorChannelSource blue,
+            MikuVertexColorChannelSource alpha,
+            float positionTolerance = MikuToonMeshData.DefaultPositionTolerance,
+            float smoothingAngle = 60f,
+            bool includeBoneWeightSignature = true)
+        {
+            if (sourceMesh == null)
+                throw new InvalidOperationException(
+                    "MIKU_TOON_SOURCE_MESH_MISSING");
+            var normalized = (assetPath ?? "").Replace('\\', '/');
+            if (!normalized.StartsWith("Assets/", StringComparison.Ordinal) ||
+                !normalized.EndsWith(".asset", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Split('/').Any(part => part == "." || part == ".."))
+                throw new InvalidOperationException(
+                    "MIKU_TOON_OUTPUT_PATH_INVALID");
+            var folder = Path.GetDirectoryName(normalized)?.Replace('\\', '/');
+            if (string.IsNullOrEmpty(folder))
+                throw new InvalidOperationException(
+                    "MIKU_TOON_OUTPUT_PATH_INVALID");
+            var clone = CloneForEditing(sourceMesh);
+            clone.name = Path.GetFileNameWithoutExtension(normalized);
+            var createdFolders = new List<string>();
+            Mesh existing = null;
+            Mesh backup = null;
+            var assetCreated = false;
+            try
+            {
+                MikuToonMeshData.GenerateSmoothNormalsFromSource(
+                    sourceMesh,
+                    clone,
+                    positionTolerance,
+                    smoothingAngle,
+                    includeBoneWeightSignature,
+                    true);
+                MikuToonMeshData.InitializeVertexColors(
+                    clone,
+                    red,
+                    green,
+                    blue,
+                    alpha);
+                EnsureFolder(folder, createdFolders);
+                existing = AssetDatabase.LoadAssetAtPath<Mesh>(normalized);
+                if (existing == null)
+                {
+                    AssetDatabase.CreateAsset(clone, normalized);
+                    assetCreated = true;
+                    clone = null;
+                    existing = AssetDatabase.LoadAssetAtPath<Mesh>(normalized);
+                    if (existing == null)
+                        throw new InvalidOperationException(
+                            "MIKU_TOON_ASSET_CREATE_FAILED:" + normalized);
+                }
+                else
+                {
+                    backup = UnityEngine.Object.Instantiate(existing);
+                    backup.name = existing.name;
+                    EditorUtility.CopySerialized(clone, existing);
+                    EditorUtility.SetDirty(existing);
+                }
+                AssetDatabase.SaveAssetIfDirty(existing);
+                return existing;
+            }
+            catch
+            {
+                if (assetCreated)
+                {
+                    AssetDatabase.DeleteAsset(normalized);
+                    existing = null;
+                }
+                else if (existing != null && backup != null)
+                {
+                    EditorUtility.CopySerialized(backup, existing);
+                    EditorUtility.SetDirty(existing);
+                    AssetDatabase.SaveAssetIfDirty(existing);
+                }
+                RollbackFolders(createdFolders);
+                throw;
+            }
+            finally
+            {
+                if (clone != null)
+                    UnityEngine.Object.DestroyImmediate(clone);
+                if (backup != null)
+                    UnityEngine.Object.DestroyImmediate(backup);
+            }
         }
 
         internal static Mesh CreateOrUpdateSmoothNormalAsset(
@@ -916,6 +1089,64 @@ namespace Miku.ShaderConverter.Editor
                     mergeA ? neutral.a : value.a);
             }
             mesh.colors32 = existing;
+        }
+
+        /// <summary>
+        /// Remaps each output channel from the mesh's existing vertex color or
+        /// from a constant. Call this on a generated clone to keep an imported
+        /// FBX immutable. For Furina the contract is One, Alpha, One, Zero.
+        /// </summary>
+        public static void InitializeVertexColors(
+            Mesh mesh,
+            MikuVertexColorChannelSource red,
+            MikuVertexColorChannelSource green,
+            MikuVertexColorChannelSource blue,
+            MikuVertexColorChannelSource alpha)
+        {
+            if (mesh == null)
+                throw new ArgumentNullException(nameof(mesh));
+            if (!mesh.isReadable)
+                throw new InvalidOperationException(
+                    "MIKU_TOON_VERTEX_COLOR_MAPPING_REQUIRES_READABLE_MESH");
+            var source = mesh.colors32;
+            if (source.Length != mesh.vertexCount)
+                source = Enumerable.Repeat(
+                    new Color32(255, 255, 255, 0),
+                    mesh.vertexCount).ToArray();
+            var mapped = new Color32[source.Length];
+            for (var index = 0; index < source.Length; index++)
+            {
+                var value = source[index];
+                mapped[index] = new Color32(
+                    Select(value, red),
+                    Select(value, green),
+                    Select(value, blue),
+                    Select(value, alpha));
+            }
+            mesh.colors32 = mapped;
+        }
+
+        static byte Select(
+            Color32 value,
+            MikuVertexColorChannelSource source)
+        {
+            switch (source)
+            {
+                case MikuVertexColorChannelSource.Red:
+                    return value.r;
+                case MikuVertexColorChannelSource.Green:
+                    return value.g;
+                case MikuVertexColorChannelSource.Blue:
+                    return value.b;
+                case MikuVertexColorChannelSource.Alpha:
+                    return value.a;
+                case MikuVertexColorChannelSource.Zero:
+                    return 0;
+                case MikuVertexColorChannelSource.One:
+                    return 255;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(source));
+            }
         }
 
         static string BoneSignature(BoneWeight weight) =>

@@ -19,16 +19,31 @@ float3 HSR_SampleSH_Indirect(float3 normalWS, float flattenNormal)
     return SampleSH(shNormal);
 }
 
-float HSR_BodyMainShadow(float3 normalWS, float3 lightDirWS, float4 lightMap, float shadowThresholdCenter, float shadowThresholdSoftness)
+float HSR_TutorialShadowAoHalfLambert(
+    float3 normalWS,
+    float3 lightDirWS,
+    float lightMapGreen)
 {
     float NoL = dot(normalize(normalWS), normalize(lightDirWS));
-    float remappedNoL = NoL * 0.5 + 0.5;
-    float mainLightShadow = smoothstep(
-        1.0 - lightMap.g + shadowThresholdCenter - shadowThresholdSoftness,
-        1.0 - lightMap.g + shadowThresholdCenter + shadowThresholdSoftness,
-        remappedNoL);
-    mainLightShadow *= lightMap.r;
-    return saturate(mainLightShadow);
+    float halfLambert = NoL * 0.5 + 0.5;
+    float shadowAO = saturate(lightMapGreen) + saturate(lightMapGreen);
+
+    // Keep the tutorial's two-component dot product explicit. Expanding it
+    // gives 4 * halfLambert * LightMap.G, not 2 * halfLambert * G.
+    return saturate(dot(halfLambert.xx, shadowAO.xx));
+}
+
+float HSR_BodyMainShadow(
+    float3 normalWS,
+    float3 lightDirWS,
+    float4 lightMap,
+    float shadowThresholdCenter,
+    float shadowThresholdSoftness)
+{
+    // Preserve the historical signature for package consumers. The threshold
+    // parameters remain serialized compatibility fields; HSR diffuse now uses
+    // the tutorial's LightMap.G Shadow AO contract.
+    return HSR_TutorialShadowAoHalfLambert(normalWS, lightDirWS, lightMap.g);
 }
 
 float HSR_FaceSDFShadow(
@@ -160,6 +175,21 @@ float HSR_ExtractMetallicFromLightMap(float lightMapAlpha, float metallicTarget,
     return 1.0 - saturate(abs(lightMapAlpha - metallicTarget) / max(metallicWidth, 1e-5));
 }
 
+float HSR_TutorialSpecularMask(
+    float NoH,
+    float specularExponent,
+    float thresholdMask,
+    float specularSoftness)
+{
+    float blinnPhong = pow(saturate(NoH), max(1.0, specularExponent));
+    float invertedThreshold = 1.04 - saturate(thresholdMask);
+    float width = max(specularSoftness, 1e-5);
+    return smoothstep(
+        invertedThreshold - width,
+        invertedThreshold + width,
+        blinnPhong);
+}
+
 float3 HSR_ComputeSpecular(
     float3 baseColor,
     float4 lightMap,
@@ -168,25 +198,74 @@ float3 HSR_ComputeSpecular(
     float3 lightDirWS,
     float3 mainLightColor,
     float specularExponent,
+    float specularSoftness,
     float specularKsNonMetal,
     float specularKsMetal,
     float specularBrightness,
     float metallic)
 {
-    float3 halfVectorWS = normalize(viewDirWS + lightDirWS);
+    float3 halfVectorSumWS = viewDirWS + lightDirWS;
+    float halfVectorLengthSq = dot(halfVectorSumWS, halfVectorSumWS);
+    float3 halfVectorWS = halfVectorLengthSq > 1e-5
+        ? halfVectorSumWS * rsqrt(halfVectorLengthSq)
+        : normalize(normalWS);
     float NoH = saturate(dot(normalize(normalWS), halfVectorWS));
-    float blinnPhong = pow(NoH, max(1.0, specularExponent));
+    float specularMask = HSR_TutorialSpecularMask(
+        NoH,
+        specularExponent,
+        lightMap.b,
+        specularSoftness);
 
-    // LightMap.B has two meanings selected by the material region in A:
-    // non-metals use it as a hard toon threshold, while metals retain its
-    // continuous authored intensity and tint the highlight by base color.
-    float nonMetalSpecular = step(1.04 - blinnPhong, saturate(lightMap.b)) * specularKsNonMetal;
-    float3 metalSpecular = saturate(baseColor) * blinnPhong * saturate(lightMap.b) * specularKsMetal;
+    // LightMap.B is an inverted threshold for the stylized Blinn-Phong lobe.
+    // Metal and non-metal regions share the same smooth cut; the material
+    // branch only selects highlight tint and strength.
+    float nonMetalSpecular = specularMask * specularKsNonMetal;
+    float3 metalSpecular = saturate(baseColor) * specularMask * specularKsMetal;
 
     float3 specularColor = lerp(nonMetalSpecular.xxx, metalSpecular, saturate(metallic));
     specularColor *= mainLightColor;
     specularColor *= specularBrightness;
     return specularColor;
+}
+
+float3 HSR_ComputeFaceSpecular(
+    float3 normalWS,
+    float3 viewDirWS,
+    float3 lightDirWS,
+    float3 mainLightColor,
+    float thresholdMask,
+    float specularExponent,
+    float specularSoftness,
+    float specularStrength,
+    float3 specularColor,
+    float skinMask)
+{
+    float3 halfVectorSumWS = viewDirWS + lightDirWS;
+    float halfVectorLengthSq = dot(halfVectorSumWS, halfVectorSumWS);
+    float3 halfVectorWS = halfVectorLengthSq > 1e-5
+        ? halfVectorSumWS * rsqrt(halfVectorLengthSq)
+        : normalize(normalWS);
+    float NoH = saturate(dot(normalize(normalWS), halfVectorWS));
+    float mask = HSR_TutorialSpecularMask(
+        NoH,
+        specularExponent,
+        thresholdMask,
+        specularSoftness);
+    return max(specularColor, 0.0.xxx) * mainLightColor * mask *
+        max(specularStrength, 0.0) * saturate(skinMask);
+}
+
+float HSR_FaceNoseLineMask(
+    float3 normalWS,
+    float3 viewDirWS,
+    float faceMapBlue,
+    float noseLinePower,
+    float noseLineStrength)
+{
+    float NoV = saturate(dot(normalize(normalWS), normalize(viewDirWS)));
+    float signal = pow(NoV, max(noseLinePower, 0.1)) *
+        saturate(faceMapBlue) * max(noseLineStrength, 0.0);
+    return smoothstep(0.0, 0.25, signal);
 }
 
 float3 HSR_SampleStockingGradient(float x, float3 darkColor, float3 transitionColor, float3 lightColor, float transitionThreshold)

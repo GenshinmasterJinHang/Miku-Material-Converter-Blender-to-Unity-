@@ -31,7 +31,7 @@ class TargetProfile:
     urp: str = "17.5.4"
     shader_graph: str = "17.5.4"
     color_space: str = "Linear"
-    graphics_api: str = "D3D11"
+    graphics_api: str = "D3D12"
     custom_lit: bool = True
 
     def to_document(self) -> dict[str, Any]:
@@ -85,8 +85,9 @@ class TargetProfile:
                     "alphaBlendWrapper": "8b959dfeb5d1f684b897c074647078789fc6fcd3113ee178374d9aaf86e5f845",
                     "ditheredWrapper": "c51786632f1b712e8e25060357940b5daa127942346d9f093c251df282cb7d2a",
                     "dielectricWrapper": "8694e3bb49c2ce279aff157ce722ec15c4e7793b970e64cb8100cd2c409d67df",
-                    "gameToonScreenRim": "c1ed3ea7e0c54c0c8097663b366c598f01f4164812c9e4bcbf0cc9cffce12fab",
-                    "wuwaEyeBackend": "2ee5788d7e2c62f4f5ce1bf84edfd1af2c6094ac0776b6376e73025f5abd3f97",
+                    "gameToonScreenRim": "ad72bb34b2e7600d6c8c60542cb0bdc5a63dec8453b7317969c8007f6bfb5e24",
+                    "genshinToonBackend": "4fe9816d0c2ba9f4c86b8f133f3d4e20f23b4a71246d80c6fae772a86e4130b4",
+                    "wuwaEyeBackend": "370f3b8b44ecabbd55ba5ed11ac0e377b3ac5f4213ccb221b3381a33944a46c2",
                     "generatedSubGraph": "b83e1588103b7ae6ecfaddaed453d7eebbacbce4d08063903c1e8a0db70c0e1c",
                     "runtimeStructuredBackend": "8c934ec948354ed448b7c53af1818b5d7dfb608d0031f5dae11e5b7fa5c63be5",
                     "workflowBackendRegistry": "e1c2eb956be4b39bfdc517da083eb909c74a805e983fcd903b6a9b68e16cf3f9",

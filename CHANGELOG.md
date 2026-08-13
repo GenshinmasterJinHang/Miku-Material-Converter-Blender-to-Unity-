@@ -1,5 +1,122 @@
 # Changelog
 
+## 3.0.0 - 2026-08-12
+
+- Corrected Genshin toon shadows so realtime URP visibility blends in final
+  colour instead of selecting discrete ramp bands; added per-material shadow
+  influence and restored normalized Body/Hair softness.
+- Corrected Genshin metal to the tutorial view-normal environment-map contract,
+  excluding metal pixels from diffuse, indirect diffuse, and SSS.
+- Corrected WuWa Face skin-ramp fallback, separated optional realtime shadowing
+  from SDF, and added read-only excessive-softness/SSS diagnostics.
+- Made WuWa Face SDF temporal behavior continuous: A and B use smooth threshold
+  bands, each horizontal orientation is evaluated independently, and final
+  masks crossfade through additive `_FaceSdfMirrorBlendWidth` (default and
+  recommendation `0.10`) instead of switching half-face UVs in one frame.
+- Corrected WuWa Eye tangent-space parallax and limited it to Base/HET/HDMF.
+  Surface highlights retain original UVs; the shader default remains zero and
+  recommended setup writes `0.02` only for HDMF-bound Eye materials.
+- Extended the Genshin texture audit to preserve NPOT control-map dimensions
+  and enforce uncompressed, non-crunched control data.
+
+- Corrected Endfield reference rendering: cloth and female-skin LUTs remain
+  material-local; default grading is now a standard Volume-only profile, and
+  the optional screen-LUT API rejects material LUT evidence before mutation.
+- Restored the PMX EyeHL/iris contract, added backward-compatible
+  `_MatCapUvScale` and eye resource diagnostics, fixed URP directional/punctual
+  shadow bias, and closed Endfield outline routing. No interchange schema or
+  existing texture-role name changed.
+- Made zero or non-finite GameToon outline coverage discard fragments instead
+  of drawing the inverted shell at its original position. Endfield Body, Skin,
+  Face, and Hair add a compatible `_UseOutline` property and public material
+  state API that synchronizes the property with the ShaderLab `Outline` pass;
+  existing disabled-pass workarounds are preserved on first synchronization.
+- Removed the distributable Endfield hierarchy diagnostic, Furina/DX12/UV1
+  validation helpers, and private WuWa validation builder. Automated EditMode
+  and D3D12 acceptance remain in the test assembly. The single canonical menu
+  is now **Game Toon Renderer Feature Installer**; the duplicate **Screen Rim
+  Installer** alias was removed without changing runtime Screen Rim behavior.
+
+- Replaced the default `MIKU/Wuwa/*` lighting semantics with the tutorial PBR
+  path. Body, Hair, Face, and Eye now share URP 17.4 BRDF initialization,
+  shadowed direct specular, baked/light-probe GI, reflection-probe sampling,
+  and `EnvironmentBRDF` with a zero Fresnel term. This is an intentional
+  visual breaking change; there is no legacy-lighting toggle.
+- Added linear packed WuWa NRM decoding (DirectX RG normal, B metallic,
+  A roughness), skin metallic suppression, metallic-gated pre-lighting MatCap,
+  complete UV0-UV3 gradients, tutorial Face A/B SDF and Hair HM behavior,
+  consistent Bangs alpha clipping, screen-space hair-shadow offsets, WuWa rim
+  mode, and LD outline-color maps.
+- Added fixed-workflow roles for packed NRM and outline color and the
+  non-destructive `MikuWuwa3Migration.CloneAndUpgradeScene` transaction.
+  Private third-party model/texture bytes are never packaged.
+- Moved WuWa outline passes from `SRPDefaultUnlit` to the dedicated
+  `MikuToonOutline` LightMode and made the WuWa installer transactionally add
+  the Geometry Renderer Feature. This prevents the outline pass from replacing
+  the PBR forward result in URP Forward+.
+- Added the URP 17.1+ `_CLUSTER_LIGHT_LOOP` variant and the Unity 6000.0 /
+  URP 17.0 `_FORWARD_PLUS` variant to every WuWa PBR Forward pass. Forward+
+  no longer reads the unavailable per-object
+  `unity_LightData.z` attenuation as zero, so the main Directional Light again
+  drives Body, Hair, Face, and Eye instead of leaving direct lighting black;
+  realtime shadows select the authored shadow tint rather than erasing it.
+- Added the same Unity-line-gated Forward+ variant to all five Genshin programs
+  that evaluate `GetMainLight`: Body and Hair Forward/backface plus Face
+  Forward. Body, Hair, and Face now respond to main-light rotation in Forward+,
+  and Face SDF visibility once again reaches final direct lighting. Genshin Eye
+  remains intentionally unlit.
+- Added read-only WuWa Face SDF diagnostics for missing input, zero strength,
+  invalid basis/import settings, identical channels/tints, and active debug
+  output. Authored material values and texture import settings are never
+  normalized or rewritten. D3D12 acceptance now compares light-yaw output for
+  Genshin Body/Hair and both Genshin/WuWa Face SDF debug and final pixels.
+- Corrected Genshin and WuWa lit passes to use URP `GetShadowCoord` for the
+  screen-space main-shadow variant and added the Low/Medium/High soft-shadow
+  quality variants. The Genshin Eye Inspector remains supported without
+  applying lit-material alpha state to that intentionally unlit shader.
+- Restored the actually consumed WuWa `_FresnelPower` as a visible material
+  control and labeled shared Fresnel/Screen brightness separately from the
+  Screen-only radius, depth threshold, and softness controls. Existing
+  property reference names and serialized values are unchanged.
+- MaterialIR, Bundle, Manifest, Receipt, and Blender-to-Unity interchange
+  schemas are unchanged. New WuWa shader properties and default rendering
+  semantics are documented in the 3.0 migration guide. The Face/Eye correction
+  does not rename a public C# API or advance a package/schema version, and does
+  not rewrite existing materials automatically.
+
+## 2.4.0 - 2026-08-12
+
+- Replaced the default Genshin core with an independent implementation of the
+  tutorial AO/ramp/day-night/specular/metal/outline behavior. Body and Hair now
+  use real imported tangents for optional normal maps; UV7 remains dedicated
+  to TangentSpaceV2 outlines, and Face keeps Miku's head-bone SDF basis.
+- Added shared `_DiffuseA` alpha coverage to Forward, Backface, Outline,
+  ShadowCaster, DepthOnly, DepthNormals, and CharacterMask. Diffuse-alpha
+  emission and explicit EmissionMap output remain additive.
+- Added `MikuGameToonGeometryRendererFeature`, ordered UV1 backface and UV7
+  outline Renderer Lists, public Genshin material state, Genshin texture
+  auditing, and per-channel Mesh clone mapping.
+- Changed new Windows GPU acceptance to Direct3D 12. Headless EditMode remains
+  non-GPU evidence; D3D11 is retained only in historical records and fixtures.
+- Advanced the Blender extension, Unity package, tool, and Genshin Shader
+  family to 2.4.0 without changing MaterialIR, Bundle, Manifest, or Receipt
+  schemas. The exact 2.3.0 Profile remains a bounded compatibility input and
+  reports a Genshin visual migration.
+
+- Fixed Endfield full-screen LUT installation reporting success when a cloned
+  URP Renderer contained missing or mismatched Renderer Feature references.
+  Installation now fails closed on invalid input and verifies the persisted
+  Feature reference, local-ID map, and pass material after Renderer import.
+- Aligned the Experimental HSR lighting masks with the user-supplied tutorial:
+  Body/Hair LightMap green now uses the literal `saturate(4 * HL * G)` Shadow
+  AO signal and fixed `0.85 * signal + 0.15` ramp coordinate, while LightMap
+  blue becomes one inverted smooth Blinn-Phong threshold shared by metal and
+  non-metal responses. Face gains a skin-gated parameterized Toon highlight
+  without a LightMap, and FaceMap blue keeps its view-dependent nose-line role
+  with adjustable strength and color. Retained legacy threshold/ramp properties
+  still deserialize but no longer drive the corrected equations; MaterialIR,
+  Bundle, schemas, and texture roles are unchanged. HSR remains single-pass;
+  the tutorial's two-pass layout is not restored.
 - Fixed the Genshin Body shader applying the legacy skin-tone curve to the
   whole material when `_AREA_SKIN` was enabled, which tinted non-skin regions
   (for example a blue cape's back face) purple; the curve is now masked by
@@ -67,6 +184,9 @@
 - Limited outline-mesh and Endfield post-processing commits to their explicit
   target assets so project-wide `SaveAssets()` calls cannot persist unrelated
   dirty editor assets.
+- Made Endfield LUT installation reject duplicate/corrupt Renderer Feature
+  state before writes, verify the Feature after forced import, include importer
+  settings in Undo, and restore existing target assets byte-for-byte on failure.
 
 ## 2.2.12 - 2026-08-08
 

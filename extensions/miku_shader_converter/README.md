@@ -1,7 +1,7 @@
-# Miku Shader Converter 2.3.0
+# Miku Shader Converter 3.0.0
 
 This deterministic Blender 5.0-5.2 extension combines the semantic
-exporter and GPL bake worker in `miku_shader_converter-2.3.0.zip`.
+exporter and GPL bake worker in `miku_shader_converter-3.0.0.zip`.
 
 The visible Blender panel is intentionally Standard PBR only. **Export Current
 Material** always writes `standard_pbr`; it does not rewrite old workflow
@@ -9,7 +9,7 @@ custom properties. Explicit lower-level Python workflow calls, historical game
 Bundles, and the Unity importer remain available for scripts and legacy assets.
 
 The panel follows Blender's English/Simplified Chinese language setting and
-keeps the 2.3.0 controls for normal convention, displacement policy, advanced
+keeps the 3.0.0 controls for normal convention, displacement policy, advanced
 conversion mode, bake quality (512/1024/2048/4096), and source identity. An
 effective `Input.Time.*` dependency fails before any output or bake request is
 written with `MIKU_TIME_INPUT_UNSUPPORTED`; disconnected time nodes remain

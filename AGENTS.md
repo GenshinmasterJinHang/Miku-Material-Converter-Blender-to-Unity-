@@ -656,6 +656,19 @@ Do not claim compatibility without a reproducible test or documented validation.
 
 Unsupported versions must fail clearly rather than attempting unsafe generation.
 
+### 12.1 Windows graphics validation baseline
+
+All new Windows GPU compatibility claims must be produced with Direct3D 12.
+Target profiles must serialize this requirement as `D3D12`, Unity GPU
+acceptance must assert `GraphicsDeviceType.Direct3D12`, and automated graphics
+runs must use `-force-d3d12` without `-nographics`.
+
+Headless or `-nographics` Unity runs do not initialize a graphics device and
+must never be cited as GPU, shader-rendering, screenshot, or graphics-API
+evidence. Direct3D 11 may remain in immutable historical plans, release records,
+fixtures, and compatibility rows that describe tests which actually ran, but it
+must not be used for current or future Windows support claims.
+
 ---
 
 ## 13. Open-source Contribution Standards
