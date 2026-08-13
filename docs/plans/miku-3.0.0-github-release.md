@@ -66,6 +66,11 @@ scene, model, texture, material, local validation artifact, `dist/`, and
   and D3D12 acceptance (10/10, no skips or inconclusive results).
 - [x] 2026-08-13: merged the reproducibility correction as PR #14; its
   merge-commit `main` CI passed. The final hosted comparison remains pending.
+- [x] 2026-08-13: the next hosted TGZ matched byte-for-byte, but the ZIP
+  retained platform-specific creator metadata and the checksum manifest used
+  platform-native newlines; publication remained blocked.
+- [ ] Merge the ZIP-metadata and manifest-newline correction, rerun the exact
+  Blender package smoke, and repeat the final hosted comparison.
 
 ## Discoveries
 
@@ -90,6 +95,11 @@ scene, model, texture, material, local validation artifact, `dist/`, and
   Archive metadata, ordering, and all other payload files matched. The builders
   normalized only `.meta` files, so their "deterministic" guarantee was limited
   to repeated builds from one checkout rather than Windows/Linux checkouts.
+- After the text and compression correction, the hosted TGZ matched exactly
+  and all 33 Blender ZIP payloads matched after extraction. Every ZIP entry
+  still differed in `ZipInfo.create_system` (FAT on Windows, Unix on Linux),
+  while `Path.write_text` emitted CRLF in the Windows checksum manifest. Both
+  fields must be explicit at archive-write time.
 - Direct URP capture used `RenderPipeline.SubmitRenderRequest` with a
   `UniversalRenderPipeline.SingleCameraRequest`; this retained the source
   camera's URP renderer, post-processing, and antialiasing settings.
@@ -138,6 +148,10 @@ windows.
   the same size. `ZIP_STORED` removes the zlib implementation from artifact
   identity; the modest size increase is acceptable for a small extension and
   does not change installed bytes.
+- 2026-08-13: pin Blender ZIP entries to creator system 3 (Unix), consistent
+  with their explicit Unix mode bits, and write `SHA256SUMS.txt` as canonical
+  ASCII bytes with LF endings. These are archive metadata decisions only and
+  do not change installed payload bytes.
 
 ## Implementation sequence
 
@@ -179,8 +193,8 @@ TGZ, and manifest compare byte-for-byte with the local final build.
 ## Results and follow-up
 
 Local implementation and runtime validation are complete for the
-cross-platform artifacts. The final ZIP is `296fe11c...08c23f`; the TGZ is
-`d282c9e5...b22d3a`, and the manifest is `4937966f...fa8a2c`. MaterialIR 2.0,
+cross-platform artifacts. The final ZIP is `ba63d539...9ac362`; the TGZ is
+`d282c9e5...b22d3a`, and the manifest is `a9d87aec...5010b9`. MaterialIR 2.0,
 Bundle 1.0, public C# APIs, and JSON schemas are not changed by the release
 process. PR #12 merged as `f4d5c72c4396c3585d7035ba7e7c2d0dfc827f06`;
 its `main` CI passed. PR #13 aligned hosted validation on Python 3.13 and

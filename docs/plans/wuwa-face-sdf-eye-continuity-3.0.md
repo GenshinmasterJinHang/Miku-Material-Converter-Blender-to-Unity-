@@ -143,6 +143,6 @@ Face/Eye continuity candidate, not the published 3.0.0 package. The
 cross-platform release TGZ is
 `d282c9e5504a32b843358a4f754cd22bc5c8808a1d94f7b3ab5c1a2308b22d3a`
 and the ZIP is
-`296fe11c13bdea7e4c386ab02230e9284fd6a75a0b4bb9e2af26a7a21108c23f`;
+`ba63d53957b8c18cedd2560cf9babc8efdb6d46f605fd20661528c1ab39ac362`;
 both received the broader release validation recorded in
 `docs/plans/miku-3.0.0-github-release.md`.

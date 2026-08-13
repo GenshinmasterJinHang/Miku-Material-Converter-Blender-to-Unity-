@@ -25,6 +25,12 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def manifest_bytes(artifacts: list[Path]) -> bytes:
+    """Return the canonical LF-terminated release checksum manifest."""
+    lines = [f"{sha256(path)}  {path.name}" for path in sorted(artifacts)]
+    return ("\n".join(lines) + "\n").encode("ascii")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True, type=Path)
@@ -65,8 +71,7 @@ def main() -> int:
     for artifact in artifacts:
         artifact.with_suffix(artifact.suffix + ".sha256").unlink(missing_ok=True)
     manifest = output_dir / "SHA256SUMS.txt"
-    lines = [f"{sha256(path)}  {path.name}" for path in sorted(artifacts)]
-    manifest.write_text("\n".join(lines) + "\n", encoding="ascii")
+    manifest.write_bytes(manifest_bytes(artifacts))
     print("Built release artifacts:")
     for path in artifacts:
         print(f"- {path} {sha256(path)}")
