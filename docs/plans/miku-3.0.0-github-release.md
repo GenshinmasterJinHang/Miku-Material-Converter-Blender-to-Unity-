@@ -56,6 +56,15 @@ scene, model, texture, material, local validation artifact, `dist/`, and
   artifact creation; Python 3.11 could not install the pinned NumPy 2.5.1.
 - [ ] Merge the focused Python 3.13 workflow correction and rerun hosted
   release validation on the corrected `main` commit.
+- [x] 2026-08-13: merged the Python 3.13 correction as PR #13 and passed hosted
+  release validation on `633d773`, but rejected its artifacts because all three
+  downloaded files differed from the locally validated files.
+- [x] 2026-08-13: normalized release-archive text bytes and produced two
+  identical Windows builds of the cross-platform candidate.
+- [x] 2026-08-13: the cross-platform final ZIP passed eight Blender scripts and
+  installed-ZIP smoke; its final TGZ passed Unity EditMode (335/347, 0 failed)
+  and D3D12 acceptance (10/10, no skips or inconclusive results).
+- [ ] Merge the reproducibility correction and rerun hosted comparison.
 
 ## Discoveries
 
@@ -74,6 +83,12 @@ scene, model, texture, material, local validation artifact, `dist/`, and
   `requirements-dev.txt` pins NumPy 2.5.1, which requires Python 3.12 or newer.
   The regular `core` workflow already used Python 3.13. The manual Blender
   workflow had the same latent dependency-install mismatch.
+- The corrected hosted run completed but its ZIP and TGZ did not match Windows.
+  Extracted-file comparison isolated the differences to CRLF/LF bytes in three
+  Blender text files and `Runtime/Profiles/MikuAnimeGlobalVolumeProfile.asset`.
+  Archive metadata, ordering, and all other payload files matched. The builders
+  normalized only `.meta` files, so their "deterministic" guarantee was limited
+  to repeated builds from one checkout rather than Windows/Linux checkouts.
 - Direct URP capture used `RenderPipeline.SubmitRenderRequest` with a
   `UniversalRenderPipeline.SingleCameraRequest`; this retained the source
   camera's URP renderer, post-processing, and antialiasing settings.
@@ -113,6 +128,15 @@ windows.
   matching `core` and the local release command. Pinning an older NumPy only for
   the workflows was rejected because it would make hosted release gates use a
   different dependency set from the validated local gate.
+- 2026-08-13: canonicalize line endings in known text payloads at archive-write
+  time while leaving source files and unknown/binary suffixes byte-exact. This
+  creates one cross-platform artifact identity without rewriting the checkout
+  or risking binary corruption.
+- 2026-08-13: store Blender ZIP entries without Deflate. After extracted bytes
+  matched, Windows and Linux still produced different Deflate byte streams of
+  the same size. `ZIP_STORED` removes the zlib implementation from artifact
+  identity; the modest size increase is acceptable for a small extension and
+  does not change installed bytes.
 
 ## Implementation sequence
 
@@ -153,9 +177,9 @@ TGZ, and manifest compare byte-for-byte with the local final build.
 
 ## Results and follow-up
 
-Local implementation and runtime validation are complete. The final ZIP is
-`dbec2ba1...6605bd`; the TGZ is `ad5581c5...89c202`, and the manifest is
-`a3c5bf25...b1fec`. MaterialIR 2.0, Bundle 1.0,
+Local implementation and runtime validation are complete for the
+cross-platform artifacts. The final ZIP is `296fe11c...08c23f`; the TGZ is
+`d282c9e5...b22d3a`, and the manifest is `4937966f...fa8a2c`. MaterialIR 2.0, Bundle 1.0,
 public C# APIs, and JSON schemas are not changed by the release process. PR #12
 merged as `f4d5c72c4396c3585d7035ba7e7c2d0dfc827f06`; its `main` CI passed. A
 focused correction PR must align hosted release validation on Python 3.13,

@@ -1,3 +1,4 @@
+import tempfile
 import unittest
 import zipfile
 from pathlib import Path
@@ -91,6 +92,12 @@ class MikuWorkflowTests(unittest.TestCase):
         self.assertEqual("miku_shader_converter-3.0.0.zip", first.name)
         with zipfile.ZipFile(first) as archive:
             names = set(archive.namelist())
+            self.assertTrue(
+                all(
+                    item.compress_type == zipfile.ZIP_STORED
+                    for item in archive.infolist()
+                )
+            )
             self.assertIn("bake_worker/automatic_bake.py", names)
             self.assertIn("miku_blender/__init__.py", names)
             self.assertIn("miku/bake_protocol.py", names)
@@ -101,6 +108,24 @@ class MikuWorkflowTests(unittest.TestCase):
             self.assertIn("SPDX:GPL-3.0-or-later", manifest)
             self.assertIn('blender_version_min = "5.0.0"', manifest)
             self.assertIn('blender_version_max = "5.3.0"', manifest)
+
+    def test_blender_release_text_bytes_are_platform_independent(self):
+        from tools.build_miku_blender_extensions import canonical_archive_bytes
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            crlf = root / "README.md"
+            crlf.write_bytes(b"first\r\nsecond\rthird\n")
+            binary = root / "image.png"
+            binary.write_bytes(b"\x89PNG\r\n\x1a\n")
+            self.assertEqual(b"first\nsecond\nthird\n", canonical_archive_bytes(crlf))
+            extensionless = root / "LICENSE"
+            extensionless.write_bytes(b"license\r\n")
+            self.assertEqual(
+                b"license\n",
+                canonical_archive_bytes(extensionless, "LICENSE-MIT-ORIGIN.txt"),
+            )
+            self.assertEqual(binary.read_bytes(), canonical_archive_bytes(binary))
 
 
 if __name__ == "__main__":

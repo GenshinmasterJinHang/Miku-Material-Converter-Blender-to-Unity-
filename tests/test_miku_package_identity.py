@@ -141,6 +141,21 @@ class MikuPackageIdentityTests(unittest.TestCase):
                 actual[member.name] = match.group(1)
         self.assertEqual(expected, actual)
 
+    def test_unity_release_text_bytes_are_platform_independent(self):
+        from tools.build_miku_unity_package import canonical_archive_bytes
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            asset = root / "Profile.asset"
+            asset.write_bytes(b"line-one\r\nline-two\rline-three\n")
+            binary = root / "texture.png"
+            binary.write_bytes(b"\x89PNG\r\n\x1a\n")
+            self.assertEqual(
+                b"line-one\nline-two\nline-three\n",
+                canonical_archive_bytes(asset),
+            )
+            self.assertEqual(binary.read_bytes(), canonical_archive_bytes(binary))
+
     def test_template_profile_has_no_project_local_or_gpl_hlsl_dependency(self):
         template_root = PACKAGE / "Templates"
         graph = template_root / "MikuStandardTemplate.shadergraph"

@@ -139,9 +139,10 @@ Blender 5.2 executable suite were not run for this Unity-only repair and are
 not claimed as evidence.
 
 2026-08-13 release-integration correction: those hashes identify the completed
-Face/Eye continuity candidate, not the published 3.0.0 package. The final
-release TGZ is `ad5581c568a98a32733311af2ae0d3afb42e794ff289bd3d5c59e83e1a89c202`
-and the final ZIP is
-`dbec2ba1fe8cab625ca8749aeb2f028c3c3e1dcd63e808a5289e79d4ea6605bd`;
+Face/Eye continuity candidate, not the published 3.0.0 package. The
+cross-platform release TGZ is
+`d282c9e5504a32b843358a4f754cd22bc5c8808a1d94f7b3ab5c1a2308b22d3a`
+and the ZIP is
+`296fe11c13bdea7e4c386ab02230e9284fd6a75a0b4bb9e2af26a7a21108c23f`;
 both received the broader release validation recorded in
 `docs/plans/miku-3.0.0-github-release.md`.
