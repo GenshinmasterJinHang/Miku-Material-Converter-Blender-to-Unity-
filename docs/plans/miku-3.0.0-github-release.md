@@ -39,7 +39,7 @@ scene, model, texture, material, local validation artifact, `dist/`, and
 - [x] 2026-08-13: froze bilingual documentation, provenance, release notes, compatibility
   claims, and public-document tests.
 - [x] 2026-08-13: passed `git diff --check`, the public-doc suite, and the full
-  PR profile (272 tests).
+  PR profile (274 tests).
 - [x] 2026-08-13: produced two byte-identical clean release builds.
 - [x] 2026-08-13: passed eight fixed Blender 5.2.0 public scripts and the
   installed-ZIP smoke test.
@@ -54,8 +54,8 @@ scene, model, texture, material, local validation artifact, `dist/`, and
   publish `v3.0.0`, and verify a clean re-download.
 - [x] 2026-08-13: diagnosed the first hosted `release-validation` run before
   artifact creation; Python 3.11 could not install the pinned NumPy 2.5.1.
-- [ ] Merge the focused Python 3.13 workflow correction and rerun hosted
-  release validation on the corrected `main` commit.
+- [x] 2026-08-13: merged the focused Python 3.13 workflow correction and reran
+  hosted release validation on the corrected `main` commit.
 - [x] 2026-08-13: merged the Python 3.13 correction as PR #13 and passed hosted
   release validation on `633d773`, but rejected its artifacts because all three
   downloaded files differed from the locally validated files.
@@ -64,7 +64,8 @@ scene, model, texture, material, local validation artifact, `dist/`, and
 - [x] 2026-08-13: the cross-platform final ZIP passed eight Blender scripts and
   installed-ZIP smoke; its final TGZ passed Unity EditMode (335/347, 0 failed)
   and D3D12 acceptance (10/10, no skips or inconclusive results).
-- [ ] Merge the reproducibility correction and rerun hosted comparison.
+- [x] 2026-08-13: merged the reproducibility correction as PR #14; its
+  merge-commit `main` CI passed. The final hosted comparison remains pending.
 
 ## Discoveries
 
@@ -179,8 +180,11 @@ TGZ, and manifest compare byte-for-byte with the local final build.
 
 Local implementation and runtime validation are complete for the
 cross-platform artifacts. The final ZIP is `296fe11c...08c23f`; the TGZ is
-`d282c9e5...b22d3a`, and the manifest is `4937966f...fa8a2c`. MaterialIR 2.0, Bundle 1.0,
-public C# APIs, and JSON schemas are not changed by the release process. PR #12
-merged as `f4d5c72c4396c3585d7035ba7e7c2d0dfc827f06`; its `main` CI passed. A
-focused correction PR must align hosted release validation on Python 3.13,
-after which hosted artifact comparison, tag, and Release publication remain.
+`d282c9e5...b22d3a`, and the manifest is `4937966f...fa8a2c`. MaterialIR 2.0,
+Bundle 1.0, public C# APIs, and JSON schemas are not changed by the release
+process. PR #12 merged as `f4d5c72c4396c3585d7035ba7e7c2d0dfc827f06`;
+its `main` CI passed. PR #13 aligned hosted validation on Python 3.13 and
+merged as `633d77317d37ec1604d432ee0ad373674a79e848`. PR #14 made the
+artifacts cross-platform reproducible and merged as
+`e28bb7c53f1c1b4e92347eb51d483edfc96507b3`; its `main` CI passed. Hosted
+artifact comparison, tag, and Release publication remain.
