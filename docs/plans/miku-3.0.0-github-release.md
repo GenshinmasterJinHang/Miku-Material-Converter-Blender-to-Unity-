@@ -48,9 +48,14 @@ scene, model, texture, material, local validation artifact, `dist/`, and
 - [x] 2026-08-13: recorded final SHA-256 values and rebuilt twice after the
   documentation update; both builds matched each other and the runtime-tested
   artifacts byte-for-byte.
-- [ ] Commit, push, open the draft PR, wait for CI, mark ready, and merge.
+- [x] 2026-08-13: committed and pushed the release, merged PR #12 after its
+  `core` check passed, and observed the merge-commit `main` CI pass.
 - [ ] Run merged-commit `release-validation`, compare downloaded artifacts,
   publish `v3.0.0`, and verify a clean re-download.
+- [x] 2026-08-13: diagnosed the first hosted `release-validation` run before
+  artifact creation; Python 3.11 could not install the pinned NumPy 2.5.1.
+- [ ] Merge the focused Python 3.13 workflow correction and rerun hosted
+  release validation on the corrected `main` commit.
 
 ## Discoveries
 
@@ -64,6 +69,11 @@ scene, model, texture, material, local validation artifact, `dist/`, and
   Root selection was corrected to `Scene.GetRootGameObjects()` before the final
   Genshin captures. The rejected intermediate PNGs were overwritten before
   entering the repository.
+- The first GitHub-hosted release-validation run failed during dependency
+  installation because that workflow selected Python 3.11 while
+  `requirements-dev.txt` pins NumPy 2.5.1, which requires Python 3.12 or newer.
+  The regular `core` workflow already used Python 3.13. The manual Blender
+  workflow had the same latent dependency-install mismatch.
 - Direct URP capture used `RenderPipeline.SubmitRenderRequest` with a
   `UniversalRenderPipeline.SingleCameraRequest`; this retained the source
   camera's URP renderer, post-processing, and antialiasing settings.
@@ -99,6 +109,10 @@ windows.
   row.
 - 2026-08-13: upload exactly three release assets. GitHub supplies automatic
   source ZIP/TAR archives; no redundant source bundle is uploaded.
+- 2026-08-13: align `release-validation` and `blender-headless` on Python 3.13,
+  matching `core` and the local release command. Pinning an older NumPy only for
+  the workflows was rejected because it would make hosted release gates use a
+  different dependency set from the validated local gate.
 
 ## Implementation sequence
 
@@ -142,5 +156,7 @@ TGZ, and manifest compare byte-for-byte with the local final build.
 Local implementation and runtime validation are complete. The final ZIP is
 `dbec2ba1...6605bd`; the TGZ is `ad5581c5...89c202`, and the manifest is
 `a3c5bf25...b1fec`. MaterialIR 2.0, Bundle 1.0,
-public C# APIs, and JSON schemas are not changed by the release process. GitHub
-PR, merge, hosted release-validation, tag, and Release publication remain.
+public C# APIs, and JSON schemas are not changed by the release process. PR #12
+merged as `f4d5c72c4396c3585d7035ba7e7c2d0dfc827f06`; its `main` CI passed. A
+focused correction PR must align hosted release validation on Python 3.13,
+after which hosted artifact comparison, tag, and Release publication remain.
