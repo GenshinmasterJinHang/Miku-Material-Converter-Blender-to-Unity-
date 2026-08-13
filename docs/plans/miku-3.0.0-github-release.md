@@ -50,8 +50,9 @@ scene, model, texture, material, local validation artifact, `dist/`, and
   artifacts byte-for-byte.
 - [x] 2026-08-13: committed and pushed the release, merged PR #12 after its
   `core` check passed, and observed the merge-commit `main` CI pass.
-- [ ] Run merged-commit `release-validation`, compare downloaded artifacts,
-  publish `v3.0.0`, and verify a clean re-download.
+- [x] 2026-08-13: ran merged-commit `release-validation` on `6219e207`,
+  compared all three downloaded artifacts byte-for-byte, published `v3.0.0`
+  as the non-prerelease Latest Release, and verified a clean re-download.
 - [x] 2026-08-13: diagnosed the first hosted `release-validation` run before
   artifact creation; Python 3.11 could not install the pinned NumPy 2.5.1.
 - [x] 2026-08-13: merged the focused Python 3.13 workflow correction and reran
@@ -69,8 +70,9 @@ scene, model, texture, material, local validation artifact, `dist/`, and
 - [x] 2026-08-13: the next hosted TGZ matched byte-for-byte, but the ZIP
   retained platform-specific creator metadata and the checksum manifest used
   platform-native newlines; publication remained blocked.
-- [ ] Merge the ZIP-metadata and manifest-newline correction, rerun the exact
-  Blender package smoke, and repeat the final hosted comparison.
+- [x] 2026-08-13: merged the ZIP-metadata and manifest-newline correction as
+  PR #16, reran the exact Blender package smoke, and completed the final
+  hosted comparison successfully in Actions run `31714184607`.
 
 ## Discoveries
 
@@ -200,5 +202,11 @@ process. PR #12 merged as `f4d5c72c4396c3585d7035ba7e7c2d0dfc827f06`;
 its `main` CI passed. PR #13 aligned hosted validation on Python 3.13 and
 merged as `633d77317d37ec1604d432ee0ad373674a79e848`. PR #14 made the
 artifacts cross-platform reproducible and merged as
-`e28bb7c53f1c1b4e92347eb51d483edfc96507b3`; its `main` CI passed. Hosted
-artifact comparison, tag, and Release publication remain.
+`e28bb7c53f1c1b4e92347eb51d483edfc96507b3`; its `main` CI passed. PR #16
+fixed the remaining ZIP creator metadata and manifest newline differences and
+merged as `6219e207247ff40d6244703a7d6bcdb118386028`. GitHub-hosted run
+`31714184607` reproduced all three local artifacts byte-for-byte. Tag
+`v3.0.0` points to that merge commit, and the formal Latest Release is
+`https://github.com/GenshinmasterJinHang/Miku-Material-Converter-Blender-to-Unity-/releases/tag/v3.0.0`.
+The release contains exactly the ZIP, TGZ, and checksum manifest; a clean
+post-publication download matched the validated local bytes and hashes.
